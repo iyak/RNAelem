@@ -1,0 +1,7 @@
+build
+bench
+*.xcodeproj
+.waf*
+.lock-waf*
+**.DS_store
+.gitconfig
