@@ -199,7 +199,7 @@ namespace iyak {
       int total = 0;
       int nbp = 0;
       for (int i=0; i<=L; ++ i)
-        for (int j=(debug&DBG_NONE)?i+1:i+turn+2; j<=min(L,i+W); ++j)
+        for (int j=(debug&DBG_NO_TURN)?i+1:i+turn+2; j<=min(L,i+W); ++j)
           if ((_bp_ok[i][j-i] = 0<bp[_seq->at(i)][_seq->at(j-1)]))
             ++ total;
 
