@@ -70,14 +70,27 @@ namespace iyak {
 
       _motif->compute_inside(InsideFun(_motif));
       lnZ = _motif->part_func();
-      _motif->compute_outside(OutsideFun(_motif, lnZ, dEH));
 
-      _motif->init_inside_tables();
-      _motif->init_outside_tables();
+      if (isfinite(lnZ)) {
+        _motif->compute_outside(OutsideFun(_motif, lnZ, dEH));
 
-      _motif->compute_inside(InsideFeatFun(_motif, _ws));
-      lnZw = _motif->part_func();
-      _motif->compute_outside(OutsideFeatFun(_motif, lnZw, dEH, _ws));
+        _motif->init_inside_tables();
+        _motif->init_outside_tables();
+
+        _motif->compute_inside(InsideFeatFun(_motif, _ws));
+        lnZw = _motif->part_func();
+        _motif->compute_outside(OutsideFeatFun(_motif, lnZw, dEH, _ws));
+      }
+      else {
+        /*
+         * fn is not updated, nor is gr.
+         * without this filtering, the probability of entire dataset
+         * becomes zero due to a very few strange sequences,
+         * which is an undesirable behavior for the real data analyses.
+         */
+
+        lnZ = lnZw = 0;
+      }
     }
 
     void set_boundary(RNAelem& motif) {
