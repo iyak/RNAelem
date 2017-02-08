@@ -102,7 +102,7 @@ namespace iyak {
       }
       else {
         ifstream ifs (fname);
-        check(!!ifs, "fail opne:", fname);
+        check(!!ifs, "fail open:", fname);
         read_sge_option_stream(ifs);
       }
     }

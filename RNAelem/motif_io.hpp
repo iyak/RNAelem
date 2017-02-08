@@ -26,7 +26,12 @@ namespace iyak {
 
   public:
 
-    void set_out_id (int i, int j) {_out=i; _svg=j;;}
+    void set_out_id (int i, int j) {_out=i; _svg=j;}
+    void set_logo(string& font) {
+      if ("~DEFAULT~" != font) {
+        _logo.set_font(font);
+      }
+    }
 
     void pict(string const& p, VV const& ww) {
 

@@ -26,6 +26,7 @@ namespace iyak {
     string ene_param_fname;
     string pic_fname;
     string sge_opt_fname;
+    string font;
 
     string out1;
     string out2;
@@ -209,6 +210,13 @@ namespace iyak {
       .set_default("~DEFAULT~")
       .metavar("FILE");
 
+      _parser
+      .add_option("--font")
+      .help("font file name (.ttf)")
+      .dest("font")
+      .set_default("~DEFAULT~")
+      .metavar("FILE");
+
       auto const options = _parser.parse_args(argc, argv);
       auto const args = _parser.args();
 
@@ -235,6 +243,7 @@ namespace iyak {
       pic_fname = (string)options["pic_fname"];
       sge_opt_fname = (string)options["sge_opt_fname"];
       set_sge_option(sge_opt_fname);
+      font = (string)options["font"];
 
       out1 = (string)options["out1"];
       out2 = (string)options["out2"];

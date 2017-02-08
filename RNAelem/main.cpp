@@ -62,6 +62,7 @@ int main(int const argc, char const* argv[]) {
         a_train.train(model);
 
         RNAelemWriter writer;
+        writer.set_logo(app.font);
         writer.set_out_id(1,2);
         writer.write(model);
 
@@ -105,6 +106,7 @@ int main(int const argc, char const* argv[]) {
         m_train.mask_train(model);
 
         RNAelemWriter writer;
+        writer.set_logo(app.font);
         writer.set_out_id(1,2);
         writer.write(model);
 
@@ -125,6 +127,7 @@ int main(int const argc, char const* argv[]) {
         train.train(model);
 
         RNAelemWriter writer;
+        writer.set_logo(app.font);
         writer.set_out_id(1,2);
         writer.write(model);
 
@@ -149,6 +152,7 @@ int main(int const argc, char const* argv[]) {
         train.train(model);
 
         RNAelemWriter writer;
+        writer.set_logo(app.font);
         writer.set_out_id(1,2);
         writer.write(model);
 
@@ -177,6 +181,7 @@ int main(int const argc, char const* argv[]) {
         reader.read_model(model);
 
         RNAelemWriter writer;
+        writer.set_logo(app.font);
         writer.set_out_id(-1,1);
         writer.write(model);
 
