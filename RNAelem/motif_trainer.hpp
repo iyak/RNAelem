@@ -32,7 +32,9 @@ namespace iyak {
     double _eps = 1e-1;
     int _max_iter = 30;
     bool _fix_lambda = false;
-    double dEH;
+    double _dEH;
+    VV _dEN;
+    VV _dENn;
     int L; /* seq size */
     int N; /* num of seqs */
     int _cnt;
@@ -47,8 +49,8 @@ namespace iyak {
     V _convo_kernel {1};
     double _pseudo_cov;
 
-    double lnZ;
-    double lnZw;
+    double _lnZ;
+    double _lnZw;
 
     void calc_ws(VI const& q) {
       V& c = _convo_kernel;
@@ -63,34 +65,44 @@ namespace iyak {
       lnormal(_ws);
     }
 
-    void calc_emit_cnt() {
+    int calc_emit_cnt(double& fn) {
       /* inside-outside */
       _motif->init_inside_tables();
       _motif->init_outside_tables();
 
       _motif->compute_inside(InsideFun(_motif));
-      lnZ = _motif->part_func();
+      _lnZ = _motif->part_func();
 
-      if (isfinite(lnZ)) {
-        _motif->compute_outside(OutsideFun(_motif, lnZ, dEH));
+      if (isfinite(_lnZ)) {
+        _motif->compute_outside(OutsideFun(_motif, _lnZ, _dEH, _dENn));
 
         _motif->init_inside_tables();
         _motif->init_outside_tables();
 
         _motif->compute_inside(InsideFeatFun(_motif, _ws));
-        lnZw = _motif->part_func();
-        _motif->compute_outside(OutsideFeatFun(_motif, lnZw, dEH, _ws));
-      }
-      else {
-        /*
-         * fn is not updated, nor is gr.
-         * without this filtering, the probability of entire dataset
-         * becomes zero due to a very few strange sequences,
-         * which is an undesirable behavior for the real data analyses.
-         */
+        _lnZw = _motif->part_func();
 
-        lnZ = lnZw = 0;
+        if (isfinite(_lnZw)) {
+          _motif->compute_outside(OutsideFeatFun(_motif, _lnZw, _dEH, _dENn, _ws));
+
+          fn += _lnZ - _lnZw;
+          for (int i=0; i<size(_dEN); ++i)
+            for (int j=0; j<size(_dEN[i]); ++j)
+              _dEN[i][j] += _dENn[i][j];
+
+          return 1;
+        }
       }
+      /*
+       * fn is not updated, nor is _dEN for the n-th sequence.
+       * without this filtering, the probability of entire dataset
+       * becomes zero due to a very few strange sequences,
+       * which is an undesirable behavior for the real data analyses.
+       */
+
+      if (0 == _opt.fdfcount()) cry("skipped:", _id);
+      _lnZ = _lnZw = -inf;
+      return 0;
     }
 
     void set_boundary(RNAelem& motif) {
@@ -129,19 +141,27 @@ namespace iyak {
       for (auto& gri: gr) gri *= _motif->rho();
     }
 
-    void update_fn(double& fn) {
-      fn += lnZ - lnZw;
-    }
-
     void update_gr(V& gr) {
       int k = 0;
-      for (auto const& ei: _motif->mm.emit_count())
+      for (auto const& ei: _dEN)
         for (auto const eij: ei)
           gr[k++] += eij;
-      gr[k++] += dEH;
+      gr[k++] += _dEH;
+    }
+
+    void clear_emit_count(VV& e) {
+      e.resize(_motif->mm.weight().size(), V{});
+      for (int i=0; i<size(_motif->mm.weight()); ++i) {
+        e[i].resize(_motif->mm.weight()[i].size(), 0);
+        for (auto& eij: e[i]) eij = 0;
+      }
     }
 
   public:
+    /* getters */
+    double dEH() {return _dEH;}
+    VV const& dEN() {return _dEN;}
+    VV const& dENn() {return _dENn;}
 
     /* setter */
     void set_fq_name(string const& s) {
@@ -193,19 +213,20 @@ namespace iyak {
       set_regul_fn(fn);
       set_regul_gr(gr);
 
-      _motif->mm.clear_emit_count();
-      dEH = 0.;
+      clear_emit_count(_dEN);
+      _dEH = 0.;
 
       double sum_eff = 0.;
       _qr.clear();
       while (not _qr.is_end()) {
+        clear_emit_count(_dENn);
+
         _qr.read_seq(_id, _seq, _qual, _rss);
         set_seq(_seq, _rss);
         calc_ws(_qual);
 
         sum_eff += _motif->em.bpp_eff();
-        calc_emit_cnt();
-        update_fn(fn);
+        calc_emit_cnt(fn);
       }
       update_gr(gr);
 
@@ -225,9 +246,10 @@ namespace iyak {
     class OutsideFun: virtual public DPalgo {
       double const _lnZ;
       double& _dEH;
+      VV& _dEN;
     public:
-      OutsideFun(RNAelem* m, double lnZ, double& dEH):
-      DPalgo(m), _lnZ(lnZ), _dEH(dEH) {}
+      OutsideFun(RNAelem* m, double lnZ, double& dEH, VV& dEN):
+      DPalgo(m), _lnZ(lnZ), _dEH(dEH), _dEN(dEN) {}
       template<int e, int e1>
       void on_outside_transition(int const i, int const j,
                                  int const k, int const l,
@@ -246,7 +268,7 @@ namespace iyak {
         switch (e1) {
           case EM::ST_P: {
             if (k==i-1 and j==l-1) {
-              mm.add_emit_count(s.l, s1.r, k, j, +exp(z));
+              mm.add_emit_count(_dEN, s.l, s1.r, k, j, exp(z));
             }
             break;
           }
@@ -255,14 +277,14 @@ namespace iyak {
           case EM::ST_2:
           case EM::ST_L: {
             if (k==i and j==l-1) {
-              mm.add_emit_count(s1.r, j, +exp(z));
+              mm.add_emit_count(_dEN, s1.r, j, +exp(z));
             }
             break;
           }
 
           case EM::ST_M: {
             if (k==i-1 and j==l) {
-              mm.add_emit_count(s.l, k, +exp(z));
+              mm.add_emit_count(_dEN, s.l, k, +exp(z));
             }
             break;
           }
@@ -324,10 +346,11 @@ namespace iyak {
     class OutsideFeatFun: virtual public DPalgo {
       double const _lnZw;
       double& _dEH;
+      VV& _dEN;
       V const& _ws;
     public:
-      OutsideFeatFun(RNAelem* m, double lnZw, double& dEH, V const& ws):
-      DPalgo(m), _lnZw(lnZw), _dEH(dEH), _ws(ws) {}
+      OutsideFeatFun(RNAelem* m, double lnZw, double& dEH, VV& dEN, V const& ws):
+      DPalgo(m), _lnZw(lnZw), _dEH(dEH), _dEN(dEN), _ws(ws) {}
       template<int e, int e1>
       void on_outside_transition(int const i, int const j,
                                  int const k, int const l,
@@ -351,7 +374,7 @@ namespace iyak {
               if (0==s1.l and 1==s.l) extra += _ws[k];
               if (0==s.r and 1==s1.r) extra += _ws[j];
               if (0==s1.r and L==l) extra += _ws[L];
-              mm.add_emit_count(s.l, s1.r, k, j, -exp(z+extra));
+              mm.add_emit_count(_dEN, s.l, s1.r, k, j, -exp(z+extra));
             }
             break;
           }
@@ -362,7 +385,7 @@ namespace iyak {
             if (i==k and j==l-1) {
               if (0==s.r and 1==s1.r) extra += _ws[j];
               if (0==s1.r and L==l) extra += _ws[L];
-              mm.add_emit_count(s1.r, j, -exp(z+extra));
+              mm.add_emit_count(_dEN, s1.r, j, -exp(z+extra));
             }
             break;
           }
@@ -370,7 +393,7 @@ namespace iyak {
           case EM::ST_M: {
             if (k==i-1 and j==l) {
               if (0==s1.l and 1==s.l) extra += _ws[k];
-              mm.add_emit_count(s.l, k, -exp(z+extra));
+              mm.add_emit_count(_dEN, s.l, k, -exp(z+extra));
             }
             break;
           }
