@@ -44,7 +44,6 @@ namespace iyak {
     VVI _edge_from;
     VI _weight_id;
     VV _weight;
-    VV _emit_count; /* not in log-order!! */
     VVI _reachable;
     VVI _reachable_as_loop;
     VIS _state;
@@ -63,6 +62,7 @@ namespace iyak {
     VIS const& loop_right_trans(int s) {return _loop_right_trans[s];}
     VIS const& loop_left_trans(int s) {return _loop_left_trans[s];}
     VIS const& pair_trans(int s) {return _pair_trans[s];}
+    int const weight_id(int i) {return _weight_id[i];}
 
     int node(int i) {return _node[i];}
     int reachable(int s, int s1) {return _reachable[s][s1];}
@@ -82,7 +82,6 @@ namespace iyak {
 
     size_t size() {return _node.size();}
     VV& weight() {return _weight;}
-    VV& emit_count() {return _emit_count;}
 
     double weight(int const h, int const h1, int const i, int const j) {
       char const cl = _node[h];
@@ -102,7 +101,7 @@ namespace iyak {
                ('*'==cl and '*'==cr) or
                ('*'==cl and 'o'==cr) or
                ('o'==cl and 'o'==cr)),
-              
+
               "weight", cl, cr);
 
       return debug&DBG_NO_WEIGHT? 0:
@@ -115,7 +114,7 @@ namespace iyak {
     }
 
     /* setter */
-    void add_emit_count(int const h, int const h1,
+    void add_emit_count(VV& e, int const h, int const h1,
                         int const i, int const j, double const w) {
       char const cl = _node[h];
       char const cr = _node[h1];
@@ -124,7 +123,7 @@ namespace iyak {
 
         if (debug&DBG_PROOF)
           check(h==_pair[h1], h, _pair[h1]);
-        double &c = _emit_count[_weight_id[h1]][bp[(*_seq)[i]][(*_seq)[j]]];
+        double &c = e[_weight_id[h1]][bp[(*_seq)[i]][(*_seq)[j]]];
         c += w;
 
       } else {
@@ -136,26 +135,20 @@ namespace iyak {
                  ('*'==cl and '*'==cr) or
                  ('*'==cl and 'o'==cr) or
                  ('o'==cl and 'o'==cr)),
-                
+
                 "add_emit_count", cl, cr);
 
-        double &c = _emit_count[_weight_id[h]][(*_seq)[i]];
+        double &c = e[_weight_id[h]][(*_seq)[i]];
         c += w;
-        double &d = _emit_count[_weight_id[h1]][(*_seq)[j]];
+        double &d = e[_weight_id[h1]][(*_seq)[j]];
         d += w;
 
       }
     }
 
-    void add_emit_count(int const h, int const j, double const w) {
-      double &c = _emit_count[_weight_id[h]][(*_seq)[j]];
+    void add_emit_count(VV& e, int const h, int const j, double const w) {
+      double &c = e[_weight_id[h]][(*_seq)[j]];
       c += w;
-    }
-
-    void clear_emit_count() {
-      _emit_count.assign(_weight.size(), V());
-      for (int i=0; i < (int)_emit_count.size(); ++i)
-        _emit_count[i].assign(_weight[i].size(), 0.);
     }
 
     void set_seq(VI& s) {

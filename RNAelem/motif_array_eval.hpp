@@ -39,12 +39,13 @@ namespace iyak {
       gr.assign(size(x), 0);
       // no regul term
 
-      _motif->mm.clear_emit_count();
-      dEH = 0.;
+      clear_emit_count(_dEN);
+      _dEH = 0.;
 
       _sum_eff = 0.;
       _qr.clear();
       while (not _qr.is_end()) {
+        clear_emit_count(_dENn);
 
         _qr.read_seq(_id, _seq, _qual, _rss);
         if (_qr.cnt() < _from+1) continue;
@@ -54,8 +55,7 @@ namespace iyak {
         calc_ws(_qual);
 
         _sum_eff += _motif->em.bpp_eff();
-        calc_emit_cnt();
-        update_fn(fn);
+        calc_emit_cnt(fn);
       }
 
       update_gr(gr);

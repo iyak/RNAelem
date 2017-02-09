@@ -22,8 +22,8 @@ namespace iyak {
       _motif->init_outside_tables();
 
       _motif->compute_inside(InsideFun(_motif));
-      lnZ = _motif->part_func();
-      _motif->compute_outside(OutsideFunTest(_motif));
+      _lnZ = _motif->part_func();
+      _motif->compute_outside(OutsideFun(_motif, 0, _dEH, _dEN));
     }
 
     void dp_fn() {
@@ -32,31 +32,27 @@ namespace iyak {
       _motif->init_outside_tables();
 
       _motif->compute_inside(InsideFun(_motif));
-      lnZ = _motif->part_func();
-      _motif->compute_outside(OutsideFun(_motif, lnZ, dEH));
+      _lnZ = _motif->part_func();
+      _motif->compute_outside(OutsideFun(_motif, _lnZ, _dEH, _dEN));
 
       _motif->init_inside_tables();
       _motif->init_outside_tables();
 
       _motif->compute_inside(InsideFeatFun(_motif, _ws));
-      lnZw = _motif->part_func();
-      _motif->compute_outside(OutsideFeatFun(_motif, lnZw, dEH, _ws));
+      _lnZw = _motif->part_func();
+      _motif->compute_outside(OutsideFeatFun(_motif, _lnZw, _dEH, _dEN, _ws));
     }
 
   public:
 
     double fn() {
-      double fn = 0.;
-      update_fn(fn);
-      return fn;
+      return _lnZ - _lnZw;
     }
 
     V gr() {
-      int n = 0;
-      for (auto& wi: _motif->mm.weight())
-        n += wi.size();
-      V gr = V(n+1, 0);
-      update_gr(gr);
+      V gr {};
+      for (auto& v: _dEN) gr.insert(gr.end(), v.begin(), v.end());
+      gr.push_back(0); /* lambda */
       return gr;
     }
 
@@ -72,7 +68,7 @@ namespace iyak {
 
       set_seq(_seq, _rss);
 
-      _motif->mm.clear_emit_count();
+      clear_emit_count(_dEN);
       dp();
     }
 
@@ -91,54 +87,9 @@ namespace iyak {
       set_seq(_seq, _rss);
       calc_ws(_qual);
 
-      _motif->mm.clear_emit_count();
+      clear_emit_count(_dEN);
       dp_fn();
     }
-
-    class OutsideFunTest: virtual public DPalgo {
-    public:
-      OutsideFunTest(RNAelem* m): DPalgo(m) {};
-      template<int e, int e1>
-      void on_outside_transition(int const i, int const j,
-                                 int const k, int const l,
-                                 IS const&  s, IS const&  s1,
-                                 IS const&  s2, IS const&  s3,
-                                 double const tsc,
-                                 double const wt,
-                                 double const etc) const {
-
-        double z = lnPpath<e,e1>(i,j,k,l,s,s1,s2,s3,
-                           wt + model.lambda()*tsc + etc, 0.);
-
-        switch (e1) {
-          case EM::ST_P: {
-            if (k==i-1 and j==l-1) {
-              mm.add_emit_count(s.l, s1.r, k, j, 1.+expm1(z));
-            }
-            break;
-          }
-
-          case EM::ST_O:
-          case EM::ST_2:
-          case EM::ST_L: {
-            if (k==i and j==l-1) {
-              mm.add_emit_count(s1.r, j, 1.+expm1(z));
-            }
-            break;
-          }
-
-          case EM::ST_M: {
-            if (k==i-1 and j==l) {
-              mm.add_emit_count(s.l, k, 1.+expm1(z));
-            }
-            break;
-          }
-          default:{break;}
-        }
-        DPalgo::on_outside_transition<e,e1>(i, j, k, l,
-                                      s, s1, s2, s3, tsc, wt, etc);
-      }
-    };
   };
 }
 

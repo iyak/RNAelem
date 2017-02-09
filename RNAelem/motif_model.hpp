@@ -155,9 +155,8 @@ namespace iyak {
 
     void pack_params(V& to) {
       to.clear();
-      for (auto const& wi: mm.weight())
-        for (auto const wij: wi)
-          to.push_back(wij);
+      for (auto& wi: mm.weight())
+        to.insert(to.end(), wi.begin(), wi.end());
       to.push_back(_lambda);
     }
 

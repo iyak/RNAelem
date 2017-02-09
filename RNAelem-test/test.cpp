@@ -172,7 +172,7 @@ namespace iyak {
     EXPECT_TRUE(debug & DBG_NO_TURN);
 
     model.set_motif_pattern(".");
-    auto& ec = model.mm.emit_count();
+    auto& ec = f.dEN();
 
     f.eval(model, "A", ".");
     EXPECT_EQ(to_str(ec), to_str(VV{{0,1,0,0,0},{0,1,0,0,0}}));
