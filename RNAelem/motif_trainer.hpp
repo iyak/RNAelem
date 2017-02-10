@@ -14,15 +14,28 @@
 
 #include"util.hpp"
 #include"motif_model.hpp"
+#include"motif_io.hpp"
+#include"arrayjob_manager.hpp"
 #include"fastq_io.hpp"
 #include"optimizer.hpp"
 #include"dp_algo.hpp"
 
 namespace iyak {
 
-  class RNAelemTrainer {
-  protected:
+  enum {
+    TR_NORMAL = 0,
+    TR_MASK = 1<<0,
+    TR_ARRAY = 1<<1,
+    TR_MULTI = 1<<2,
+    TR_BAL = 1<<3,
+    TR_ARRAYEVAL = 1<<4,
+  };
 
+  class RNAelemTrainer: virtual public ArrayJobManager{
+
+    /* general */
+  protected:
+    unsigned _mode=TR_NORMAL;
     string _fq_name;
     FastqReader _qr;
     Lbfgsb _opt;
@@ -51,7 +64,39 @@ namespace iyak {
 
     double _lnZ;
     double _lnZw;
+    double _sum_eff;
 
+    /* eval */
+  protected:
+    double _fn;
+    V _gr;
+    V _x;
+  public:
+    V eval(RNAelem& model);
+
+    /* array-job */
+  protected:
+    int _n;
+    string _model_fname;
+    string _slave_opt;
+    RNAelemWriter _writer;
+    void collect_fn_gr_eff(double& fn, V& gr, double& eff);
+  public:
+    void set_array(int n, string const& sge_opt_file);
+
+    /* array-job eval */
+  protected:
+    int _from, _to;
+
+    /* mask */
+  protected:
+    VI _vary_x;
+    string flatten(V const& x, V const& gr);
+    void set_mask_boundary(RNAelem& motif, VI const& x);
+  public:
+    void set_train_params(VI const& x);
+
+  protected:
     void calc_ws(VI const& q) {
       V& c = _convo_kernel;
 
@@ -65,7 +110,7 @@ namespace iyak {
       lnormal(_ws);
     }
 
-    int calc_emit_cnt(double& fn) {
+    void calc_emit_cnt(double& fn) {
       /* inside-outside */
       _motif->init_inside_tables();
       _motif->init_outside_tables();
@@ -89,8 +134,7 @@ namespace iyak {
           for (int i=0; i<size(_dEN); ++i)
             for (int j=0; j<size(_dEN[i]); ++j)
               _dEN[i][j] += _dENn[i][j];
-
-          return 1;
+          return;
         }
       }
       /*
@@ -102,7 +146,6 @@ namespace iyak {
 
       if (0 == _opt.fdfcount()) cry("skipped:", _id);
       _lnZ = _lnZw = -inf;
-      return 0;
     }
 
     void set_boundary(RNAelem& motif) {
@@ -157,7 +200,11 @@ namespace iyak {
       }
     }
 
+
   public:
+    /* constructor */
+    RNAelemTrainer(unsigned m=TR_NORMAL): _mode(m) {}
+
     /* getters */
     double dEH() {return _dEH;}
     VV const& dEN() {return _dEN;}
@@ -196,7 +243,13 @@ namespace iyak {
     void train(RNAelem& model) {
       _motif = &model;
       _motif->pack_params(_params);
-      set_boundary(model);
+
+      if (_mode & TR_MASK) {
+        set_mask_boundary(model, _vary_x);
+        cry("format: 'index:x:gr, ..., fn:fn'");
+      } else {
+        set_boundary(model);
+      }
 
       lap();
       _cnt = 0;
@@ -210,28 +263,52 @@ namespace iyak {
 
     int operator() (V const& x, double& fn, V& gr) {
       _motif->unpack_params(x);
-      set_regul_fn(fn);
-      set_regul_gr(gr);
 
-      clear_emit_count(_dEN);
-      _dEH = 0.;
-
-      double sum_eff = 0.;
-      _qr.clear();
-      while (not _qr.is_end()) {
-        clear_emit_count(_dENn);
-
-        _qr.read_seq(_id, _seq, _qual, _rss);
-        set_seq(_seq, _rss);
-        calc_ws(_qual);
-
-        sum_eff += _motif->em.bpp_eff();
-        calc_emit_cnt(fn);
+      if (_mode & TR_ARRAYEVAL) {
+        fn = 0.;
+        gr.assign(size(x), 0.);
+      } else {
+        set_regul_fn(fn);
+        set_regul_gr(gr);
       }
-      update_gr(gr);
+      _sum_eff = 0.;
 
-      if (0==_opt.fdfcount()) cry("considered BP:", sum_eff / N);
+      if (_mode & TR_ARRAY) {
+        fclear(4);
+        _writer.set_out_id(4, -1);
+        _writer.write(*_motif);
+
+        submit_array_job(paste1("RNAelem","array-eval",_slave_opt),
+                         _n, 0==_opt.fdfcount());
+        collect_fn_gr_eff(fn, gr, _sum_eff);
+      } else {
+        clear_emit_count(_dEN);
+        _dEH = 0.;
+
+        _qr.clear();
+        while (not _qr.is_end()) {
+          clear_emit_count(_dENn);
+
+          _qr.read_seq(_id, _seq, _qual, _rss);
+
+          if (_mode & TR_ARRAYEVAL) {
+            if (_qr.cnt() < _from+1) continue;
+            if (_to+1 <= _qr.cnt()) break;
+          }
+
+          set_seq(_seq, _rss);
+          calc_ws(_qual);
+
+          _sum_eff += _motif->em.bpp_eff();
+          calc_emit_cnt(fn);
+        }
+        update_gr(gr);
+      }
+
+      if (_mode & TR_MASK) dat(3, flatten(x,gr)+"fn:"+to_str(fn));
+      if (0==_opt.fdfcount()) cry("considered BP:", _sum_eff / N);
       ++ _cnt;
+
       return 0;
     }
 
@@ -407,4 +484,9 @@ namespace iyak {
     };
   };
 }
+#include"motif_array_trainer.hpp"
+#include"motif_mask_trainer.hpp"
+#include"motif_eval.hpp"
+#include"motif_array_eval.hpp"
+
 #endif /* motif_trainer_h */

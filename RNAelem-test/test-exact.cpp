@@ -25,7 +25,7 @@ namespace iyak {
     RNAelem _model;
     RNAelemReader _reader;
     RNAelemWriter _writer;
-    RNAelemEval _eval;
+    RNAelemTrainer _eval;
     FastqReader _qr;
 
     RNAelemExactTest() {

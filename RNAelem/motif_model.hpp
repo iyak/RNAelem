@@ -23,7 +23,7 @@ namespace iyak {
 
   class RNAelem {
 
-    friend DPalgo;
+    friend class DPalgo;
 
     VI* _seq;
 

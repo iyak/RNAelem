@@ -10,6 +10,7 @@
 #define application_h
 
 #include"opt_parser.hpp"
+#include"motif_trainer.hpp"
 #include"arrayjob_manager.hpp"
 
 namespace iyak {
@@ -51,13 +52,12 @@ namespace iyak {
       PM_NORMAL = 0,
       PM_TRAIN,
       PM_SCAN,
-      PM_ARRAY_TRAIN,
       PM_ARRAY_EVAL,
       PM_EVAL,
-      PM_MASK_TRAIN,
       PM_DEVELOP,
       PM_LOGO,
     };
+    unsigned tr_mode = TR_NORMAL;
 
     int array;
 
@@ -217,6 +217,12 @@ namespace iyak {
       .set_default("~DEFAULT~")
       .metavar("FILE");
 
+      _parser
+      .add_option("--balance")
+      .help("add 1-lambda")
+      .dest("balance")
+      .action("store_true");
+
       auto const options = _parser.parse_args(argc, argv);
       auto const args = _parser.args();
 
@@ -226,14 +232,10 @@ namespace iyak {
       "scan"==args[0]? PM_SCAN:
       "array-eval"==args[0]? PM_ARRAY_EVAL:
       "eval"==args[0]? PM_EVAL:
-      "mask-train"==args[0]? PM_MASK_TRAIN:
       "develop"==args[0]? PM_DEVELOP:
       "logo"==args[0]? PM_LOGO:
       -1;
       array = (int)options.get("array");
-      if (PM_TRAIN==mode && 1 < array) {
-        mode = PM_ARRAY_TRAIN;
-      }
       check(-1!=mode, "unknown sub-command:", args);
 
       seq_fname = (string)options["seq_fname"];
@@ -250,7 +252,7 @@ namespace iyak {
       out3 = (string)options["out3"];
 
       tmp = (string)options["tmp"];
-      if (PM_ARRAY_TRAIN==mode and "~NULL~"==tmp)
+      if ((tr_mode&TR_ARRAY) and "~NULL~"==tmp)
         tmp = "tmp" + to_str(getpid());
 
       if (PM_ARRAY_EVAL==mode) {
@@ -264,12 +266,10 @@ namespace iyak {
       set_ostream(3, out3);
       set_ostream(4, tmp);
 
-
       switch (mode) {
 
         case PM_NORMAL:
-        case PM_TRAIN:
-        case PM_MASK_TRAIN: {
+        case PM_TRAIN: {
           check("~NONE~"!=seq_fname, "require input filename (sequence)");
           check("~NONE~"!=pattern, "require motif pattern");
           //check("~NONE~" != pic_fname,  "require input filename (motif picture)");
@@ -277,8 +277,7 @@ namespace iyak {
         }
 
         case PM_SCAN:
-        case PM_EVAL:
-        case PM_ARRAY_EVAL: {
+        case PM_EVAL: {
           check("~NONE~"!=seq_fname, "require input filename (sequence)");
           check("~NONE~"!=model_fname,  "require input filename (motif model)");
           break;
@@ -303,6 +302,11 @@ namespace iyak {
       convo_kernel = split<double>(options["convo_kernel"], ",");
       pseudo_cov = (double)options.get("pseudo_cov");
       param_set = split<int>(options["param_set"], ",");
+
+      if (0 < size(param_set)) tr_mode |= TR_MASK;
+      if (1 < array) tr_mode |= TR_ARRAY;
+      if (options.get("balance")) tr_mode |= TR_BAL;
+      if ("array-eval"==args[0]) tr_mode |= TR_ARRAYEVAL;
     }
   };
 }

@@ -1,13 +1,13 @@
 //
-//  motif_fn_gr_eval.hpp
+//  motif_eval.hpp
 //  RNAelem
 //
 //  Created by Hiroshi Miyake on 2016/12/12.
 //  Copyright © 2016 Kiryu Lab. All rights reserved.
 //
 
-#ifndef motif_fn_gr_eval_h
-#define motif_fn_gr_eval_h
+#ifndef motif_eval_h
+#define motif_eval_h
 
 #include<string>
 #include<fstream>
@@ -21,32 +21,38 @@
 
 namespace iyak {
 
-  class RNAelemEval: RNAelemTrainer {
+  V RNAelemTrainer::eval(RNAelem& model) {
 
-    double _fn;
-    V _gr;
-    V _x;
+    if (_mode & TR_ARRAYEVAL) {
+      auto range = assinged_range(_qr.N(), _n, tid());
+      _from = range.first;
+      _to = range.second;
+    }
 
-  public:
-    using RNAelemTrainer::set_fq_name;
-    using RNAelemTrainer::set_preprocess;
+    _motif = &model;
+    set_boundary(model);
 
-    V eval(RNAelem& model) {
-      _motif = &model;
-      set_boundary(model);
+    _motif->pack_params(_x);
 
-      _motif->pack_params(_x);
-      
-      say("fn-gr-eval start:");
-      (*this)(_x, _fn, _gr);
+    lap();
+    (*this)(_x, _fn, _gr);
+
+    if (_mode & TR_ARRAYEVAL) {
+      dat(4, "index:", tid(), "/", _n);
+      dat(4, "range:", _from, "-", _to);
+      datp(4, "fn:", _fn);
+      datp(4, "gr:", _gr);
+      datp(4, "sum eff:", _sum_eff);
+    }
+    else {
       datp(1, "fn:", _fn);
       datp(2, "gr:", _gr);
-      say("fn-gr-eval end:", lap());
-
-      _gr.push_back(_fn);
-      return _gr;
     }
-  };
+    say("fn-gr-eval end:", lap());
+
+    _gr.push_back(_fn);
+    return _gr;
+  }
 }
 
-#endif /* motif_fn_gr_eval_h */
+#endif /* motif_eval_h */
