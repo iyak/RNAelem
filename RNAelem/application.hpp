@@ -292,7 +292,7 @@ namespace iyak {
       tau = (double)options.get("tau");
       if ("auto" == options["lambda"]) {
         fix_lambda = false;
-        lambda = 1.;
+        lambda = 0.5;
       } else {
         fix_lambda = true;
         lambda = (double)options.get("lambda");
