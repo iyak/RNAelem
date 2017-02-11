@@ -176,6 +176,7 @@ namespace iyak {
     double regul_fn() {
       V x;
       _motif->pack_params(x);
+      x.pop_back(); /* lambda */
       return norm2(x) * _motif->rho() / 2.;
     }
 
@@ -183,6 +184,7 @@ namespace iyak {
       V gr;
       _motif->pack_params(gr);
       for (auto& gri: gr) gri *= _motif->rho();
+      gr.back() = 0.; /* lmabda */
       return gr;
     }
 
