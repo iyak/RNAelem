@@ -4,5 +4,5 @@ ene-param: ~T2004~
 max-span: 20
 rho: 0.1 
 tau: 0.1 
-lambda: 3.53723 
+lambda: 0.53723
 min-bpp: 0.0001 

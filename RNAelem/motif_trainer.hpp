@@ -167,8 +167,8 @@ namespace iyak {
         type.push_back(2);
       } else {
         lower.push_back(0);
-        upper.push_back(inf);
-        type.push_back(1); // lower bound
+        upper.push_back(1);
+        type.push_back(2);
       }
       _opt.set_bounds(lower, upper, type);
     }
