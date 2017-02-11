@@ -173,15 +173,17 @@ namespace iyak {
       _opt.set_bounds(lower, upper, type);
     }
 
-    void set_regul_fn(double& fn) {
+    double regul_fn() {
       V x;
       _motif->pack_params(x);
-      fn = norm2(x) * _motif->rho() / 2.;
+      return norm2(x) * _motif->rho() / 2.;
     }
 
-    void set_regul_gr(V& gr) {
+    V regul_gr() {
+      V gr;
       _motif->pack_params(gr);
       for (auto& gri: gr) gri *= _motif->rho();
+      return gr;
     }
 
     void update_gr(V& gr) {
@@ -268,8 +270,8 @@ namespace iyak {
         fn = 0.;
         gr.assign(size(x), 0.);
       } else {
-        set_regul_fn(fn);
-        set_regul_gr(gr);
+        fn = regul_fn();
+        gr = regul_gr();
       }
       _sum_eff = 0.;
 
