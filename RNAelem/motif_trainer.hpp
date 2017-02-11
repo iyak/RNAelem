@@ -66,6 +66,9 @@ namespace iyak {
     double _lnZw;
     double _sum_eff;
 
+    double _theta_prior = 0.;
+    double _lambda_prior = 0.5;
+
     /* eval */
   protected:
     double _fn;
@@ -176,16 +179,22 @@ namespace iyak {
     double regul_fn() {
       V x;
       _motif->pack_params(x);
-      x.pop_back(); /* lambda */
+      for (auto xi=x.begin(); xi!=x.end(); ++xi) {
+        if (x.end()-1==xi) *xi -= _lambda_prior;
+        else *xi -= _theta_prior;
+      }
       return norm2(x) * _motif->rho() / 2.;
     }
 
     V regul_gr() {
-      V gr;
-      _motif->pack_params(gr);
-      for (auto& gri: gr) gri *= _motif->rho();
-      gr.back() = 0.; /* lmabda */
-      return gr;
+      V x;
+      _motif->pack_params(x);
+      for (auto xi=x.begin(); xi!=x.end(); ++xi) {
+        if (x.end()-1==xi) *xi -= _lambda_prior;
+        else *xi -= _theta_prior;
+      }
+      for (auto& xi: x) xi *= _motif->rho();
+      return x;
     }
 
     void update_gr(V& gr) {
