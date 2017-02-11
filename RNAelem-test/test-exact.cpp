@@ -39,7 +39,7 @@ namespace iyak {
 
   TEST_F(RNAelemExactTest, MACHINE_DIFF_GR) {
 
-    double fp, fm, d=1e-4;
+    double fp, fm, d=1e-5;
     _eval.set_fq_name(_dir+"/0.fq");
 
     for (auto x: {"0", "1"}) {

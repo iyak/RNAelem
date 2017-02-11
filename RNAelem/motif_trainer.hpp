@@ -338,14 +338,14 @@ namespace iyak {
 
         if (-inf == tsc) return;
         double z = lnPpath<e,e1>(i,j,k,l,s,s1,s2,s3,
-                           wt + model.lambda()*tsc + etc, _lnZ);
+                                 (1-lam)*wt + lam*tsc + etc, _lnZ);
         if (-inf == z) return;
-        _dEH += tsc * exp(z);
+        _dEH += (tsc-wt) * exp(z);
 
         switch (e1) {
           case EM::ST_P: {
             if (k==i-1 and j==l-1) {
-              mm.add_emit_count(_dEN, s.l, s1.r, k, j, exp(z));
+              mm.add_emit_count(_dEN, s.l, s1.r, k, j, +(1-lam)*exp(z));
             }
             break;
           }
@@ -354,14 +354,14 @@ namespace iyak {
           case EM::ST_2:
           case EM::ST_L: {
             if (k==i and j==l-1) {
-              mm.add_emit_count(_dEN, s1.r, j, +exp(z));
+              mm.add_emit_count(_dEN, s1.r, j, +(1-lam)*exp(z));
             }
             break;
           }
 
           case EM::ST_M: {
             if (k==i-1 and j==l) {
-              mm.add_emit_count(_dEN, s.l, k, +exp(z));
+              mm.add_emit_count(_dEN, s.l, k, +(1-lam)*exp(z));
             }
             break;
           }
@@ -439,7 +439,7 @@ namespace iyak {
 
         if (-inf == tsc) return;
         double z = lnPpath<e,e1>(i,j,k,l,s,s1,s2,s3,
-                           wt + model.lambda()*tsc + etc, _lnZw);
+                                 (1-lam)*wt + lam*tsc + etc, _lnZw);
         if (-inf == z) return;
 
         double extra = 0.;
@@ -451,7 +451,7 @@ namespace iyak {
               if (0==s1.l and 1==s.l) extra += _ws[k];
               if (0==s.r and 1==s1.r) extra += _ws[j];
               if (0==s1.r and L==l) extra += _ws[L];
-              mm.add_emit_count(_dEN, s.l, s1.r, k, j, -exp(z+extra));
+              mm.add_emit_count(_dEN, s.l, s1.r, k, j, -(1-lam)*exp(z+extra));
             }
             break;
           }
@@ -462,7 +462,7 @@ namespace iyak {
             if (i==k and j==l-1) {
               if (0==s.r and 1==s1.r) extra += _ws[j];
               if (0==s1.r and L==l) extra += _ws[L];
-              mm.add_emit_count(_dEN, s1.r, j, -exp(z+extra));
+              mm.add_emit_count(_dEN, s1.r, j, -(1-lam)*exp(z+extra));
             }
             break;
           }
@@ -470,13 +470,13 @@ namespace iyak {
           case EM::ST_M: {
             if (k==i-1 and j==l) {
               if (0==s1.l and 1==s.l) extra += _ws[k];
-              mm.add_emit_count(_dEN, s.l, k, -exp(z+extra));
+              mm.add_emit_count(_dEN, s.l, k, -(1-lam)*exp(z+extra));
             }
             break;
           }
           default:{break;}
         }
-        _dEH -= tsc * exp(z+extra);
+        _dEH -= (tsc-wt) * exp(z+extra);
 
         DPalgo::on_outside_transition<e,e1>(i, j, k, l,
                                       s, s1, s2, s3, tsc, wt, etc+extra);

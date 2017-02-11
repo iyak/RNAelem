@@ -68,7 +68,7 @@ namespace iyak {
                               double const etc) const {
 
       if (-inf == tsc) return;
-      double diff = wt + model.lambda() * tsc + etc;
+      double diff = (1-lam)*wt + lam*tsc + etc;
       if (EM::ST_E==e and EM::ST_P==e1) {
         logaddexp(_model->inside(i, j, e, s),
                   _model->inside(k, l, e1, s1) +
@@ -109,7 +109,7 @@ namespace iyak {
                                double const etc) const {
 
       if (-inf == tsc) return;
-      double diff = wt + model.lambda() * tsc + etc;
+      double diff = (1-lam)*wt + lam*tsc + etc;
       if (EM::ST_E==e1 and EM::ST_P==e) {
         logaddexp(_model->outside(i, j, e, s),
                   _model->outside(k, l, e1, s1) +
@@ -180,7 +180,7 @@ namespace iyak {
                            double const tsc,
                            double const wt,
                            double etc) const {
-      double diff = wt + model.lambda() * tsc + etc;
+      double diff = (1-lam)*wt + lam*tsc + etc;
 
       if (EM::ST_E==e and EM::ST_P==e1) {
         compare<e,e1>(i, j, k, l, s, s1,
@@ -225,6 +225,7 @@ namespace iyak {
     MM& mm = _model->mm;
     EM& em = _model->em;
     RNAelem& model = *_model;
+    double& lam = model.lambda();
 
     int const M = _model->M;
     int const L = _model->L;
