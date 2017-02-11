@@ -44,7 +44,6 @@ namespace iyak {
 
     double _eps = 1e-1;
     int _max_iter = 30;
-    bool _fix_lambda = false;
     double _dEH;
     VV _dEN;
     VV _dENn;
@@ -65,6 +64,8 @@ namespace iyak {
     double _lnZ;
     double _lnZw;
     double _sum_eff;
+
+    double _lambda_init=0.;
 
     /* eval */
   protected:
@@ -92,7 +93,7 @@ namespace iyak {
   protected:
     VI _vary_x;
     string flatten(V const& x, V const& gr);
-    void set_mask_boundary(RNAelem& motif, VI const& x);
+    void set_mask_boundary(RNAelem& motif);
   public:
     void set_train_params(VI const& x);
 
@@ -161,29 +162,38 @@ namespace iyak {
       upper.assign(s, inf);
       type.assign(s, 0); // no bound
 
-      if (_fix_lambda) {
-        lower.push_back(_motif->lambda());
-        upper.push_back(_motif->lambda());
-        type.push_back(2);
-      } else {
-        lower.push_back(0);
-        upper.push_back(1);
-        type.push_back(2);
-      }
+      lower.push_back(0);
+      upper.push_back(1);
+      type.push_back(2);
+
       _opt.set_bounds(lower, upper, type);
     }
 
     double regul_fn() {
       V x;
       _motif->pack_params(x);
+      for (auto xi=x.begin(); xi!=x.end(); ++xi) {
+        if (x.end()-1==xi) {
+          if (0<_motif->lambda_prior())
+            *xi -= _motif->lambda_prior();
+        }
+        else *xi -= _motif->theta_prior();
+      }
       return norm2(x) * _motif->rho() / 2.;
     }
 
     V regul_gr() {
-      V gr;
-      _motif->pack_params(gr);
-      for (auto& gri: gr) gri *= _motif->rho();
-      return gr;
+      V x;
+      _motif->pack_params(x);
+      for (auto xi=x.begin(); xi!=x.end(); ++xi) {
+        if (x.end()-1==xi) {
+          if (0<_motif->lambda_prior())
+            *xi -= _motif->lambda_prior();
+        }
+        else *xi -= _motif->theta_prior();
+      }
+      for (auto& xi: x) xi *= _motif->rho();
+      return x;
     }
 
     void update_gr(V& gr) {
@@ -225,13 +235,13 @@ namespace iyak {
       _pseudo_cov = pseudo_cov;
     }
 
-    void set_conditions(int max_iter, double epsilon, bool fix_lambda) {
+    void set_conditions(int max_iter, double epsilon, double lambda_init) {
       _max_iter = max_iter;
       _opt.set_maxit(max_iter - 1);
       _eps = epsilon;
       _opt.set_eps(epsilon);
       _opt.set_verbosity(1);
-      _fix_lambda = fix_lambda;
+      _lambda_init = lambda_init;
     }
 
     void set_seq(VI& seq, string& rss) {
@@ -244,10 +254,11 @@ namespace iyak {
 
     void train(RNAelem& model) {
       _motif = &model;
+      _motif->lambda() = _lambda_init;
       _motif->pack_params(_params);
 
       if (_mode & TR_MASK) {
-        set_mask_boundary(model, _vary_x);
+        set_mask_boundary(model);
         cry("format: 'index:x:gr, ..., fn:fn'");
       } else {
         set_boundary(model);
@@ -340,14 +351,14 @@ namespace iyak {
 
         if (-inf == tsc) return;
         double z = lnPpath<e,e1>(i,j,k,l,s,s1,s2,s3,
-                                 (1-lam)*wt + lam*tsc + etc, _lnZ);
+                                 wt + lam*tsc + etc, _lnZ);
         if (-inf == z) return;
-        _dEH += (tsc-wt) * exp(z);
+        _dEH += tsc * exp(z);
 
         switch (e1) {
           case EM::ST_P: {
             if (k==i-1 and j==l-1) {
-              mm.add_emit_count(_dEN, s.l, s1.r, k, j, +(1-lam)*exp(z));
+              mm.add_emit_count(_dEN, s.l, s1.r, k, j, +exp(z));
             }
             break;
           }
@@ -356,14 +367,14 @@ namespace iyak {
           case EM::ST_2:
           case EM::ST_L: {
             if (k==i and j==l-1) {
-              mm.add_emit_count(_dEN, s1.r, j, +(1-lam)*exp(z));
+              mm.add_emit_count(_dEN, s1.r, j, +exp(z));
             }
             break;
           }
 
           case EM::ST_M: {
             if (k==i-1 and j==l) {
-              mm.add_emit_count(_dEN, s.l, k, +(1-lam)*exp(z));
+              mm.add_emit_count(_dEN, s.l, k, +exp(z));
             }
             break;
           }
@@ -441,7 +452,7 @@ namespace iyak {
 
         if (-inf == tsc) return;
         double z = lnPpath<e,e1>(i,j,k,l,s,s1,s2,s3,
-                                 (1-lam)*wt + lam*tsc + etc, _lnZw);
+                                 wt + lam*tsc + etc, _lnZw);
         if (-inf == z) return;
 
         double extra = 0.;
@@ -453,7 +464,7 @@ namespace iyak {
               if (0==s1.l and 1==s.l) extra += _ws[k];
               if (0==s.r and 1==s1.r) extra += _ws[j];
               if (0==s1.r and L==l) extra += _ws[L];
-              mm.add_emit_count(_dEN, s.l, s1.r, k, j, -(1-lam)*exp(z+extra));
+              mm.add_emit_count(_dEN, s.l, s1.r, k, j, -exp(z+extra));
             }
             break;
           }
@@ -464,7 +475,7 @@ namespace iyak {
             if (i==k and j==l-1) {
               if (0==s.r and 1==s1.r) extra += _ws[j];
               if (0==s1.r and L==l) extra += _ws[L];
-              mm.add_emit_count(_dEN, s1.r, j, -(1-lam)*exp(z+extra));
+              mm.add_emit_count(_dEN, s1.r, j, -exp(z+extra));
             }
             break;
           }
@@ -472,13 +483,13 @@ namespace iyak {
           case EM::ST_M: {
             if (k==i-1 and j==l) {
               if (0==s1.l and 1==s.l) extra += _ws[k];
-              mm.add_emit_count(_dEN, s.l, k, -(1-lam)*exp(z+extra));
+              mm.add_emit_count(_dEN, s.l, k, -exp(z+extra));
             }
             break;
           }
           default:{break;}
         }
-        _dEH -= (tsc-wt) * exp(z+extra);
+        _dEH -= tsc * exp(z+extra);
 
         DPalgo::on_outside_transition<e,e1>(i, j, k, l,
                                       s, s1, s2, s3, tsc, wt, etc+extra);

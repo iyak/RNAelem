@@ -186,7 +186,7 @@ namespace iyak {
         for (int j=0; j<(int)_m->mm.weight()[i].size(); ++j)
           _m->mm.weight().at(i).at(j) = w.at(i).at(j);
       _m->set_energy_params(ene_fname, max_span, min_bpp);
-      _m->set_hyper_param(rho, tau, lambda);
+      _m->set_hyper_param(rho, tau, -1);
 
       //cry(ene_fname, max_span);
     }

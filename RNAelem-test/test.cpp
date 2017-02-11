@@ -69,10 +69,10 @@ namespace iyak {
 
     RNAelemDPTest() {
       model.set_energy_params("~T2004~", 999, 0.);
-      model.set_hyper_param(0., 1., 0.);
+      model.set_hyper_param(0., 1., -1.);
 
       f.set_preprocess({1}, 0);
-      f.set_conditions(-1, 1e-4, true);
+      f.set_conditions(-1, 1e-4, 0);
     }
   };
 

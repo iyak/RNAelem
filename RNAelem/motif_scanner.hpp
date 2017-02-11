@@ -184,7 +184,7 @@ namespace iyak {
 
         if (-inf == tsc) return;
         double z = lnPpath<e,e1>(i,j,k,l,s,s1,s2,s3,
-                           wt + model.lambda()*tsc + etc, _lnZ);
+                           (1-lam)*wt + lam*tsc + etc, _lnZ);
         if (-inf == z) return;
 
         DPalgo::on_outside_transition<e,e1>(i, j, k, l,
@@ -289,7 +289,7 @@ namespace iyak {
 
         if (-inf == tsc) return;
         double z = lnPpath<e,e1>(i,j,k,l,s,s1,s2,s3,
-                           wt + model.lambda()*tsc + etc, _lnZe);
+                           (1-lam)*wt + lam*tsc + etc, _lnZe);
         if (-inf == z) return;
 
         double extra = 0.;

@@ -48,7 +48,9 @@ namespace iyak {
     double _rho; /* regularization scaler */
     double _tau; /* transition score */
     double _log_tau;
-    double _lambda; /* seq-rss ballancer */
+    double _lambda=0.; /* seq-rss ballancer */
+    double _lambda_prior=-1; /* no prior if negative */
+    double _theta_prior=0.;
 
   public:
 
@@ -134,16 +136,18 @@ namespace iyak {
     }
 
     void set_hyper_param(double const rho, double const tau,
-                         double const lambda) {
+                         double const lambda_prior) {
       _rho = rho;
       _tau = tau;
-      _lambda = lambda;
       _log_tau = log(_tau);
+      _lambda_prior = lambda_prior;
     }
-    double rho() {return _rho;}
-    double tau() {return _tau;}
-    double ltau() {return _log_tau;}
+    double& rho() {return _rho;}
+    double& tau() {return _tau;}
+    double& ltau() {return _log_tau;}
     double& lambda() {return _lambda;}
+    double& lambda_prior() {return _lambda_prior;}
+    double& theta_prior() {return _theta_prior;}
 
     void set_motif_fname(string& fname) {
       ifstream ifs(fname);
