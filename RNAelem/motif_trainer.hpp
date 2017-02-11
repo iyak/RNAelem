@@ -118,7 +118,7 @@ namespace iyak {
       _motif->compute_inside(InsideFun(_motif));
       _lnZ = _motif->part_func();
 
-      if (isfinite(_lnZ)) {
+      if (std::isfinite(_lnZ)) {
         _motif->compute_outside(OutsideFun(_motif, _lnZ, _dEH, _dENn));
 
         _motif->init_inside_tables();
@@ -127,7 +127,7 @@ namespace iyak {
         _motif->compute_inside(InsideFeatFun(_motif, _ws));
         _lnZw = _motif->part_func();
 
-        if (isfinite(_lnZw)) {
+        if (std::isfinite(_lnZw)) {
           _motif->compute_outside(OutsideFeatFun(_motif, _lnZw, _dEH, _dENn, _ws));
 
           fn += _lnZ - _lnZw;
