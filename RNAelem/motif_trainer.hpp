@@ -44,7 +44,6 @@ namespace iyak {
 
     double _eps = 1e-1;
     int _max_iter = 30;
-    bool _fix_lambda = false;
     double _dEH;
     VV _dEN;
     VV _dENn;
@@ -67,7 +66,7 @@ namespace iyak {
     double _sum_eff;
 
     double _theta_prior = 0.;
-    double _lambda_prior = 0.5;
+    double _lambda_prior = 0.;
 
     /* eval */
   protected:
@@ -164,15 +163,9 @@ namespace iyak {
       upper.assign(s, inf);
       type.assign(s, 0); // no bound
 
-      if (_fix_lambda) {
-        lower.push_back(_motif->lambda());
-        upper.push_back(_motif->lambda());
-        type.push_back(2);
-      } else {
-        lower.push_back(0);
-        upper.push_back(1);
-        type.push_back(2);
-      }
+      lower.push_back(0);
+      upper.push_back(1);
+      type.push_back(2);
       _opt.set_bounds(lower, upper, type);
     }
 
@@ -236,13 +229,12 @@ namespace iyak {
       _pseudo_cov = pseudo_cov;
     }
 
-    void set_conditions(int max_iter, double epsilon, bool fix_lambda) {
+    void set_conditions(int max_iter, double epsilon) {
       _max_iter = max_iter;
       _opt.set_maxit(max_iter - 1);
       _eps = epsilon;
       _opt.set_eps(epsilon);
       _opt.set_verbosity(1);
-      _fix_lambda = fix_lambda;
     }
 
     void set_seq(VI& seq, string& rss) {

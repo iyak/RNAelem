@@ -55,7 +55,7 @@ int main(int const argc, char const* argv[]) {
         RNAelemTrainer train(app.tr_mode);
         train.set_fq_name(app.seq_fname);
         train.set_preprocess(app.convo_kernel, app.pseudo_cov);
-        train.set_conditions(app.max_iter, app.eps, app.fix_lambda);
+        train.set_conditions(app.max_iter, app.eps);
         train.train(model);
 
         RNAelemWriter writer;
@@ -86,7 +86,7 @@ int main(int const argc, char const* argv[]) {
         RNAelemTrainer train(app.tr_mode);
         train.set_fq_name(app.seq_fname);
         train.set_preprocess(app.convo_kernel, app.pseudo_cov);
-        train.set_conditions(app.max_iter, app.eps, app.fix_lambda);
+        train.set_conditions(app.max_iter, app.eps);
 
         if (app.tr_mode & TR_MASK)
           train.set_train_params(app.param_set);

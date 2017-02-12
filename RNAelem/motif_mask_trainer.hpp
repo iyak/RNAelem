@@ -57,7 +57,7 @@ namespace iyak {
       }
     }
 
-    if (_fix_lambda or !any(x, i)) {
+    if (any(x, i)) {
       lower.push_back(_motif->lambda());
       upper.push_back(_motif->lambda());
       type.push_back(2); //  fix

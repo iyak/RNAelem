@@ -41,7 +41,6 @@ namespace iyak {
     double rho;
     double tau;
     double lambda;
-    bool fix_lambda;
     double min_bpp;
     V convo_kernel;
     double pseudo_cov;
@@ -158,7 +157,7 @@ namespace iyak {
       .add_option("--lambda")
       .help("lambda: fixed seq-rss ratio.")
       .dest("lambda")
-      .set_default("auto")
+      .set_default("0")
       .metavar("DOUBLE[0,1]");
 
       _parser
@@ -216,12 +215,6 @@ namespace iyak {
       .dest("font")
       .set_default("~DEFAULT~")
       .metavar("FILE");
-
-      _parser
-      .add_option("--balance")
-      .help("add 1-lambda")
-      .dest("balance")
-      .action("store_true");
 
       auto const options = _parser.parse_args(argc, argv);
       auto const args = _parser.args();
@@ -290,13 +283,7 @@ namespace iyak {
       eps = (double)options.get("eps");
       rho = (double)options.get("rho");
       tau = (double)options.get("tau");
-      if ("auto" == options["lambda"]) {
-        fix_lambda = false;
-        lambda = 0.5;
-      } else {
-        fix_lambda = true;
-        lambda = (double)options.get("lambda");
-      }
+      lambda = (double)options.get("lambda");
 
       min_bpp = (double)options.get("min_bpp");
       convo_kernel = split<double>(options["convo_kernel"], ",");
