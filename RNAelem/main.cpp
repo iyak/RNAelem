@@ -50,12 +50,12 @@ int main(int const argc, char const* argv[]) {
         RNAelem model;
         model.set_energy_params(app.ene_param_fname, app.max_span, app.min_bpp);
         model.set_motif_pattern(app.pattern);
-        model.set_hyper_param(app.rho, app.tau, app.lambda);
+        model.set_hyper_param(app.rho, app.tau, app.lambda_init);
 
         RNAelemTrainer train(app.tr_mode);
         train.set_fq_name(app.seq_fname);
         train.set_preprocess(app.convo_kernel, app.pseudo_cov);
-        train.set_conditions(app.max_iter, app.eps);
+        train.set_conditions(app.max_iter, app.eps, app.lambda_prior);
         train.train(model);
 
         RNAelemWriter writer;
@@ -78,7 +78,7 @@ int main(int const argc, char const* argv[]) {
           reader.set_model_fname(app.model_fname);
           reader.read_model(model);
         } else {
-          model.set_hyper_param(app.rho, app.tau, app.lambda);
+          model.set_hyper_param(app.rho, app.tau, app.lambda_init);
           model.set_energy_params(app.ene_param_fname, app.max_span, app.min_bpp);
           model.set_motif_pattern(app.pattern);
         }
@@ -86,7 +86,7 @@ int main(int const argc, char const* argv[]) {
         RNAelemTrainer train(app.tr_mode);
         train.set_fq_name(app.seq_fname);
         train.set_preprocess(app.convo_kernel, app.pseudo_cov);
-        train.set_conditions(app.max_iter, app.eps);
+        train.set_conditions(app.max_iter, app.eps, app.lambda_prior);
 
         if (app.tr_mode & TR_MASK)
           train.set_train_params(app.param_set);

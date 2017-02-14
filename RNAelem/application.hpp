@@ -40,11 +40,12 @@ namespace iyak {
     double eps;
     double rho;
     double tau;
-    double lambda;
+    double lambda_init;
+    double lambda_prior;
     double min_bpp;
     V convo_kernel;
     double pseudo_cov;
-    VI param_set;
+    VI param_set {};
 
     int mode;
     enum PROGRAM_MODE {
@@ -154,9 +155,16 @@ namespace iyak {
       .metavar("DOUBLE[0,1]");
 
       _parser
-      .add_option("--lambda")
-      .help("lambda: fixed seq-rss ratio.")
-      .dest("lambda")
+      .add_option("--lambda-init")
+      .help("initial value of lambda: rss-seq impact ratio.")
+      .dest("lambda_init")
+      .set_default("0")
+      .metavar("DOUBLE[0,1]");
+
+      _parser
+      .add_option("--lambda-prior")
+      .help("prior of lambda")
+      .dest("lambda_prior")
       .set_default("0")
       .metavar("DOUBLE[0,1]");
 
@@ -264,7 +272,6 @@ namespace iyak {
         case PM_NORMAL:
         case PM_TRAIN: {
           check("~NONE~"!=seq_fname, "require input filename (sequence)");
-          check("~NONE~"!=pattern, "require motif pattern");
           //check("~NONE~" != pic_fname,  "require input filename (motif picture)");
           break;
         }
@@ -283,12 +290,21 @@ namespace iyak {
       eps = (double)options.get("eps");
       rho = (double)options.get("rho");
       tau = (double)options.get("tau");
-      lambda = (double)options.get("lambda");
+      lambda_init = (double)options.get("lambda_init");
+      lambda_prior = (double)options.get("lambda_prior");
 
       min_bpp = (double)options.get("min_bpp");
       convo_kernel = split<double>(options["convo_kernel"], ",");
       pseudo_cov = (double)options.get("pseudo_cov");
-      param_set = split<int>(options["param_set"], ",");
+      for (auto r: split<string>(options["param_set"], ",")) {
+        auto se = split<int>(r, "-");
+        if (1==size(se))
+          param_set.push_back(se[0]);
+        else if (2==size(se)) {
+          for (int x=se[0]; x<=se[1]; ++x)
+            param_set.push_back(x);
+        }
+      }
 
       if (0 < size(param_set)) tr_mode |= TR_MASK;
       if (1 < array) tr_mode |= TR_ARRAY;

@@ -225,7 +225,7 @@ namespace iyak {
     MM& mm = _model->mm;
     EM& em = _model->em;
     RNAelem& model = *_model;
-    double& lam = model.lambda();
+    double& lam = model._lambda;
 
     int const M = _model->M;
     int const L = _model->L;

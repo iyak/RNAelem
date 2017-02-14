@@ -66,7 +66,7 @@ namespace iyak {
     double _sum_eff;
 
     double _theta_prior = 0.;
-    double _lambda_prior = 0.;
+    double _lambda_prior = 0.; /* no prior if negative */
 
     /* eval */
   protected:
@@ -94,7 +94,7 @@ namespace iyak {
   protected:
     VI _vary_x;
     string flatten(V const& x, V const& gr);
-    void set_mask_boundary(RNAelem& motif, VI const& x);
+    void set_mask_boundary(RNAelem& motif);
   public:
     void set_train_params(VI const& x);
 
@@ -166,6 +166,7 @@ namespace iyak {
       lower.push_back(0);
       upper.push_back(1);
       type.push_back(2);
+
       _opt.set_bounds(lower, upper, type);
     }
 
@@ -173,7 +174,9 @@ namespace iyak {
       V x;
       _motif->pack_params(x);
       for (auto xi=x.begin(); xi!=x.end(); ++xi) {
-        if (x.end()-1==xi) *xi -= _lambda_prior;
+        if (x.end()-1==xi) {
+          if (0<_lambda_prior) *xi -= _lambda_prior;
+        }
         else *xi -= _theta_prior;
       }
       return norm2(x) * _motif->rho() / 2.;
@@ -183,7 +186,9 @@ namespace iyak {
       V x;
       _motif->pack_params(x);
       for (auto xi=x.begin(); xi!=x.end(); ++xi) {
-        if (x.end()-1==xi) *xi -= _lambda_prior;
+        if (x.end()-1==xi) {
+          if (0<_lambda_prior) *xi -= _lambda_prior;
+        }
         else *xi -= _theta_prior;
       }
       for (auto& xi: x) xi *= _motif->rho();
@@ -229,12 +234,13 @@ namespace iyak {
       _pseudo_cov = pseudo_cov;
     }
 
-    void set_conditions(int max_iter, double epsilon) {
+    void set_conditions(int max_iter, double epsilon, double lambda_prior) {
       _max_iter = max_iter;
       _opt.set_maxit(max_iter - 1);
       _eps = epsilon;
       _opt.set_eps(epsilon);
       _opt.set_verbosity(1);
+      _lambda_prior = lambda_prior;
     }
 
     void set_seq(VI& seq, string& rss) {
@@ -250,7 +256,7 @@ namespace iyak {
       _motif->pack_params(_params);
 
       if (_mode & TR_MASK) {
-        set_mask_boundary(model, _vary_x);
+        set_mask_boundary(model);
         cry("format: 'index:x:gr, ..., fn:fn'");
       } else {
         set_boundary(model);

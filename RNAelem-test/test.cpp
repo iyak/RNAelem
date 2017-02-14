@@ -72,7 +72,7 @@ namespace iyak {
       model.set_hyper_param(0., 1., 0.);
 
       f.set_preprocess({1}, 0);
-      f.set_conditions(-1, 1e-4);
+      f.set_conditions(-1, 1e-4, -1);
     }
   };
 
