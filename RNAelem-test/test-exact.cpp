@@ -42,7 +42,7 @@ namespace iyak {
     double fp, fm, d=1e-5;
     _eval.set_fq_name(_dir+"/0.fq");
 
-    for (auto x: {"0", "1"}) {
+    for (auto x: {"0", "1", "2"}) {
       _reader.set_model_fname(_dir+"/"+x+".model");
       _reader.read_model(_model);
       _model.pack_params(_params);

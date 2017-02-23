@@ -74,7 +74,10 @@ namespace iyak {
       dat(_out, "rho:", _m->rho());
       dat(_out, "tau:", _m->tau());
       dat(_out, "lambda:", _m->lambda());
+      dat(_out, "lambda-prior:", _m->lambda_prior());
       dat(_out, "min-bpp:", _m->em.min_BPP());
+      dat(_out, "only-lin-seq:", _m->only_lin_seq());
+      dat(_out, "only-rss:", _m->only_rss());
 
       pict(_m->mm.pattern(), _m->mm.weight());
     }
@@ -118,7 +121,11 @@ namespace iyak {
       double rho = 0.;
       double tau = 0.;
       double lambda = 0.;
+      double lambda_prior = 0.;
       double min_bpp = 0;
+
+      bool only_lin_seq=false;
+      bool only_rss=false;
 
       ifstream ifs(_model_fname);
       check(!!ifs, "couldn't open:", _model_fname);
@@ -169,9 +176,21 @@ namespace iyak {
           set |= (1<<6);
         }
 
+        else if ("lambda-prior" == p[0]) {
+          lambda_prior = iss_cast<double>(p[1]); /* optional */
+        }
+
         else if ("min-bpp" == p[0]) {
           min_bpp = iss_cast<double>(p[1]);
           set |= (1<<7);
+        }
+
+        else if ("only-lin-seq" == p[0]) {
+          only_lin_seq = iss_cast<bool>(p[1]); /* optional */
+        }
+
+        else if ("only-rss" == p[0]) {
+          only_rss = iss_cast<bool>(p[1]); /* optional */
         }
 
         else {
@@ -181,12 +200,12 @@ namespace iyak {
 
       check((1<<8)-1 == set, "motif file broken:", _model_fname);
 
-      _m->set_motif_pattern(pattern);
+      _m->set_motif_pattern(pattern, only_lin_seq, only_rss);
       for (int i=0; i<(int)_m->mm.weight().size(); ++i)
         for (int j=0; j<(int)_m->mm.weight()[i].size(); ++j)
           _m->mm.weight().at(i).at(j) = w.at(i).at(j);
       _m->set_energy_params(ene_fname, max_span, min_bpp);
-      _m->set_hyper_param(rho, tau, -1);
+      _m->set_hyper_param(rho, tau, lambda_prior);
 
       //cry(ene_fname, max_span);
     }

@@ -52,6 +52,11 @@ namespace iyak {
     double _lambda_prior=-1; /* no prior if negative */
     double _theta_prior=0.;
 
+    IS const _s = IS{-1, -1, -1};
+
+    bool _only_lin_seq=false; /* consider linear sequence only (bench) */
+    bool _only_rss=false; /* consider RSS only (bench) */
+
   public:
 
     int L=0, M=0, S=0, E=0, W=0;
@@ -112,7 +117,9 @@ namespace iyak {
     void set_seq(VI& seq) {
       _seq = &seq;
       mm.set_seq(seq);
-      em.set_seq(seq);
+      if (not _only_lin_seq) {
+        em.set_seq(seq);
+      }
 
       L = (int)seq.size();
       W = min(L, em.max_pair());
@@ -127,8 +134,17 @@ namespace iyak {
       E = EnergyModel::nstate;
     }
 
-    void set_motif_pattern(string const& pattern) {
+    void set_motif_pattern(string const& pattern,
+                           bool only_lin_seq=false,
+                           bool only_rss=false) {
       mm.build(pattern);
+      check(not(only_lin_seq and only_rss),
+            "only_lin_seq, only_rss are exclusive.");
+      _only_lin_seq = only_lin_seq;
+      _only_rss = only_rss;
+      if (only_lin_seq)
+        check(not any(split<string>(pattern), (string)")"),
+              "search pattern must not include pair when only-seq mode");
       cry("motif pattern:", pattern);
 
       M = (int)mm.size();
@@ -149,12 +165,15 @@ namespace iyak {
     double& lambda_prior() {return _lambda_prior;}
     double& theta_prior() {return _theta_prior;}
 
+    bool only_lin_seq() {return _only_lin_seq;}
+    bool only_rss() {return _only_rss;}
+
     void set_motif_fname(string& fname) {
       ifstream ifs(fname);
       check(!!ifs, "couldn't open:", fname);
       string pattern;
       ifs >> pattern;
-      set_motif_pattern(pattern);
+      set_motif_pattern(pattern, false, false);
     }
 
     void pack_params(V& to) {
@@ -183,11 +202,36 @@ namespace iyak {
     }
 
     template<class F> void compute_inside(F const& f) {
-      em.compute_inside(InsideFun<F>(f));
+      if (_only_lin_seq) {
+        for (int i=1; i<=L; ++i) { /* forward */
+          for (auto const& s: mm.state()) {
+            for (auto const& s1: mm.loop_right_trans(s.id)) {
+              double w = mm.weight(s.r, i-1);
+              f.template on_inside_transition<EM::ST_O,EM::ST_O>
+              (0, i, 0, i-1, s, s1, _s, _s, 0., w, 0.);
+            }
+          }
+        }
+      }
+      else {
+        em.compute_inside(InsideFun<F>(f));
+      }
     }
 
     template<class F> void compute_outside(F const& f) {
-      em.compute_outside(OutsideFun<F>(f));
+      if (_only_lin_seq) {
+        for (int i=L; 1<=i; --i) { /* backward */
+          for (auto const& s: mm.state()) {
+            for (auto const& s1: mm.loop_right_trans(s.id)) {
+              double w = mm.weight(s.r, i-1);
+              f.template on_outside_transition<EM::ST_O,EM::ST_O>
+              (0, i-1, 0, i, s1, s, _s, _s, 0., w, 0.);
+            }
+          }
+        }
+      } else {
+        em.compute_outside(OutsideFun<F>(f));
+      }
       double const in_lnZ = part_func();
       double const out_lnZ = part_func_outside();
       expect(double_eq(in_lnZ, out_lnZ),

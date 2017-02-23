@@ -252,7 +252,7 @@ namespace iyak {
   }
 
   template<class T>
-  vector<T> split(string const& s, string const& delim) {
+  vector<T> split(string const& s, string const& delim="") {
     if (0==size(strip(s))) return vector<T>();
     size_t p0 = 0;
     size_t p1 = 0;

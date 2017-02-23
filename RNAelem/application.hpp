@@ -43,9 +43,12 @@ namespace iyak {
     double lambda_init;
     double lambda_prior;
     double min_bpp;
-    V convo_kernel;
+    V convo_kernel {};
     double pseudo_cov;
     VI param_set {};
+
+    bool only_lin_seq = false;
+    bool only_rss = false;
 
     int mode;
     enum PROGRAM_MODE {
@@ -224,6 +227,18 @@ namespace iyak {
       .set_default("~DEFAULT~")
       .metavar("FILE");
 
+      _parser
+      .add_option("--only-lin-seq")
+      .help("consider only primary sequence")
+      .dest("only_lin_seq")
+      .action("store_true");
+
+      _parser
+      .add_option("--only-rss")
+      .help("consider only secondary structure")
+      .dest("only_rss")
+      .action("store_true");
+
       auto const options = _parser.parse_args(argc, argv);
       auto const args = _parser.args();
 
@@ -310,6 +325,9 @@ namespace iyak {
       if (1 < array) tr_mode |= TR_ARRAY;
       if (options.get("balance")) tr_mode |= TR_BAL;
       if ("array-eval"==args[0]) tr_mode |= TR_ARRAYEVAL;
+
+      only_lin_seq = options.get("only_lin_seq");
+      only_rss = options.get("only_rss");
     }
   };
 }
