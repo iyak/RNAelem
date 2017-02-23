@@ -49,7 +49,7 @@ int main(int const argc, char const* argv[]) {
 
         RNAelem model;
         model.set_energy_params(app.ene_param_fname, app.max_span, app.min_bpp);
-        model.set_motif_pattern(app.pattern, app.only_lin_seq, app.only_rss);
+        model.set_motif_pattern(app.pattern, app.no_rss, app.no_prf);
         model.set_hyper_param(app.rho, app.tau, app.lambda_prior);
 
         RNAelemTrainer train(app.tr_mode);
@@ -80,7 +80,7 @@ int main(int const argc, char const* argv[]) {
         } else {
           model.set_hyper_param(app.rho, app.tau, app.lambda_prior);
           model.set_energy_params(app.ene_param_fname, app.max_span, app.min_bpp);
-          model.set_motif_pattern(app.pattern, app.only_lin_seq, app.only_rss);
+          model.set_motif_pattern(app.pattern, app.no_rss, app.no_prf);
         }
 
         RNAelemTrainer train(app.tr_mode);

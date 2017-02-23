@@ -169,33 +169,6 @@ namespace iyak {
       _opt.set_bounds(lower, upper, type);
     }
 
-    double regul_fn() {
-      V x;
-      _motif->pack_params(x);
-      for (auto xi=x.begin(); xi!=x.end(); ++xi) {
-        if (x.end()-1==xi) {
-          if (0<_motif->lambda_prior())
-            *xi -= _motif->lambda_prior();
-        }
-        else *xi -= _motif->theta_prior();
-      }
-      return norm2(x) * _motif->rho() / 2.;
-    }
-
-    V regul_gr() {
-      V x;
-      _motif->pack_params(x);
-      for (auto xi=x.begin(); xi!=x.end(); ++xi) {
-        if (x.end()-1==xi) {
-          if (0<_motif->lambda_prior())
-            *xi -= _motif->lambda_prior();
-        }
-        else *xi -= _motif->theta_prior();
-      }
-      for (auto& xi: x) xi *= _motif->rho();
-      return x;
-    }
-
     void update_gr(V& gr) {
       int k = 0;
       for (auto const& ei: _dEN)
@@ -281,8 +254,8 @@ namespace iyak {
         fn = 0.;
         gr.assign(size(x), 0.);
       } else {
-        fn = regul_fn();
-        gr = regul_gr();
+        fn = _motif->regul_fn();
+        gr = _motif->regul_gr();
       }
       _sum_eff = 0.;
 
@@ -358,7 +331,8 @@ namespace iyak {
         switch (e1) {
           case EM::ST_P: {
             if (k==i-1 and j==l-1) {
-              mm.add_emit_count(_dEN, s.l, s1.r, k, j, +exp(z));
+              if (not model.no_prf())
+                mm.add_emit_count(_dEN, s.l, s1.r, k, j, +exp(z));
             }
             break;
           }
@@ -367,14 +341,16 @@ namespace iyak {
           case EM::ST_2:
           case EM::ST_L: {
             if (k==i and j==l-1) {
-              mm.add_emit_count(_dEN, s1.r, j, +exp(z));
+              if (not model.no_prf())
+                mm.add_emit_count(_dEN, s1.r, j, +exp(z));
             }
             break;
           }
 
           case EM::ST_M: {
             if (k==i-1 and j==l) {
-              mm.add_emit_count(_dEN, s.l, k, +exp(z));
+              if (not model.no_prf())
+                mm.add_emit_count(_dEN, s.l, k, +exp(z));
             }
             break;
           }
@@ -464,7 +440,8 @@ namespace iyak {
               if (0==s1.l and 1==s.l) extra += _ws[k];
               if (0==s.r and 1==s1.r) extra += _ws[j];
               if (0==s1.r and L==l) extra += _ws[L];
-              mm.add_emit_count(_dEN, s.l, s1.r, k, j, -exp(z+extra));
+              if (not model.no_prf())
+                mm.add_emit_count(_dEN, s.l, s1.r, k, j, -exp(z+extra));
             }
             break;
           }
@@ -475,7 +452,8 @@ namespace iyak {
             if (i==k and j==l-1) {
               if (0==s.r and 1==s1.r) extra += _ws[j];
               if (0==s1.r and L==l) extra += _ws[L];
-              mm.add_emit_count(_dEN, s1.r, j, -exp(z+extra));
+              if (not model.no_prf())
+                mm.add_emit_count(_dEN, s1.r, j, -exp(z+extra));
             }
             break;
           }
@@ -483,7 +461,8 @@ namespace iyak {
           case EM::ST_M: {
             if (k==i-1 and j==l) {
               if (0==s1.l and 1==s.l) extra += _ws[k];
-              mm.add_emit_count(_dEN, s.l, k, -exp(z+extra));
+              if (not model.no_prf())
+                mm.add_emit_count(_dEN, s.l, k, -exp(z+extra));
             }
             break;
           }
