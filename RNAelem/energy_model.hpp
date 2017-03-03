@@ -509,9 +509,6 @@ namespace iyak {
             if (is_parsable<ST_M>(i, j)) {
               f.template on_transition<TT_M_B>(i, j, i, j, 0.);
             }
-          }
-
-          if (is_parsable<ST_B>(i, j)) {
             for (int k = j; k >= i; -- k) {
               if (is_parsable<ST_1>(i, k) and
                   is_parsable<ST_2>(k, j)) {
