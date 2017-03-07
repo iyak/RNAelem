@@ -140,7 +140,7 @@ namespace iyak {
       .add_option("--epsilon")
       .help("epsilon to judge convergence.")
       .dest("eps")
-      .set_default(1e-1)
+      .set_default(1e-5)
       .metavar("DOUBLE");
 
       _parser
