@@ -71,7 +71,8 @@ namespace iyak {
       dat(_out, "weight:", _m->mm.weight());
       dat(_out, "ene-param:", _m->em.param_fname);
       dat(_out, "max-span:", _m->em.max_pair());
-      dat(_out, "rho:", _m->rho());
+      dat(_out, "rho-theta:", _m->rho_theta());
+      dat(_out, "rho-lambda:", _m->rho_lambda());
       dat(_out, "tau:", _m->tau());
       dat(_out, "lambda:", _m->lambda());
       dat(_out, "lambda-prior:", _m->lambda_prior());
@@ -118,7 +119,8 @@ namespace iyak {
       int max_span = 0;
       VV w;
       string pattern;
-      double rho = 0.;
+      double rho_theta = 0.;
+      double rho_lambda = 0.;
       double tau = 0.;
       double lambda = 0.;
       double lambda_prior = 0.;
@@ -161,19 +163,24 @@ namespace iyak {
           set |= (1<<3);
         }
 
-        else if ("rho" == p[0]) {
-          rho = iss_cast<double>(p[1]);
+        else if ("rho-theta" == p[0]) {
+          rho_theta = iss_cast<double>(p[1]);
           set |= (1<<4);
+        }
+
+        else if ("rho-lambda" == p[0]) {
+          rho_lambda = iss_cast<double>(p[1]);
+          set |= (1<<5);
         }
 
         else if ("tau" == p[0]) {
           tau = iss_cast<double>(p[1]);
-          set |= (1<<5);
+          set |= (1<<6);
         }
 
         else if ("lambda" == p[0]) {
           lambda = iss_cast<double>(p[1]);
-          set |= (1<<6);
+          set |= (1<<7);
         }
 
         else if ("lambda-prior" == p[0]) {
@@ -182,7 +189,7 @@ namespace iyak {
 
         else if ("min-bpp" == p[0]) {
           min_bpp = iss_cast<double>(p[1]);
-          set |= (1<<7);
+          set |= (1<<8);
         }
 
         else if ("no-rss" == p[0]) {
@@ -198,14 +205,14 @@ namespace iyak {
         }
       }
 
-      check((1<<8)-1 == set, "motif file broken:", _model_fname);
+      check((1<<9)-1 == set, "motif file broken:", _model_fname);
 
       _m->set_motif_pattern(pattern, no_rss, no_prf);
       for (int i=0; i<(int)_m->mm.weight().size(); ++i)
         for (int j=0; j<(int)_m->mm.weight()[i].size(); ++j)
           _m->mm.weight().at(i).at(j) = w.at(i).at(j);
       _m->set_energy_params(ene_fname, max_span, min_bpp);
-      _m->set_hyper_param(rho, tau, lambda_prior);
+      _m->set_hyper_param(rho_theta, rho_lambda, tau, lambda_prior);
 
       //cry(ene_fname, max_span);
     }

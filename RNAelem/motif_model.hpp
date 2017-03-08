@@ -45,7 +45,8 @@ namespace iyak {
     VVVV _cyk;
     VV _cyk_o;
 
-    double _rho; /* regularization scaler */
+    double _rho_theta; /* regularization scaler */
+    double _rho_lambda; /* regularization scaler */
     double _tau; /* transition score */
     double _log_tau;
     double _lambda=0.; /* seq-rss ballancer */
@@ -149,14 +150,16 @@ namespace iyak {
       S = (int)mm.state().size();
     }
 
-    void set_hyper_param(double const rho, double const tau,
-                         double const lambda_prior) {
-      _rho = rho;
+    void set_hyper_param(double const rho_theta, double const rho_lambda,
+                         double const tau, double const lambda_prior) {
+      _rho_theta = rho_theta;
+      _rho_lambda = rho_lambda;
       _tau = tau;
       _log_tau = log(_tau);
       _lambda_prior = lambda_prior;
     }
-    double& rho() {return _rho;}
+    double& rho_theta() {return _rho_theta;}
+    double& rho_lambda() {return _rho_lambda;}
     double& tau() {return _tau;}
     double& ltau() {return _log_tau;}
     double& lambda() {return _lambda;}
@@ -191,34 +194,45 @@ namespace iyak {
 
     double regul_fn() {
       V x;
+      double fn = 0;
       pack_params(x);
       for (auto xi=x.begin(); xi!=x.end(); ++xi) {
-        if (x.end()-1==xi) {
+        if (x.end()-1==xi) { /* lambda */
           if (_no_rss) *xi = 0;
-          else if (0<_lambda_prior) *xi -= _lambda_prior;
+          else if (0<_lambda_prior) {
+            double y = *xi - _lambda_prior;
+            fn += y*y * _rho_lambda / 2.;
+          }
         }
         else {
           if (_no_prf) *xi = 0;
-          else *xi -= _theta_prior;
+          else {
+            *xi -= _theta_prior;
+            double y = *xi - _theta_prior;
+            fn += y*y * _rho_theta / 2.;
+          }
         }
       }
-      return norm2(x) * rho() / 2.;
+      return fn;
     }
 
     V regul_gr() {
       V x;
       pack_params(x);
       for (auto xi=x.begin(); xi!=x.end(); ++xi) {
-        if (x.end()-1==xi) {
+        if (x.end()-1==xi) { /* lambda */
           if (_no_rss) *xi = 0;
-          else if (0<_lambda_prior) *xi -= _lambda_prior;
+          else if (0<_lambda_prior) {
+            *xi = (*xi - _lambda_prior) * _rho_lambda;
+          }
         }
         else {
           if (_no_prf) *xi = 0;
-          else *xi -= _theta_prior;
+          else {
+            *xi = (*xi - _theta_prior) * _rho_theta;
+          }
         }
       }
-      for (auto& xi: x) xi *= _rho;
       return x;
     }
 
@@ -234,7 +248,8 @@ namespace iyak {
 
     template<class F> void compute_inside(F const& f) {
       if (_no_rss) {
-        for (int i=1; i<=L; ++i) { /* forward */
+        /* forward */
+        for (int i=1; i<=L; ++i) {
           for (auto const& s: mm.state()) {
             for (auto const& s1: mm.loop_right_trans(s.id)) {
               double w = mm.weight(s.r, i-1);
@@ -253,7 +268,8 @@ namespace iyak {
 
     template<class F> void compute_outside(F const& f) {
       if (_no_rss) {
-        for (int i=L; 1<=i; --i) { /* backward */
+        /* backward */
+        for (int i=L; 1<=i; --i) {
           for (auto const& s: mm.state()) {
             for (auto const& s1: mm.loop_right_trans(s.id)) {
               double w = mm.weight(s.r, i-1);

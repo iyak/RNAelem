@@ -50,7 +50,8 @@ int main(int const argc, char const* argv[]) {
         RNAelem model;
         model.set_energy_params(app.ene_param_fname, app.max_span, app.min_bpp);
         model.set_motif_pattern(app.pattern, app.no_rss, app.no_prf);
-        model.set_hyper_param(app.rho, app.tau, app.lambda_prior);
+        model.set_hyper_param(app.rho_theta, app.rho_lambda,
+                              app.tau, app.lambda_prior);
 
         RNAelemTrainer train(app.tr_mode);
         train.set_fq_name(app.seq_fname);
@@ -78,7 +79,8 @@ int main(int const argc, char const* argv[]) {
           reader.set_model_fname(app.model_fname);
           reader.read_model(model);
         } else {
-          model.set_hyper_param(app.rho, app.tau, app.lambda_prior);
+          model.set_hyper_param(app.rho_theta, app.rho_lambda,
+                                app.tau, app.lambda_prior);
           model.set_energy_params(app.ene_param_fname, app.max_span, app.min_bpp);
           model.set_motif_pattern(app.pattern, app.no_rss, app.no_prf);
         }

@@ -38,7 +38,8 @@ namespace iyak {
     int max_span;
 
     double eps;
-    double rho;
+    double rho_theta;
+    double rho_lambda;
     double tau;
     double lambda_init;
     double lambda_prior;
@@ -144,11 +145,18 @@ namespace iyak {
       .metavar("DOUBLE");
 
       _parser
-      .add_option("--rho")
+      .add_option("--rho-theta")
       .help("rho: regularization scaler.")
-      .dest("rho")
+      .dest("rho_theta")
       .set_default(1e-1)
-      .metavar("DOUBLE[0,1]");
+      .metavar("DOUBLE[0,]");
+
+      _parser
+      .add_option("--rho-lambda")
+      .help("rho: regularization scaler.")
+      .dest("rho_lambda")
+      .set_default(1e-1)
+      .metavar("DOUBLE[0,]");
 
       _parser
       .add_option("--tau")
@@ -303,7 +311,8 @@ namespace iyak {
       max_span = (int)options.get("max_span");
 
       eps = (double)options.get("eps");
-      rho = (double)options.get("rho");
+      rho_theta = (double)options.get("rho_theta");
+      rho_lambda = (double)options.get("rho_lambda");
       tau = (double)options.get("tau");
       lambda_init = (double)options.get("lambda_init");
       lambda_prior = (double)options.get("lambda_prior");
