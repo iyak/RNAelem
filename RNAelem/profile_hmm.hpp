@@ -62,7 +62,7 @@ namespace iyak {
     VIS const& loop_right_trans(int s) {return _loop_right_trans[s];}
     VIS const& loop_left_trans(int s) {return _loop_left_trans[s];}
     VIS const& pair_trans(int s) {return _pair_trans[s];}
-    int const weight_id(int i) {return _weight_id[i];}
+    int weight_id(int i) {return _weight_id[i];}
 
     int node(int i) {return _node[i];}
     int reachable(int s, int s1) {return _reachable[s][s1];}

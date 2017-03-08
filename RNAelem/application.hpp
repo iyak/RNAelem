@@ -170,14 +170,14 @@ namespace iyak {
       .help("initial value of lambda: rss-seq impact ratio.")
       .dest("lambda_init")
       .set_default("0")
-      .metavar("DOUBLE[0,1]");
+      .metavar("DOUBLE[0,]");
 
       _parser
       .add_option("--lambda-prior")
       .help("prior of lambda")
       .dest("lambda_prior")
       .set_default("0")
-      .metavar("DOUBLE[0,1]");
+      .metavar("DOUBLE[0,]");
 
       _parser
       .add_option("-p", "--min-bpp")
