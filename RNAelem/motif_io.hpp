@@ -79,6 +79,7 @@ namespace iyak {
       dat(_out, "min-bpp:", _m->em.min_BPP());
       dat(_out, "no-rss:", _m->no_rss());
       dat(_out, "no-profile:", _m->no_prf());
+      dat(_out, "no-energy:", _m->em.no_ene());
 
       pict(_m->mm.pattern(), _m->mm.weight());
     }
@@ -128,6 +129,7 @@ namespace iyak {
 
       bool no_rss=false;
       bool no_prf=false;
+      bool no_ene=false;
 
       ifstream ifs(_model_fname);
       check(!!ifs, "couldn't open:", _model_fname);
@@ -200,6 +202,10 @@ namespace iyak {
           no_prf = iss_cast<bool>(p[1]); /* optional */
         }
 
+        else if ("no-energy" == p[0]) {
+          no_ene = iss_cast<bool>(p[1]); /* optional */
+        }
+
         else {
           cry("unused:", p[0]);
         }
@@ -211,7 +217,7 @@ namespace iyak {
       for (int i=0; i<(int)_m->mm.weight().size(); ++i)
         for (int j=0; j<(int)_m->mm.weight()[i].size(); ++j)
           _m->mm.weight().at(i).at(j) = w.at(i).at(j);
-      _m->set_energy_params(ene_fname, max_span, min_bpp);
+      _m->set_energy_params(ene_fname, max_span, min_bpp, no_ene);
       _m->set_hyper_param(rho_theta, rho_lambda, tau, lambda_prior);
 
       //cry(ene_fname, max_span);

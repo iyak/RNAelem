@@ -125,10 +125,11 @@ namespace iyak {
     }
 
     void set_energy_params(string const& param_fname, int const max_span,
-                           double const min_bpp) {
+                           double const min_bpp, bool no_ene) {
       em.set_param_file(param_fname);
       em.set_max_pair(max_span);
       em.set_min_BPP(min_bpp);
+      em.set_no_ene(no_ene);
 
       E = EnergyModel::nstate;
     }

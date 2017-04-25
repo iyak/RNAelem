@@ -68,7 +68,7 @@ namespace iyak {
     RNAelemDP f;
 
     RNAelemDPTest() {
-      model.set_energy_params("~T2004~", 999, 0.);
+      model.set_energy_params("~T2004~", 999, 0., true);
       model.set_hyper_param(0., 0., 1., -1.);
 
       f.set_preprocess({1}, 0);
@@ -78,7 +78,7 @@ namespace iyak {
 
   TEST_F(RNAelemDPTest, PATH_COUNT_CASES) {
 
-    EXPECT_TRUE(debug & DBG_NO_ENE);
+    //EXPECT_TRUE(debug & DBG_NO_ENE);
     EXPECT_TRUE(debug & DBG_NO_WEIGHT);
     EXPECT_TRUE(debug & DBG_FIX_RSS);
     EXPECT_TRUE(debug & DBG_NO_TURN);
@@ -166,7 +166,7 @@ namespace iyak {
 
   TEST_F(RNAelemDPTest, EMISSION_COUNT_CASES) {
 
-    EXPECT_TRUE(debug & DBG_NO_ENE);
+    //EXPECT_TRUE(debug & DBG_NO_ENE);
     EXPECT_TRUE(debug & DBG_NO_WEIGHT);
     EXPECT_TRUE(debug & DBG_FIX_RSS);
     EXPECT_TRUE(debug & DBG_NO_TURN);
@@ -189,7 +189,7 @@ namespace iyak {
 
   TEST_F(RNAelemDPTest, FN_GR_CASES) {
 
-    EXPECT_TRUE(debug & DBG_NO_ENE);
+    //EXPECT_TRUE(debug & DBG_NO_ENE);
     EXPECT_TRUE(debug & DBG_NO_WEIGHT);
     EXPECT_TRUE(debug & DBG_FIX_RSS);
     EXPECT_TRUE(debug & DBG_NO_TURN);

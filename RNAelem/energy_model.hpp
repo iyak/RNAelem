@@ -24,6 +24,7 @@ namespace iyak {
     double _min_BPP = 0;
     double _min_lnBPP = -inf;
     double _bpp_eff = 0;
+    bool _no_ene = false;
 
     int L = -1;
     int W = -1;
@@ -135,6 +136,8 @@ namespace iyak {
 
     double bpp_eff() {return _bpp_eff;}
 
+    bool no_ene() {return _no_ene;}
+ 
     /* setter */
     void set_param_file(string const& s) {
       param_fname = s;
@@ -156,6 +159,7 @@ namespace iyak {
      * with training phase, we should hold the condition.
      */
 
+    void set_no_ene(bool no_ene) {_no_ene = no_ene;}
     void set_min_BPP(double p) {
       _min_BPP = p;
       _min_lnBPP = log(p);
@@ -336,7 +340,7 @@ namespace iyak {
             if (is_parsable<ST_P>(i+1, j-1)) {
               tsc = _ep.log_loop_energy(i, j-1, i+1, j-2, *_seq);
               f.template on_transition<TT_P_P>(i, j, i+1, j-1,
-                                               debug&DBG_NO_ENE? 0: tsc);
+                                               _no_ene? 0: tsc);
             }
           }
 
@@ -359,7 +363,7 @@ namespace iyak {
               tsc = _ep.sum_ext_m(i, j-1, false, *_seq)
                  +_ep.logmlintern();
               f.template on_transition<TT_2_P>(i, j, i, j,
-                                               debug&DBG_NO_ENE? 0: tsc);
+                                               _no_ene? 0: tsc);
             }
           }
 
@@ -389,14 +393,14 @@ namespace iyak {
                      _ep.logmlclosing() +
                      _ep.logmlintern());
               f.template on_transition<TT_E_M>(i, j, i, j,
-                                               debug&DBG_NO_ENE? 0: tsc);
+                                               _no_ene? 0: tsc);
             }
             tsc = _ep.log_hairpin_energy(i-1, j, *_seq);
 
             if (debug&DBG_FIX_RSS and
                 string(j-i,'.') != _fix_s.substr(i,j-i)) {} else
               f.template on_transition<TT_E_H>(i, j, i, j,
-                                               debug&DBG_NO_ENE? 0: tsc);
+                                               _no_ene? 0: tsc);
 
             for (int volatile l = j; l >= i; -- l) {
               for (int volatile k = i; k <= l; ++ k) {
@@ -408,7 +412,7 @@ namespace iyak {
                       (string(k-i,'.') != _fix_s.substr(i,k-i) or
                        string(j-l,'.') != _fix_s.substr(l,j-l))) {} else
                          f.template on_transition<TT_E_P>(i, j, k, l,
-                                         debug&DBG_NO_ENE? 0: tsc);
+                                         _no_ene? 0: tsc);
                 }
               }
             }
@@ -418,7 +422,7 @@ namespace iyak {
           if (is_parsable<ST_P>(i, j)) {
             tsc = _ep.sum_ext_m(i, j-1, true, *_seq);
             f.template on_transition<TT_O_OP>(0, j, 0, i,
-                                              debug&DBG_NO_ENE? 0: tsc);
+                                              _no_ene? 0: tsc);
           }
 
           if (i0==i and 0 < j) {
@@ -462,16 +466,16 @@ namespace iyak {
           if (is_parsable<ST_P>(i, j)) {
             tsc = _ep.sum_ext_m(i, j-1, true, *_seq);
             f.template on_transition<TT_O_OP>(0, i, 0, j,
-                                              debug&DBG_NO_ENE? 0: tsc);
+                                              _no_ene? 0: tsc);
             if (is_parsable<ST_P>(i-1, j+1)) {
               tsc = _ep.log_loop_energy(i-1, j, i, j-1, *_seq);
               f.template on_transition<TT_P_P>(i, j, i-1, j+1,
-                                               debug&DBG_NO_ENE? 0: tsc);
+                                               _no_ene? 0: tsc);
             }
             if (is_parsable<ST_2>(i, j)) {
               tsc = _ep.sum_ext_m(i, j-1, false, *_seq) +_ep.logmlintern();
               f.template on_transition<TT_2_P>(i, j, i, j,
-                                               debug&DBG_NO_ENE? 0: tsc);
+                                               _no_ene? 0: tsc);
             }
           }
 
@@ -484,14 +488,14 @@ namespace iyak {
             if (debug&DBG_FIX_RSS and
                 string(j-i,'.') != _fix_s.substr(i,j-i)) {} else
               f.template on_transition<TT_E_H>(i, j, i, j,
-                                               debug&DBG_NO_ENE? 0: tsc);
+                                               _no_ene? 0: tsc);
 
             if (is_parsable<ST_M>(i, j)) {
               tsc = (_ep.sum_ext_m(j, i-1, false, *_seq) +
                      _ep.logmlclosing() +
                      _ep.logmlintern());
               f.template on_transition<TT_E_M>(i, j, i, j,
-                                               debug&DBG_NO_ENE? 0: tsc);
+                                               _no_ene? 0: tsc);
             }
           }
 
@@ -528,7 +532,7 @@ namespace iyak {
                       (string(k-i,'.') != _fix_s.substr(i,k-i) or
                        string(j-l,'.') != _fix_s.substr(l,j-l))) {} else
                          f.template on_transition<TT_E_P>(k, l, i, j,
-                                         debug&DBG_NO_ENE? 0: tsc);
+                                         _no_ene? 0: tsc);
                 }
               }
             }

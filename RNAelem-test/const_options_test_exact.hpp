@@ -13,7 +13,7 @@ namespace iyak {
   enum {
     DBG_NONE = 0,
     DBG_NO_WEIGHT = 1<<0,
-    DBG_NO_ENE = 1<<1,
+    DBG_NO_ENE = 1<<1, // obsolete
     DBG_FIX_RSS = 1<<2,
     DBG_VERBOSE = 1<<3,
     DBG_NO_TURN = 1<<4,

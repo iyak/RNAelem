@@ -50,6 +50,7 @@ namespace iyak {
 
     bool no_rss = false;
     bool no_prf = false;
+    bool no_ene = false;
 
     int mode;
     enum PROGRAM_MODE {
@@ -247,6 +248,12 @@ namespace iyak {
       .dest("no_prf")
       .action("store_true");
 
+      _parser
+      .add_option("--no-energy")
+      .help("consider only secondary structure and covariated sequence")
+      .dest("no_ene")
+      .action("store_true");
+
       auto const options = _parser.parse_args(argc, argv);
       auto const args = _parser.args();
 
@@ -337,6 +344,7 @@ namespace iyak {
 
       no_rss = options.get("no_rss");
       no_prf = options.get("no_prf");
+      no_ene = options.get("no_ene");
     }
   };
 }
