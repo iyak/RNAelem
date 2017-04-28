@@ -59,8 +59,8 @@ namespace iyak {
 
     if (any(_vary_x, i)) {
       lower.push_back(0);
-      upper.push_back(1);
-      type.push_back(2);
+      upper.push_back(inf);
+      type.push_back(1); // lower bound
     } else {
       lower.push_back(_motif->lambda());
       upper.push_back(_motif->lambda());
