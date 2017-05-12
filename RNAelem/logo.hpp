@@ -147,8 +147,9 @@ namespace iyak {
   public:
 
     RNAlogoAlph(string a, string font): _alph(a), _font(font) {
-      _w = _h = 0;
       auto utf = utf8(_alph).codes();
+      _h = 0;
+      _w = 99*size(utf);
       for (int i=0; i<size(utf); ++i) {
 
         _faces.push_back(uptrize(new ft_face(_font)));
@@ -156,17 +157,16 @@ namespace iyak {
 
         load_glyph(*f, utf[i]);
         auto bb = calc_bb(*f);
-        _w += bb.w;
+
+        mapply(*f, {{99./bb.w,0.},{0.,1.}});
         _h = max(_h, bb.h);
 
-        set_pos(*f, 0, 0);
+        set_pos(*f, 99*i, 0);
       }
 
-      int w = 0;
       for (auto& f: _faces) {
         auto bb = calc_bb(*f);
-        shift_bb(*f, w, _h-bb.h);
-        w += bb.w;
+        shift_bb(*f, 0, _h-bb.h);
       }
     }
 
@@ -218,14 +218,12 @@ namespace iyak {
     }
   };
 
-
   struct logo_pair {
     double val;
     RNAlogoAlph alph;
     logo_pair(double v, string a, string f): val(v), alph(a, f) {}
     bool static cmp(logo_pair& a, logo_pair& b) {return a.val < b.val;}
   };
-
 
   class RNAlogo {
 
