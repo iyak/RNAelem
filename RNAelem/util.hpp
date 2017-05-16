@@ -328,6 +328,19 @@ namespace iyak {
     for (auto const& w:v) if (w==e) return true;
     return false;
   }
+  bool any(string const& v, char const& e) {
+    for (auto const& w:v) if (w==e) return true;
+    return false;
+  }
+  template<class T>
+  bool all(vector<T> const& v, T const& e) {
+    for (auto const& w:v) if (w!=e) return false;
+    return true;
+  }
+  bool all(string const& v, char const& e) {
+    for (auto const& w:v) if (w!=e) return false;
+    return true;
+  }
 }
 
 #endif /* util_h */

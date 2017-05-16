@@ -345,6 +345,12 @@ namespace iyak {
       no_rss = options.get("no_rss");
       no_prf = options.get("no_prf");
       no_ene = options.get("no_ene");
+
+      if (any(pattern, '_')) {
+        check(all(pattern, '_'), "patten cannot be mixture of _ & the others");
+        no_rss = true;
+        for (auto& c: pattern) c = '.';
+      }
     }
   };
 }
