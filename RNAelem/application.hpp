@@ -340,7 +340,8 @@ namespace iyak {
       if (0 < size(param_set)) tr_mode |= TR_MASK;
       if (1 < array) tr_mode |= TR_ARRAY;
       if (options.get("balance")) tr_mode |= TR_BAL;
-      if ("array-eval"==args[0]) tr_mode |= TR_ARRAYEVAL;
+      if (0<size(args))
+        if ("array-eval"==args[0]) tr_mode |= TR_ARRAYEVAL;
 
       no_rss = options.get("no_rss");
       no_prf = options.get("no_prf");

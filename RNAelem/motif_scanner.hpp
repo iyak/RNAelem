@@ -21,6 +21,7 @@ namespace iyak {
 
     string _fq_name;
     FastqReader _qr;
+    int _out=0;
 
     RNAelem *_motif;
 
@@ -65,8 +66,8 @@ namespace iyak {
       _motif->mm.n2s(0, _motif->M-2);
 
       _motif->trace_back(0, _motif->L, EM::ST_O, s1);
-      dat(1, "rss:", _motif->cyk_structure_path);
-      dat(1, "mot:", _motif->cyk_state_path);
+      dat(_out, "rss:", _motif->cyk_structure_path);
+      dat(_out, "mot:", _motif->cyk_state_path);
     }
 
     void calc_viterbi_alignment() {
@@ -82,10 +83,10 @@ namespace iyak {
 
       _motif->trace_back(0, _motif->L, EM::ST_O, s);
       say("len:", _seq.size());
-      dat(1, "id:", _id);
-      dat(1, "seq:", seq_itos(_seq));
-      dat(1, "rss:", _motif->cyk_structure_path);
-      dat(1, "mot:", _motif->cyk_state_path);
+      dat(_out, "id:", _id);
+      dat(_out, "seq:", seq_itos(_seq));
+      dat(_out, "rss:", _motif->cyk_structure_path);
+      dat(_out, "mot:", _motif->cyk_state_path);
     }
 
     void calc_motif_start_position() {
@@ -114,11 +115,11 @@ namespace iyak {
       calc_motif_end_position(Ys);
       Ye = max_index(lnPye);
 
-      dat(1, "start:", lnPys);
-      dat(1, "end:", lnPye);
-      dat(1, "inner:", lnPyi);
-      dat(1, "motif region:", Ys, "-", Ye);
-      dat(1, "exist prob:", exp(logsumexp(lnPys)));
+      dat(_out, "start:", lnPys);
+      dat(_out, "end:", lnPye);
+      dat(_out, "inner:", lnPyi);
+      dat(_out, "motif region:", Ys, "-", Ye);
+      dat(_out, "exist prob:", exp(logsumexp(lnPys)));
 
       double lsum = logsumexp(logsumexp(lnPys), lnPyN);
       expect(double_eq(0., lsum), "log sum:", lsum);
@@ -133,6 +134,8 @@ namespace iyak {
 
       N = _qr.N();
     }
+
+    void set_out_id(int _id) {_out = _id;}
 
     void scan(RNAelem& model) {
 
