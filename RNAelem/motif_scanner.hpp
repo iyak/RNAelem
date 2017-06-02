@@ -118,6 +118,7 @@ namespace iyak {
       dat(_out, "start:", lnPys);
       dat(_out, "end:", lnPye);
       dat(_out, "inner:", lnPyi);
+      dat(_out, "w:", _qual);
       dat(_out, "motif region:", Ys, "-", Ye);
       dat(_out, "exist prob:", exp(logsumexp(lnPys)));
 
