@@ -78,6 +78,7 @@ int main(int const argc, char const* argv[]) {
         writer.write(model);
 
         RNAelemScanner scan;
+        scan.set_preprocess(app.convo_kernel, app.pseudo_cov);
         scan.set_out_id(3);
         scan.set_fq_name(app.seq_fname);
         scan.scan(model);
@@ -128,6 +129,7 @@ int main(int const argc, char const* argv[]) {
         reader.read_model(model);
 
         RNAelemScanner scan;
+        scan.set_preprocess(app.convo_kernel, app.pseudo_cov);
         scan.set_fq_name(app.seq_fname);
         scan.scan(model);
 

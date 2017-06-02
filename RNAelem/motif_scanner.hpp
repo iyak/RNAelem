@@ -44,6 +44,23 @@ namespace iyak {
 
     double lnZ;
     double lnZe;
+    
+    V _ws;
+    V _convo_kernel {1};
+    double _pseudo_cov;
+    
+    void calc_ws(VI const& q) {
+      V& c = _convo_kernel;
+
+      _ws.assign(size(q)+1, log(_pseudo_cov));
+      for (int i=0; i<size(q); ++i)
+        for (int j=0; j<size(c); ++ j)
+          if (0<=i+j-size(c)/2 and i+j-size(c)/2<size(q))
+            logaddexp(_ws[i], log(_convo_kernel[j]*q[i+j-size(c)/2]));
+      _ws.back() = -inf;
+
+      lnormal(_ws);
+    }
 
     void set_seq(VI& seq, string& rss) {
       L = size(seq);
@@ -118,7 +135,7 @@ namespace iyak {
       dat(_out, "start:", lnPys);
       dat(_out, "end:", lnPye);
       dat(_out, "inner:", lnPyi);
-      dat(_out, "w:", _qual);
+      dat(_out, "w:", _ws);
       dat(_out, "motif region:", Ys, "-", Ye);
       dat(_out, "exist prob:", exp(logsumexp(lnPys)));
 
@@ -138,6 +155,11 @@ namespace iyak {
 
     void set_out_id(int _id) {_out = _id;}
 
+    void set_preprocess(V const& convo_kernel, double pseudo_cov) {
+      _convo_kernel = convo_kernel;
+      _pseudo_cov = pseudo_cov;
+    }
+    
     void scan(RNAelem& model) {
 
       say("scan start:");
@@ -151,6 +173,7 @@ namespace iyak {
         /* read one record */
         _qr.read_seq(_id, _seq, _qual, _rss);
         set_seq(_seq, _rss);
+        calc_ws(_qual);
 
         lnPys.assign(L+1, -inf);
         lnPye.assign(L+1, -inf);
