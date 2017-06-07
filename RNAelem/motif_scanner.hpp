@@ -21,7 +21,7 @@ namespace iyak {
 
     string _fq_name;
     FastqReader _qr;
-    int _out=0;
+    int _out=1;
 
     RNAelem *_motif;
 
