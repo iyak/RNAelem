@@ -5,3 +5,4 @@ bench*
 .lock-waf*
 **.DS_store
 .gitconfig
+script
