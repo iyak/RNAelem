@@ -100,7 +100,7 @@ namespace iyak {
       .add_option("-i", "--max-iter")
       .dest("max_iter")
       .help("maximal iteration count.")
-      .set_default(30)
+      .set_default(100)
       .metavar("INT");
 
       _parser
