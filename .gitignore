@@ -6,3 +6,4 @@ bench*
 **.DS_store
 .gitconfig
 .Rproj.user
+script

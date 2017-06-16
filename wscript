@@ -20,13 +20,13 @@ def configure(cnf):
             uselib_store="freetype"
             )
 
-    if (sys.platform.startswith("win") or sys.platform.startswith("cygwin")):
+    if sys.platform.startswith("win") or sys.platform.startswith("cygwin"):
         print("for windows, I don't get path for fonts.")
         pass
-    elif (sys.platform.startswith("darwin")):
+    elif sys.platform.startswith("darwin"):
         ttfs = exe("find /Library/Fonts -name *.ttf")
         for ttf in ttfs.split("\n"):
-            if ("gothic" in ttf or "Gothic" in ttf):
+            if "gothic" in ttf or "Gothic" in ttf:
                 cnf.env.append_unique("DEFINES", ["_DFONT=\"%s\""%ttf])
                 print("set font:", ttf)
                 break
@@ -36,7 +36,7 @@ def configure(cnf):
     else:
         ttfs = exe("find /usr/share/fonts -name *.ttf")
         for ttf in ttfs.split("\n"):
-            if ("gothic" in ttf or "Gothic" in ttf):
+            if "gothic" in ttf or "Gothic" in ttf:
                 cnf.env.append_unique("DEFINES", ["_DFONT=\"%s\""%ttf])
                 print("set font:", ttf)
                 break
