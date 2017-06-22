@@ -22,8 +22,8 @@ namespace iyak {
       _motif->init_outside_tables();
 
       _motif->compute_inside(InsideFun(_motif));
-      _lnZ = _motif->part_func();
-      _motif->compute_outside(OutsideFun(_motif, 0, _dEH, _dEN));
+      _ZL = _motif->part_func();
+      _motif->compute_outside(OutsideFun(_motif, oneL, _dEH, _dEN));
     }
 
     void dp_fn() {
@@ -32,21 +32,21 @@ namespace iyak {
       _motif->init_outside_tables();
 
       _motif->compute_inside(InsideFun(_motif));
-      _lnZ = _motif->part_func();
-      _motif->compute_outside(OutsideFun(_motif, _lnZ, _dEH, _dEN));
+      _ZL = _motif->part_func();
+      _motif->compute_outside(OutsideFun(_motif, _ZL, _dEH, _dEN));
 
       _motif->init_inside_tables();
       _motif->init_outside_tables();
 
-      _motif->compute_inside(InsideFeatFun(_motif, _ws));
-      _lnZw = _motif->part_func();
-      _motif->compute_outside(OutsideFeatFun(_motif, _lnZw, _dEH, _dEN, _ws));
+      _motif->compute_inside(InsideFeatFun(_motif, _wsL));
+      _ZwL = _motif->part_func();
+      _motif->compute_outside(OutsideFeatFun(_motif, _ZwL, _dEH, _dEN, _wsL));
     }
 
   public:
 
     double fn() {
-      return _lnZ - _lnZw;
+      return logNL(divL(_ZL,_ZwL));
     }
 
     V gr() {

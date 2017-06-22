@@ -10,6 +10,7 @@
 #define energy_param_h
 
 #include"bio_sequence.hpp"
+#include"util.hpp"
 
 namespace iyak {
 
@@ -20,8 +21,10 @@ namespace iyak {
     double static constexpr k0 = 273.15;
     int static const turn = 3;
     int static const maxloop = 30;
+    double static constexpr maxloop_div = 1./maxloop;
     int static const temperature = 37;
-    static double constexpr kT = (temperature + k0) * gasconst;
+    double static constexpr kT = (temperature + k0) * gasconst;
+    double static constexpr kT_div = 1./kT;
 
     enum {
       T2004,
@@ -55,29 +58,29 @@ namespace iyak {
 
     istream *_is;
 
-    double _loghairpin[maxloop + 1];
-    double _logmismatch_h[7][5][5];
-    double _logmismatch_i[7][5][5];
-    double _logmismatch_m[7][5][5];
-    double _logmismatch_1ni[7][5][5];
-    double _logmismatch_23i[7][5][5];
-    double _logmismatch_ext[7][5][5];
+    double _hairpin[maxloop + 1];
+    double _mismatch_h[7][5][5];
+    double _mismatch_i[7][5][5];
+    double _mismatch_m[7][5][5];
+    double _mismatch_1ni[7][5][5];
+    double _mismatch_23i[7][5][5];
+    double _mismatch_ext[7][5][5];
     double _triloop[40];
     double _tetraloop[40];
     double _hexaloop[40];
-    double _logstack[7][7];
-    double _logbulge[maxloop+1];
-    double _logterm_au;
-    double _logint_11[8][8][5][5];
-    double _logint_21[8][8][5][5][5];
-    double _logint_22[8][8][5][5][5][5];
-    double _loginternal[maxloop+1];
-    double _logdangle5[8][5];
-    double _logdangle3[8][5];
-    double _logninio[maxloop+1];
-    double _logmlintern;
-    double _logmlclosing; 
-    double _logml_base; 
+    double _stack[7][7];
+    double _bulge[maxloop+1];
+    double _term_au;
+    double _int_11[8][8][5][5];
+    double _int_21[8][8][5][5][5];
+    double _int_22[8][8][5][5][5][5];
+    double _internal[maxloop+1];
+    double _dangle5[8][5];
+    double _dangle3[8][5];
+    double _ninio[maxloop+1];
+    double _mlintern;
+    double _mlclosing; 
+    double _ml_base; 
     double _lxc37 = 107.856;
 
     std::string _triloops;
@@ -97,9 +100,9 @@ namespace iyak {
         return z;
       else
         return
-          10. * 0.38490018 *
-          (1.+sin(z/10.-0.34242663)) *
-          (1.+sin(z/10.-0.34242663));
+        10. * 0.38490018 *
+        (1.+sin(z/10.-0.34242663)) *
+        (1.+sin(z/10.-0.34242663));
     }
 
     double log_energy(int z, bool smo = false) {
@@ -170,33 +173,33 @@ namespace iyak {
           if (words[i-prev].find("/*") != npos) break;
 
           if (words[i-prev] == "INF")
-            array[i] = -inf;
+            array[i] = zeroL;
           else if (words[i-prev] == "DEF")
-            array[i] = log_energy(-50, smo);
+            array[i] = expNL(log_energy(-50,smo));
           else
-            array[i] = log_energy(atoi(words[i-prev].c_str()), smo);
+            array[i] = expNL(log_energy(atoi(words[i-prev].c_str()), smo));
         }
       }
     }
 
     void read_1dim(
-        double *array,
-        int dim,
-        int shift,
-        int post=0
-        ) {
+                   double *array,
+                   int dim,
+                   int shift,
+                   int post=0
+                   ) {
       get_array(array+shift, dim-shift-post);
     }
 
     void read_2dim(
-        double* array,
-        int dim1,
-        int dim2,
-        int shift1,
-        int shift2,
-        int post1=0,
-        int post2=0
-        ) {
+                   double* array,
+                   int dim1,
+                   int dim2,
+                   int shift1,
+                   int shift2,
+                   int post1=0,
+                   int post2=0
+                   ) {
 
       if (0 == shift1+shift2 and
           0 == post1+post2)
@@ -205,25 +208,25 @@ namespace iyak {
       else {
         for (int i = shift1; i < dim1-post1; ++ i)
           read_1dim(
-              array+(i*dim2),
-              dim2,
-              shift2,
-              post2);
+                    array+(i*dim2),
+                    dim2,
+                    shift2,
+                    post2);
       }
     }
 
     void read_3dim(
-        double *array,
-        int dim1,
-        int dim2,
-        int dim3,
-        int shift1,
-        int shift2,
-        int shift3,
-        int post1=0,
-        int post2=0,
-        int post3=0
-        ) {
+                   double *array,
+                   int dim1,
+                   int dim2,
+                   int dim3,
+                   int shift1,
+                   int shift2,
+                   int shift3,
+                   int post1=0,
+                   int post2=0,
+                   int post3=0
+                   ) {
 
       if (0 == shift1+shift2+shift3 and
           0 == post1+post2+post3)
@@ -232,32 +235,32 @@ namespace iyak {
       else {
         for (int i = shift1; i < dim1-post1; ++ i) {
           read_2dim(
-              array+(i*dim2*dim3),
-              dim2,
-              dim3,
-              shift2,
-              shift3,
-              post2,
-              post3);
+                    array+(i*dim2*dim3),
+                    dim2,
+                    dim3,
+                    shift2,
+                    shift3,
+                    post2,
+                    post3);
         }
       }
     }
 
     void read_4dim(
-        double *array,
-        int dim1,
-        int dim2,
-        int dim3,
-        int dim4,
-        int shift1,
-        int shift2,
-        int shift3,
-        int shift4,
-        int post1=0,
-        int post2=0,
-        int post3=0,
-        int post4=0
-        ) {
+                   double *array,
+                   int dim1,
+                   int dim2,
+                   int dim3,
+                   int dim4,
+                   int shift1,
+                   int shift2,
+                   int shift3,
+                   int shift4,
+                   int post1=0,
+                   int post2=0,
+                   int post3=0,
+                   int post4=0
+                   ) {
       if (0 == shift1+shift2+shift3+shift4 and
           0 == post1+post2+post3+post4)
         read_1dim(array, dim1*dim2*dim3*dim4, 0);
@@ -265,37 +268,37 @@ namespace iyak {
       else {
         for (int i = shift1; i < dim1-post1; ++ i) {
           read_3dim(
-              array+(i*dim2*dim3*dim4),
-              dim2,
-              dim3,
-              dim4,
-              shift2,
-              shift3,
-              shift4,
-              post2,
-              post3,
-              post4);
+                    array+(i*dim2*dim3*dim4),
+                    dim2,
+                    dim3,
+                    dim4,
+                    shift2,
+                    shift3,
+                    shift4,
+                    post2,
+                    post3,
+                    post4);
         }
       }
     }
 
     void read_5dim(double *array,
-        int dim1,
-        int dim2,
-        int dim3,
-        int dim4,
-        int dim5,
-        int shift1,
-        int shift2,
-        int shift3,
-        int shift4,
-        int shift5,
-        int post1=0,
-        int post2=0,
-        int post3=0,
-        int post4=0,
-        int post5=0
-        ) {
+                   int dim1,
+                   int dim2,
+                   int dim3,
+                   int dim4,
+                   int dim5,
+                   int shift1,
+                   int shift2,
+                   int shift3,
+                   int shift4,
+                   int shift5,
+                   int post1=0,
+                   int post2=0,
+                   int post3=0,
+                   int post4=0,
+                   int post5=0
+                   ) {
       if (0 == shift1+shift2+shift3+shift4+shift5 and
           0 == post1+post2+post3+post4+post5)   
         read_1dim(array, dim1*dim2*dim3*dim4*dim5, 0);
@@ -303,77 +306,77 @@ namespace iyak {
       else {
         for (int i = shift1; i < dim1-post1; ++ i) {
           read_4dim(
-              array+(i*dim2*dim3*dim4*dim5),
-              dim2,
-              dim3,
-              dim4,
-              dim5,
-              shift2,
-              shift3,
-              shift4,
-              shift5,
-              post2,
-              post3,
-              post4,
-              post5);
+                    array+(i*dim2*dim3*dim4*dim5),
+                    dim2,
+                    dim3,
+                    dim4,
+                    dim5,
+                    shift2,
+                    shift3,
+                    shift4,
+                    shift5,
+                    post2,
+                    post3,
+                    post4,
+                    post5);
         }
       }
     }
 
     void read_6dim(double *array,
-        int dim1,
-        int dim2,
-        int dim3,
-        int dim4,
-        int dim5,
-        int dim6,
-        int shift1,
-        int shift2,
-        int shift3,
-        int shift4,
-        int shift5,
-        int shift6,
-        int post1=0,
-        int post2=0,
-        int post3=0,
-        int post4=0,
-        int post5=0,
-        int post6=0
-        ) {
+                   int dim1,
+                   int dim2,
+                   int dim3,
+                   int dim4,
+                   int dim5,
+                   int dim6,
+                   int shift1,
+                   int shift2,
+                   int shift3,
+                   int shift4,
+                   int shift5,
+                   int shift6,
+                   int post1=0,
+                   int post2=0,
+                   int post3=0,
+                   int post4=0,
+                   int post5=0,
+                   int post6=0
+                   ) {
       if (0 == shift1+shift2+shift3+shift4+shift5+shift6 and
           0 == post1+post2+post3+post4+post5+post6)   
         read_1dim(array, dim1*dim2*dim3*dim4*dim5*dim6, 0);
       else {
         for (int i = shift1; i < dim1-post1; ++ i) {
           read_5dim(
-              array+(i*dim2*dim3*dim4*dim5*dim6),
-              dim2,
-              dim3,
-              dim4,
-              dim5,
-              dim6,
-              shift2,
-              shift3,
-              shift4,
-              shift5,
-              shift6,
-              post2,
-              post3,
-              post4,
-              post5,
-              post6);
+                    array+(i*dim2*dim3*dim4*dim5*dim6),
+                    dim2,
+                    dim3,
+                    dim4,
+                    dim5,
+                    dim6,
+                    shift2,
+                    shift3,
+                    shift4,
+                    shift5,
+                    shift6,
+                    post2,
+                    post3,
+                    post4,
+                    post5,
+                    post6);
         }
       }
     }
     void read_2dim_smooth(
-        double *array,
-        int dim1,
-        int dim2,
-        int shift1,
-        int shift2,
-        int post1=0,
-        int post2=0
-        ) {
+                          double *array,
+                          int dim1,
+                          int dim2,
+                          int shift1,
+                          int shift2,
+                          int post1=0,
+                          int post2=0
+                          ) {
       if (0 == shift1+shift2 and
           0 == post1+post2)
         get_array(array, dim1*dim2, true);
@@ -381,24 +384,24 @@ namespace iyak {
       else {
         for (int i = shift1; i < dim1-post1; ++ i)
           get_array(
-              array+(i*dim2)+shift2,
-              dim2-shift2-post2,
-              true);
+                    array+(i*dim2)+shift2,
+                    dim2-shift2-post2,
+                    true);
       }
     }
 
     void read_3dim_smooth(
-        double *array,
-        int dim1,
-        int dim2,
-        int dim3,
-        int shift1,
-        int shift2,
-        int shift3,
-        int post1=0,
-        int post2=0,
-        int post3=0
-        ) {
+                          double *array,
+                          int dim1,
+                          int dim2,
+                          int dim3,
+                          int shift1,
+                          int shift2,
+                          int shift3,
+                          int post1=0,
+                          int post2=0,
+                          int post3=0
+                          ) {
       if (0 == shift1+shift2+shift3 and
           0 == post1+post2+post3)
         get_array(array, dim1*dim2*dim3, true);
@@ -406,13 +409,13 @@ namespace iyak {
       else {
         for (int i = shift1; i < dim1-post1; ++ i) {
           read_2dim_smooth(
-              array+(i*dim2*dim3),
-              dim2,
-              dim3,
-              shift2,
-              shift3,
-              post2,
-              post3);
+                           array+(i*dim2*dim3),
+                           dim2,
+                           dim3,
+                           shift2,
+                           shift3,
+                           post2,
+                           post3);
         }
       }
     }
@@ -433,7 +436,7 @@ namespace iyak {
         int max_ninio = atoi(words[2].c_str());
 
         for (int i=0; i <= maxloop; ++ i)
-          _logninio[i] = log_energy(min(max_ninio,i * f_ninio37));
+          _ninio[i] = expNL(log_energy(min(max_ninio,i * f_ninio37)));
 
         break;
       }
@@ -451,9 +454,9 @@ namespace iyak {
         get_words(str, words);
         check((int)words.size() > 4, "read_ml.");
 
-        _logml_base = log_energy(atoi(words[0].c_str()));
-        _logmlclosing = log_energy(atoi(words[2].c_str()));
-        _logmlintern = log_energy(atoi(words[4].c_str()));
+        _ml_base = expNL(log_energy(atoi(words[0].c_str())));
+        _mlclosing = expNL(log_energy(atoi(words[2].c_str())));
+        _mlintern = expNL(log_energy(atoi(words[4].c_str())));
 
         break;
       }
@@ -472,9 +475,9 @@ namespace iyak {
         check((int)words.size() > 2, "read_misc.");
 
         if (!lxc)
-          _logterm_au = log_energy(atoi(words[2].c_str()));
+          _term_au = expNL(log_energy(atoi(words[2].c_str())));
         if (lxc and (int)words.size() > 4)
-          _lxc37 = atof(words[4].c_str());       
+          _lxc37 = atof(words[4].c_str());
 
       }
     }
@@ -494,7 +497,7 @@ namespace iyak {
         check((int)words.size() > 1, "read_string.");
 
         loopstr += words[0] + " ";
-        array[i] = log_energy(atoi(words[1].c_str()));
+        array[i] = expNL(log_energy(atoi(words[1].c_str())));
       }
     }
 
@@ -525,91 +528,91 @@ namespace iyak {
         int type = param_type(str);
         switch(type) {
           case PT_STACK:
-            std::fill(&(_logstack[0][0]),
-                &(_logstack[0][0])+7*7, -inf);
-            read_2dim(&(_logstack[0][0]),
-                7, 7, 1, 1);
+            std::fill(&(_stack[0][0]),
+                      &(_stack[0][0])+7*7, zeroL);
+            read_2dim(&(_stack[0][0]),
+                      7, 7, 1, 1);
             break;
           case PT_MIS_H:
-            std::fill(&(_logmismatch_h[0][0][0]),
-                &(_logmismatch_h[0][0][0])+7*5*5, -inf);
-            read_3dim(&(_logmismatch_h[0][0][0]),
-                7, 5, 5, 1, 0, 0);
+            std::fill(&(_mismatch_h[0][0][0]),
+                      &(_mismatch_h[0][0][0])+7*5*5, zeroL);
+            read_3dim(&(_mismatch_h[0][0][0]),
+                      7, 5, 5, 1, 0, 0);
             break;
           case PT_MIS_I:
-            std::fill(&(_logmismatch_i[0][0][0]),
-                &(_logmismatch_i[0][0][0])+7*5*5, -inf);
-            read_3dim(&(_logmismatch_i[0][0][0]),
-                7, 5, 5, 1, 0, 0);
+            std::fill(&(_mismatch_i[0][0][0]),
+                      &(_mismatch_i[0][0][0])+7*5*5, zeroL);
+            read_3dim(&(_mismatch_i[0][0][0]),
+                      7, 5, 5, 1, 0, 0);
             break;
           case PT_MIS_1N:
-            std::fill(&(_logmismatch_1ni[0][0][0]),
-                &(_logmismatch_1ni[0][0][0])+7*5*5, -inf);
-            read_3dim(&(_logmismatch_1ni[0][0][0]),
-                7, 5, 5, 1, 0, 0);
+            std::fill(&(_mismatch_1ni[0][0][0]),
+                      &(_mismatch_1ni[0][0][0])+7*5*5, zeroL);
+            read_3dim(&(_mismatch_1ni[0][0][0]),
+                      7, 5, 5, 1, 0, 0);
             break;
           case PT_MIS_I23:
-            std::fill(&(_logmismatch_23i[0][0][0]),
-                &(_logmismatch_23i[0][0][0])+7*5*5, -inf);
-            read_3dim(&(_logmismatch_23i[0][0][0]),
-                7, 5, 5, 1, 0, 0);
+            std::fill(&(_mismatch_23i[0][0][0]),
+                      &(_mismatch_23i[0][0][0])+7*5*5, zeroL);
+            read_3dim(&(_mismatch_23i[0][0][0]),
+                      7, 5, 5, 1, 0, 0);
             break;
           case PT_MIS_M:
-            std::fill(&(_logmismatch_m[0][0][0]),
-                &(_logmismatch_m[0][0][0])+7*5*5, -inf);
-            read_3dim_smooth(&(_logmismatch_m[0][0][0]),
-                8, 5, 5, 1, 0, 0);
+            std::fill(&(_mismatch_m[0][0][0]),
+                      &(_mismatch_m[0][0][0])+7*5*5, zeroL);
+            read_3dim_smooth(&(_mismatch_m[0][0][0]),
+                             8, 5, 5, 1, 0, 0);
             break;
           case PT_MIS_E:
-            std::fill(&(_logmismatch_ext[0][0][0]),
-                &(_logmismatch_ext[0][0][0])+7*5*5, -inf);
-            read_3dim_smooth(&(_logmismatch_ext[0][0][0]),
-                8, 5, 5, 1, 0, 0);
+            std::fill(&(_mismatch_ext[0][0][0]),
+                      &(_mismatch_ext[0][0][0])+7*5*5, zeroL);
+            read_3dim_smooth(&(_mismatch_ext[0][0][0]),
+                             8, 5, 5, 1, 0, 0);
             break;
           case PT_DAN_5:
-            std::fill(&(_logdangle5[0][0]),
-                &(_logdangle5[0][0])+8*5, -inf);
-            read_2dim_smooth(&(_logdangle5[0][0]),
-                8, 5, 1, 0);
+            std::fill(&(_dangle5[0][0]),
+                      &(_dangle5[0][0])+8*5, zeroL);
+            read_2dim_smooth(&(_dangle5[0][0]),
+                             8, 5, 1, 0);
             break;
           case PT_DAN_3:
-            std::fill(&(_logdangle3[0][0]),
-                &(_logdangle3[0][0])+8*5, -inf);
-            read_2dim_smooth(&(_logdangle3[0][0]),
-                8, 5, 1, 0);
+            std::fill(&(_dangle3[0][0]),
+                      &(_dangle3[0][0])+8*5, zeroL);
+            read_2dim_smooth(&(_dangle3[0][0]),
+                             8, 5, 1, 0);
             break;
           case PT_INT_11:
-            std::fill(&(_logint_11[0][0][0][0]),
-                &(_logint_11[0][0][0][0])+8*8*5*5, -inf);
-            read_4dim(&(_logint_11[0][0][0][0]),
-                8, 8, 5, 5, 1, 1, 0, 0);
+            std::fill(&(_int_11[0][0][0][0]),
+                      &(_int_11[0][0][0][0])+8*8*5*5, zeroL);
+            read_4dim(&(_int_11[0][0][0][0]),
+                      8, 8, 5, 5, 1, 1, 0, 0);
             break;
           case PT_INT_21:
-            std::fill(&(_logint_21[0][0][0][0][0]),
-                &(_logint_21[0][0][0][0][0])+8*8*5*5*5, -inf);
-            read_5dim(&(_logint_21[0][0][0][0][0]),
-                8, 8, 5, 5, 5, 1, 1, 0, 0, 0);
+            std::fill(&(_int_21[0][0][0][0][0]),
+                      &(_int_21[0][0][0][0][0])+8*8*5*5*5, zeroL);
+            read_5dim(&(_int_21[0][0][0][0][0]),
+                      8, 8, 5, 5, 5, 1, 1, 0, 0, 0);
             break;
           case PT_INT_22:
-            std::fill(&(_logint_22[0][0][0][0][0][0]),
-                &(_logint_22[0][0][0][0][0][0])+8*8*5*5*5, -inf);
-            read_6dim(&(_logint_22[0][0][0][0][0][0]),
-                8, 8, 5, 5, 5, 5, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0);
+            std::fill(&(_int_22[0][0][0][0][0][0]),
+                      &(_int_22[0][0][0][0][0][0])+8*8*5*5*5, zeroL);
+            read_6dim(&(_int_22[0][0][0][0][0][0]),
+                      8, 8, 5, 5, 5, 5, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0);
             break;
           case PT_HAIRPIN:
-            std::fill(&(_loghairpin[0]),
-                &(_loghairpin[0])+maxloop+1, -inf);
-            read_1dim(&(_loghairpin[0]), maxloop+1, 0);
+            std::fill(&(_hairpin[0]),
+                      &(_hairpin[0])+maxloop+1, zeroL);
+            read_1dim(&(_hairpin[0]), maxloop+1, 0);
             break;
           case PT_BULGE:
-            std::fill(&(_logbulge[0]),
-                &(_logbulge[0])+maxloop+1, -inf);
-            read_1dim(&(_logbulge[0]), maxloop+1, 0);
+            std::fill(&(_bulge[0]),
+                      &(_bulge[0])+maxloop+1, zeroL);
+            read_1dim(&(_bulge[0]), maxloop+1, 0);
             break;
           case PT_INTERIOR:
-            std::fill(&(_loginternal[0]),
-                &(_loginternal[0])+maxloop+1, -inf);
-            read_1dim(&(_loginternal[0]), maxloop+1, 0);
+            std::fill(&(_internal[0]),
+                      &(_internal[0])+maxloop+1, zeroL);
+            read_1dim(&(_internal[0]), maxloop+1, 0);
             break;
           case PT_NINIO:
             read_ninio();
@@ -621,26 +624,26 @@ namespace iyak {
             read_misc();
             break;
           case PT_TRI:
-            std::fill(&(_triloop[0]), &(_triloop[0])+40, -inf);
+            std::fill(&(_triloop[0]), &(_triloop[0])+40, zeroL);
             read_string(&(_triloop[0]), _triloops);
             break;
           case PT_TETRA:
-            std::fill(&(_tetraloop[0]), &(_tetraloop[0])+40, -inf);           
+            std::fill(&(_tetraloop[0]), &(_tetraloop[0])+40, zeroL);           
             read_string(&(_tetraloop[0]), _tetraloops);
             break;
           case PT_HEXA:
-            std::fill(&(_hexaloop[0]), &(_hexaloop[0])+40, -inf);           
+            std::fill(&(_hexaloop[0]), &(_hexaloop[0])+40, zeroL);           
             read_string(&(_hexaloop[0]), _hexaloops);
             break;
         }
       }
     }
 
-    public:
+  public:
 
     /* getter */
-    double logmlintern(void) {return _logmlintern;}
-    double logmlclosing(void) {return _logmlclosing;}
+    double mlintern(void) {return _mlintern;}
+    double mlclosing(void) {return _mlclosing;}
     void use_default(int const type) {
 
       string s;
@@ -686,43 +689,47 @@ namespace iyak {
       int five=0 <= i - 1? s[i - 1]: -1;
       int three = j + 1 < (int)s.size()? s[j + 1]: -1;
 
-      double z=0.;
+      double z=oneL;
       if (0 <= i - 1 and j + 1 < (int)s.size()) {
-        z += ext?
-          _logmismatch_ext[type][five][three]:
-          _logmismatch_m[type][five][three];
-        if (is_au(type)) z += _logterm_au;
+        z = mulL(z, ext?
+                 _mismatch_ext[type][five][three]:
+                 _mismatch_m[type][five][three]);
+        if (is_au(type))
+          z = mulL(z, _term_au);
       } else {
-        if (0 <= i - 1) z += _logdangle5[type][five];
-        if (j + 1 < (int)s.size()) z += _logdangle3[type][three];
-        if (is_au(type)) z += _logterm_au;
+        if (0 <= i - 1)
+          z = mulL(z, _dangle5[type][five]);
+        if (j + 1 < (int)s.size())
+          z = mulL(z, _dangle3[type][three]);
+        if (is_au(type))
+          z = mulL(z, _term_au);
       }
       return z;
     }
 
-    double log_hairpin_energy(int i, int j, VI const& s) {
+    double hairpin_energy(int i, int j, VI const& s) {
 
       int d = j - i - 1;
-      if (d < 1) return -inf;
+      if (d < 1) return zeroL;
 
       int type = bp[s[i]][s[j]];
 
-      double z = d <= maxloop?
-        _loghairpin[d]:
-        _loghairpin[maxloop] - _lxc37*log(double(d)/maxloop)*10./kT;
+      double z = (d <= maxloop)?
+      _hairpin[d]:
+      divL(_hairpin[maxloop], expNL(_lxc37*log(double(d)*maxloop_div)*10.*kT_div));
 
       if (d < 3) {
       } else if (3 == d) {
         string const loop_ends(slice(s, i, j+1));
         size_t tel = _triloops.find(loop_ends);
         if (tel != npos) return _triloop[tel / 6];
-        else if (is_au(type)) z += _logterm_au;
+        else if (is_au(type)) z = mulL(z, _term_au);
       } else if (_tetra and 4 == d) {
         string const loop_ends(slice(s, i, j+1));
         size_t tel = _tetraloops.find(loop_ends);
         if (tel != npos) {
           if (7 != type) return _tetraloop[tel / 7];
-          else z += _tetraloop[tel / 7];
+          else z = mulL(z, _tetraloop[tel / 7]);
         }
       } else if (_tetra and 6 == d) {
         string const loop_ends(slice(s, i, j+1));
@@ -730,11 +737,11 @@ namespace iyak {
         if (tel != npos) return _hexaloop[tel / 9];
       }
       if (3 < d)
-        z += _logmismatch_h[type][s[i+1]][s[j-1]];
+        z = mulL(z, _mismatch_h[type][s[i+1]][s[j-1]]);
       return z;
     }
 
-    double log_loop_energy(int i, int j, int p, int q, VI& s) {
+    double loop_energy(int i, int j, int p, int q, VI& s) {
 
       int type = bp[s[i]][s[j]];
       int type2 = bp[s[q]][s[p]];
@@ -745,39 +752,43 @@ namespace iyak {
 
       double z;
       if (u1 < 0 or u2 < 0 or maxloop < u1 + u2) {
-        z = -inf;
+        z = zeroL;
       } else if (0 == u1 and 0 == u2) {
-        z = _logstack[type][type2];
+        z = _stack[type][type2];
       } else if (_no_closing_gu and (is_close_gu(type) or is_close_gu(type2))) {
-        z = -inf;
+        z = zeroL;
       } else if (0 == u1 or 0 == u2) { /* bulge */
-        z = _logbulge[u];
-        if (1 == u) z += _logstack[type][type2];
+        z = _bulge[u];
+        if (1 == u)
+          z = mulL(z, _stack[type][type2]);
         else {
-          if (is_au(type)) z += _logterm_au;
-          if (is_au(type2)) z += _logterm_au;
+          if (is_au(type))
+            z = mulL(z, _term_au);
+          if (is_au(type2))
+            z = mulL(z, _term_au);
         }
       } else if (u <= 2) { /* short internal */
 
-        if (2 == u1 + u2) z = _logint_11[type][type2][s[i + 1]][s[j - 1]];
+        if (2 == u1 + u2)
+          z = _int_11[type][type2][s[i + 1]][s[j - 1]];
         else if (1 == u1 and 2 == u2)
-          z = _logint_21[type][type2][s[i + 1]][s[q + 1]][s[j - 1]];
+          z = _int_21[type][type2][s[i + 1]][s[q + 1]][s[j - 1]];
         else if (2 == u1 and 1 == u2)
-          z = _logint_21[type2][type][s[q + 1]][s[i + 1]][s[p - 1]];
-        else z = _logint_22[type][type2][s[i + 1]][s[p - 1]][s[q + 1]][s[j - 1]];
+          z = _int_21[type2][type][s[q + 1]][s[i + 1]][s[p - 1]];
+        else z = _int_22[type][type2][s[i + 1]][s[p - 1]][s[q + 1]][s[j - 1]];
 
       } else { /* long internal */
 
-        z = _loginternal[u1 + u2] + _logninio[abs(u1 - u2)];
+        z = mulL(_internal[u1 + u2], _ninio[abs(u1 - u2)]);
         if (1 == u1 or 1 == u2)
-          z += _logmismatch_1ni[type][s[i + 1]][s[j - 1]]
-            +_logmismatch_1ni[type2][s[q + 1]][s[p - 1]];
+          z = mulL(z, _mismatch_1ni[type][s[i + 1]][s[j - 1]],
+                   _mismatch_1ni[type2][s[q + 1]][s[p - 1]]);
         else if (5 == u1 + u2)
-          z += _logmismatch_23i[type][s[i + 1]][s[j - 1]]
-            +_logmismatch_23i[type2][s[q + 1]][s[p - 1]];
+          z = mulL(z, _mismatch_23i[type][s[i + 1]][s[j - 1]],
+                   _mismatch_23i[type2][s[q + 1]][s[p - 1]]);
         else
-          z += _logmismatch_i[type][s[i + 1]][s[j - 1]]
-            +_logmismatch_i[type2][s[q + 1]][s[p - 1]];
+          z = mulL(z, _mismatch_i[type][s[i + 1]][s[j - 1]],
+                   _mismatch_i[type2][s[q + 1]][s[p - 1]]);
 
       }
       return z;

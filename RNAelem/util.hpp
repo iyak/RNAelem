@@ -35,6 +35,7 @@
 #include<unordered_map>
 #include<sys/types.h>
 #include<unistd.h>
+#include"const_options.hpp"
 
 namespace iyak {
 
@@ -177,33 +178,44 @@ namespace iyak {
   }
 
   /* calculation */
+  double constexpr zeroL = (debug&DBG_NO_LOGSUM)? 0: -inf;
+  double constexpr oneL = (debug&DBG_NO_LOGSUM)? 1: 0;
+
   double logsumexp(double x, double y=-inf) {
     return
     (-inf==y)? x:
     (-inf==x)? y:
     x < y?
-    y + log1p(exp(x - y)):
-    x + log1p(exp(y - x));
+    y + log1p(exp(x-y)):
+    x + log1p(exp(y-x));
   }
-
-  template<class...T> double logsumexp(double x, T const&...y) {
-    return logsumexp(x, logsumexp(y...));
-  }
-
-  template<class...T> void logaddexp(double& x, T const&...y) {
-    x = logsumexp(x, y...);
-  }
-
+  template<class...T>double logsumexp(double x, T const&...y){return logsumexp(x, logsumexp(y...));}
+  template<class...T>void logaddexp(double& x, T const&...y){x = logsumexp(x, y...);}
   template<class T> double logsumexp(std::vector<T> const& v) {
     double sum = -inf;
     for (auto const& e: v) {logaddexp(sum, logsumexp(e));}
     return sum;
   }
-
-  void lnormal (std::vector<double> &v) {
-    double sum = logsumexp(v);
-    for (auto &e: v) {e -= sum;}
+  double sumL(double x, double y=zeroL){return(debug&DBG_NO_LOGSUM)?x+y:logsumexp(x,y);}
+  template<class...T>double sumL(double x,T const&...y){return sumL(x, sumL(y...));}
+  template<class...T>void addL(double& x,T const&...y){x = sumL(x, y...);}
+  double divL(double x, double y){return (debug&DBG_NO_LOGSUM)? x/y: x-y;}
+  template<class T> double sumL(std::vector<T> const& v) {
+    double s = zeroL;
+    for (auto const& e: v) {addL(s, sumL(e));}
+    return s;
   }
+  void normalizeL (std::vector<double> &v) {
+    double s = sumL(v);
+    for (auto &e: v) {e = divL(e,s);}
+  }
+  double mulL(double x, double y=oneL){return (debug&DBG_NO_LOGSUM)? x*y: x+y;}
+  template<class...T>double mulL(double x,T const&...y){return mulL(x, mulL(y...));}
+
+  double expL(double x) {return (debug&DBG_NO_LOGSUM)? x: exp(x);}
+  double logL(double x) {return (debug&DBG_NO_LOGSUM)? x: log(x);}
+  double expNL(double x) {return (debug&DBG_NO_LOGSUM)? exp(x): x;}
+  double logNL(double x) {return (debug&DBG_NO_LOGSUM)? log(x): x;}
 
   int max_index(V const& v) {
     int s = 0;
@@ -231,6 +243,13 @@ namespace iyak {
     double n = 0;
     for (auto vi: v) n += norm2(vi);
     return n;
+  }
+
+  template<class F,class T>T apply(F f,T const& t){return f(t);}
+  template<class F,class T>vector<T> apply(F f,vector<T> const& t){
+    vector<T> tt {};
+    for(auto& x:t) tt.push_back(apply(f,x));
+    return tt;
   }
 
   /* string manipulation */

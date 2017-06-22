@@ -57,12 +57,12 @@ namespace iyak {
     VI _seq;
     VI _qual;
     string _rss;
-    V _ws;
+    V _wsL;
     V _convo_kernel {1};
     double _pseudo_cov;
 
-    double _lnZ;
-    double _lnZw;
+    double _ZL;
+    double _ZwL;
     double _sum_eff;
 
     double _lambda_init=0.;
@@ -101,14 +101,14 @@ namespace iyak {
     void calc_ws(VI const& q) {
       V& c = _convo_kernel;
 
-      _ws.assign(size(q)+1, log(_pseudo_cov));
+      _wsL.assign(size(q)+1, logL(_pseudo_cov));
       for (int i=0; i<size(q); ++i)
         for (int j=0; j<size(c); ++ j)
           if (0<=i+j-size(c)/2 and i+j-size(c)/2<size(q))
-            logaddexp(_ws[i], log(_convo_kernel[j]*q[i+j-size(c)/2]));
-      _ws.back() = -inf;
+            addL(_wsL[i], logL(_convo_kernel[j]*q[i+j-size(c)/2]));
+      _wsL.back() = zeroL;
 
-      lnormal(_ws);
+      normalizeL(_wsL);
     }
 
     void calc_emit_cnt(double& fn) {
@@ -117,21 +117,21 @@ namespace iyak {
       _motif->init_outside_tables();
 
       _motif->compute_inside(InsideFun(_motif));
-      _lnZ = _motif->part_func();
+      _ZL = _motif->part_func();
 
-      if (std::isfinite(_lnZ)) {
-        _motif->compute_outside(OutsideFun(_motif, _lnZ, _dEH, _dENn));
+      if (std::isfinite(_ZL)) {
+        _motif->compute_outside(OutsideFun(_motif, _ZL, _dEH, _dENn));
 
         _motif->init_inside_tables();
         _motif->init_outside_tables();
 
-        _motif->compute_inside(InsideFeatFun(_motif, _ws));
-        _lnZw = _motif->part_func();
+        _motif->compute_inside(InsideFeatFun(_motif, _wsL));
+        _ZwL = _motif->part_func();
 
-        if (std::isfinite(_lnZw)) {
-          _motif->compute_outside(OutsideFeatFun(_motif, _lnZw, _dEH, _dENn, _ws));
+        if (std::isfinite(_ZwL)) {
+          _motif->compute_outside(OutsideFeatFun(_motif, _ZwL, _dEH, _dENn, _wsL));
 
-          fn += _lnZ - _lnZw;
+          fn += logNL(divL(_ZL,_ZwL));
           for (int i=0; i<size(_dEN); ++i)
             for (int j=0; j<size(_dEN[i]); ++j)
               _dEN[i][j] += _dENn[i][j];
@@ -146,7 +146,7 @@ namespace iyak {
        */
 
       if (0 == _opt.fdfcount()) cry("skipped:", _id);
-      _lnZ = _lnZw = -inf;
+      _ZL = _ZwL = zeroL;
     }
 
     void set_boundary(RNAelem& motif) {
@@ -155,12 +155,12 @@ namespace iyak {
       VI type {};
 
       int s = 0;
-      for (auto const& wi: motif.mm.weight())
+      for (auto const& wi: motif.mm.weightL())
         s += size(wi);
 
-      lower.assign(s, -inf);
+      lower.assign(s, zeroL);
       upper.assign(s, inf);
-      type.assign(s, 0); // no bound
+      type.assign(s, 1); // lower bound
 
       lower.push_back(0);
       upper.push_back(inf);
@@ -171,16 +171,20 @@ namespace iyak {
 
     void update_gr(V& gr) {
       int k = 0;
-      for (auto const& ei: _dEN)
-        for (auto const eij: ei)
-          gr[k++] += eij;
+      for (int i=0; i<size(_dEN); ++i) {
+        for (int j=0; j<size(_dEN[i]); ++j) {
+          gr[k++] += (debug&DBG_NO_LOGSUM)?
+          _dEN[i][j] / _motif->mm.weightL()[i][j]:
+          _dEN[i][j];
+        }
+      }
       gr[k++] += _dEH;
     }
 
     void clear_emit_count(VV& e) {
-      e.resize(_motif->mm.weight().size(), V{});
-      for (int i=0; i<size(_motif->mm.weight()); ++i) {
-        e[i].resize(_motif->mm.weight()[i].size(), 0);
+      e.resize(_motif->mm.weightL().size(), V{});
+      for (int i=0; i<size(_motif->mm.weightL()); ++i) {
+        e[i].resize(_motif->mm.weightL()[i].size(), 0);
         for (auto& eij: e[i]) eij = 0;
       }
     }
@@ -307,12 +311,12 @@ namespace iyak {
     };
 
     class OutsideFun: virtual public DPalgo {
-      double const _lnZ;
+      double const _ZL;
       double& _dEH;
       VV& _dEN;
     public:
-      OutsideFun(RNAelem* m, double lnZ, double& dEH, VV& dEN):
-      DPalgo(m), _lnZ(lnZ), _dEH(dEH), _dEN(dEN) {}
+      OutsideFun(RNAelem* m, double ZL, double& dEH, VV& dEN):
+      DPalgo(m), _ZL(ZL), _dEH(dEH), _dEN(dEN) {}
       template<int e, int e1>
       void on_outside_transition(int const i, int const j,
                                  int const k, int const l,
@@ -322,17 +326,19 @@ namespace iyak {
                                  double const wt,
                                  double etc) const {
 
-        if (-inf == tsc) return;
-        double z = lnPpath<e,e1>(i,j,k,l,s,s1,s2,s3,
-                                 wt + lam*tsc + etc, _lnZ);
-        if (-inf == z) return;
-        _dEH += tsc * exp(z);
+        if (zeroL == tsc) return;
+        double z = PpathL<e,e1>(i,j,k,l,s,s1,s2,s3,
+                                mulL(wt, (debug&DBG_NO_LOGSUM)?
+                                     pow(tsc, lam): lam*tsc, etc),
+                                _ZL);
+        if (zeroL == z) return;
+        _dEH += logNL(tsc) * expL(z);
 
         switch (e1) {
           case EM::ST_P: {
             if (k==i-1 and j==l-1) {
               if (not model.no_prf())
-                mm.add_emit_count(_dEN, s.l, s1.r, k, j, +exp(z));
+                mm.add_emit_count(_dEN, s.l, s1.r, k, j, +expL(z));
             }
             break;
           }
@@ -342,7 +348,7 @@ namespace iyak {
           case EM::ST_L: {
             if (k==i and j==l-1) {
               if (not model.no_prf())
-                mm.add_emit_count(_dEN, s1.r, j, +exp(z));
+                mm.add_emit_count(_dEN, s1.r, j, +expL(z));
             }
             break;
           }
@@ -350,21 +356,21 @@ namespace iyak {
           case EM::ST_M: {
             if (k==i-1 and j==l) {
               if (not model.no_prf())
-                mm.add_emit_count(_dEN, s.l, k, +exp(z));
+                mm.add_emit_count(_dEN, s.l, k, +expL(z));
             }
             break;
           }
           default:{break;}
         }
         DPalgo::on_outside_transition<e,e1>(i, j, k, l,
-                                      s, s1, s2, s3, tsc, wt, etc);
+                                            s, s1, s2, s3, tsc, wt, etc);
       }
     };
 
     class InsideFeatFun: virtual public DPalgo {
-      V const& _ws;
+      V const& _wsL;
     public:
-      InsideFeatFun(RNAelem* m, V const& ws): DPalgo(m), _ws(ws) {}
+      InsideFeatFun(RNAelem* m, V const& ws): DPalgo(m), _wsL(ws) {}
       template<int e, int e1>
       void on_inside_transition(int const i, int const j,
                                 int const k, int const l,
@@ -374,14 +380,14 @@ namespace iyak {
                                 double const wt,
                                 double etc) const {
 
-        double extra = 0.;
-        if (0==s.r and L==j) extra += _ws[L];
+        double extra = oneL;
+        if (0==s.r and L==j) extra = mulL(extra, _wsL[L]);
 
         switch(e) {
           case EM::ST_P: {
             if (i==k-1 and l==j-1) {
-              if (0==s.l and 1==s1.l) extra += _ws[i];
-              if (0==s1.r and 1==s.l) extra += _ws[l];
+              if (0==s.l and 1==s1.l) extra = mulL(extra, _wsL[i]);
+              if (0==s1.r and 1==s.l) extra = mulL(extra, _wsL[l]);
             }
             break;
           }
@@ -390,14 +396,14 @@ namespace iyak {
           case EM::ST_2:
           case EM::ST_L: {
             if (i==k and l==j-1) {
-              if (0==s1.r and 1==s.r) extra += _ws[l];
+              if (0==s1.r and 1==s.r) extra = mulL(extra, _wsL[l]);
             }
             break;
           }
 
           case EM::ST_M: {
             if (i==k-1 and l==j) {
-              if (0==s.l and 1==s1.l) extra += _ws[i];
+              if (0==s.l and 1==s1.l) extra = mulL(extra, _wsL[i]);
             }
             break;
           }
@@ -405,18 +411,18 @@ namespace iyak {
         }
 
         DPalgo::on_inside_transition<e,e1>(i, j, k, l,
-                                     s, s1, s2, s3, tsc, wt, etc+extra);
+                                           s, s1, s2, s3, tsc, wt, mulL(etc,extra));
       }
     };
 
     class OutsideFeatFun: virtual public DPalgo {
-      double const _lnZw;
+      double const _ZwL;
       double& _dEH;
       VV& _dEN;
-      V const& _ws;
+      V const& _wsL;
     public:
-      OutsideFeatFun(RNAelem* m, double lnZw, double& dEH, VV& dEN, V const& ws):
-      DPalgo(m), _lnZw(lnZw), _dEH(dEH), _dEN(dEN), _ws(ws) {}
+      OutsideFeatFun(RNAelem* m, double ZwL, double& dEH, VV& dEN, V const& ws):
+      DPalgo(m), _ZwL(ZwL), _dEH(dEH), _dEN(dEN), _wsL(ws) {}
       template<int e, int e1>
       void on_outside_transition(int const i, int const j,
                                  int const k, int const l,
@@ -426,22 +432,26 @@ namespace iyak {
                                  double const wt,
                                  double etc) const {
 
-        if (-inf == tsc) return;
-        double z = lnPpath<e,e1>(i,j,k,l,s,s1,s2,s3,
-                                 wt + lam*tsc + etc, _lnZw);
-        if (-inf == z) return;
+        if (zeroL == tsc) return;
+        double z = PpathL<e,e1>(i,j,k,l,s,s1,s2,s3,
+                                mulL(wt,
+                                     (debug&DBG_NO_LOGSUM)?
+                                     pow(tsc, lam): lam*tsc,
+                                     etc),
+                                _ZwL);
+        if (zeroL == z) return;
 
-        double extra = 0.;
-        if (0==s1.r and L==j) extra += _ws[L];
+        double extra = oneL;
+        if (0==s1.r and L==j) extra = mulL(extra,_wsL[L]);
 
         switch(e1) {
           case EM::ST_P: {
             if (k==i-1 and j==l-1) {
-              if (0==s1.l and 1==s.l) extra += _ws[k];
-              if (0==s.r and 1==s1.r) extra += _ws[j];
-              if (0==s1.r and L==l) extra += _ws[L];
+              if (0==s1.l and 1==s.l) extra = mulL(extra,_wsL[k]);
+              if (0==s.r and 1==s1.r) extra = mulL(extra,_wsL[j]);
+              if (0==s1.r and L==l) extra = mulL(extra,_wsL[L]);
               if (not model.no_prf())
-                mm.add_emit_count(_dEN, s.l, s1.r, k, j, -exp(z+extra));
+                mm.add_emit_count(_dEN, s.l, s1.r, k, j, -expL(mulL(z,extra)));
             }
             break;
           }
@@ -450,28 +460,28 @@ namespace iyak {
           case EM::ST_2:
           case EM::ST_L: {
             if (i==k and j==l-1) {
-              if (0==s.r and 1==s1.r) extra += _ws[j];
-              if (0==s1.r and L==l) extra += _ws[L];
+              if (0==s.r and 1==s1.r) extra = mulL(extra,_wsL[j]);
+              if (0==s1.r and L==l) extra = mulL(extra,_wsL[L]);
               if (not model.no_prf())
-                mm.add_emit_count(_dEN, s1.r, j, -exp(z+extra));
+                mm.add_emit_count(_dEN, s1.r, j, -expL(mulL(z,extra)));
             }
             break;
           }
 
           case EM::ST_M: {
             if (k==i-1 and j==l) {
-              if (0==s1.l and 1==s.l) extra += _ws[k];
+              if (0==s1.l and 1==s.l) extra = mulL(extra,_wsL[k]);
               if (not model.no_prf())
-                mm.add_emit_count(_dEN, s.l, k, -exp(z+extra));
+                mm.add_emit_count(_dEN, s.l, k, -expL(mulL(z,extra)));
             }
             break;
           }
           default:{break;}
         }
-        _dEH -= tsc * exp(z+extra);
+        _dEH -= logNL(tsc) * expL(mulL(z,extra));
 
         DPalgo::on_outside_transition<e,e1>(i, j, k, l,
-                                      s, s1, s2, s3, tsc, wt, etc+extra);
+                                            s, s1, s2, s3, tsc, wt, mulL(etc,extra));
       }
     };
   };

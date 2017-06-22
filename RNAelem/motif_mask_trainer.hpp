@@ -42,12 +42,12 @@ namespace iyak {
     VI type {};
 
     int i = 0;
-    for (auto const& wi: motif.mm.weight()) {
+    for (auto const& wi: motif.mm.weightL()) {
       for (auto const wij: wi) {
         if (any(_vary_x, i)) {
-          lower.push_back(-inf);
+          lower.push_back(zeroL);
           upper.push_back(inf);
-          type.push_back(0); // no bound
+          type.push_back(0); // lower bound
         } else {
           lower.push_back(wij);
           upper.push_back(wij);

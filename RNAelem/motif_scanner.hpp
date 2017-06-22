@@ -37,29 +37,29 @@ namespace iyak {
     int Ye;
 
     VV lnPy;
-    V lnPys;
-    V lnPye;
-    V lnPyi;
-    double lnPyN;
+    V PysL;
+    V PyeL;
+    V PyiL;
+    double PyNL;
 
-    double lnZ;
-    double lnZe;
-    
-    V _ws;
+    double ZL;
+    double ZeL;
+
+    V _wsL;
     V _convo_kernel {1};
     double _pseudo_cov;
-    
+
     void calc_ws(VI const& q) {
       V& c = _convo_kernel;
 
-      _ws.assign(size(q)+1, log(_pseudo_cov));
+      _wsL.assign(size(q)+1, logL(_pseudo_cov));
       for (int i=0; i<size(q); ++i)
         for (int j=0; j<size(c); ++ j)
           if (0<=i+j-size(c)/2 and i+j-size(c)/2<size(q))
-            logaddexp(_ws[i], log(_convo_kernel[j]*q[i+j-size(c)/2]));
-      _ws.back() = -inf;
+            addL(_wsL[i], logL(_convo_kernel[j]*q[i+j-size(c)/2]));
+      _wsL.back() = zeroL;
 
-      lnormal(_ws);
+      normalizeL(_wsL);
     }
 
     void set_seq(VI& seq, string& rss) {
@@ -111,8 +111,8 @@ namespace iyak {
       _motif->init_outside_tables();
 
       _motif->compute_inside(InsideFun(_motif));
-      lnZ = _motif->part_func();
-      _motif->compute_outside(OutsideFun(_motif, lnZ, lnPys, lnPyi));
+      ZL = _motif->part_func();
+      _motif->compute_outside(OutsideFun(_motif, ZL, PysL, PyiL));
     }
 
     void calc_motif_end_position(int const s) {
@@ -120,27 +120,27 @@ namespace iyak {
       _motif->init_outside_tables();
 
       _motif->compute_inside(InsideEndFun(_motif, s));
-      lnZe = _motif->part_func();
-      _motif->compute_outside(OutsideEndFun(_motif, s, lnZe, lnPye));
+      ZeL = _motif->part_func();
+      _motif->compute_outside(OutsideEndFun(_motif, s, ZeL, PyeL));
     }
 
     void calc_motif_positions() {
       calc_motif_start_position();
-      Ys = max_index(lnPys);
-      lnPyN = _motif->inside_o(L, _motif->mm.n2s(0,0)) - lnZ;
+      Ys = max_index(PysL);
+      PyNL = divL(_motif->inside_o(L, _motif->mm.n2s(0,0)), ZL);
 
       calc_motif_end_position(Ys);
-      Ye = max_index(lnPye);
+      Ye = max_index(PyeL);
 
-      dat(_out, "start:", lnPys);
-      dat(_out, "end:", lnPye);
-      dat(_out, "inner:", lnPyi);
-      dat(_out, "w:", _ws);
+      dat(_out, "start:", apply(logNL, PysL));
+      dat(_out, "end:", apply(logNL, PyeL));
+      dat(_out, "inner:", apply(logNL, PyiL));
+      dat(_out, "w:", apply(logNL, _wsL));
       dat(_out, "motif region:", Ys, "-", Ye);
-      dat(_out, "exist prob:", exp(logsumexp(lnPys)));
+      dat(_out, "exist prob:", expL(sumL(PysL)));
 
-      double lsum = logsumexp(logsumexp(lnPys), lnPyN);
-      expect(double_eq(0., lsum), "log sum:", lsum);
+      double s = sumL(sumL(PysL), PyNL);
+      expect(double_eq(oneL, s), "log sum:", logNL(s));
     }
 
   public:
@@ -159,7 +159,7 @@ namespace iyak {
       _convo_kernel = convo_kernel;
       _pseudo_cov = pseudo_cov;
     }
-    
+
     void scan(RNAelem& model) {
 
       say("scan start:");
@@ -175,10 +175,10 @@ namespace iyak {
         set_seq(_seq, _rss);
         calc_ws(_qual);
 
-        lnPys.assign(L+1, -inf);
-        lnPye.assign(L+1, -inf);
-        lnPyi.assign(L+1, -inf);
-        lnPy.assign(L+1, V(L+1, -inf));
+        PysL.assign(L+1, zeroL);
+        PyeL.assign(L+1, zeroL);
+        PyiL.assign(L+1, zeroL);
+        lnPy.assign(L+1, V(L+1, zeroL));
 
         calc_motif_positions();
         calc_viterbi_alignment();
@@ -194,12 +194,12 @@ namespace iyak {
     };
 
     class OutsideFun: virtual public DPalgo {
-      double const _lnZ;
-      V& _lnPys;
-      V& _lnPyi;
+      double const _ZL;
+      V& _PysL;
+      V& _PyiL;
     public:
-      OutsideFun(RNAelem* m, double const lnZ, V& lnPys, V& lnPyi):
-      DPalgo(m), _lnZ(lnZ), _lnPys(lnPys), _lnPyi(lnPyi) {}
+      OutsideFun(RNAelem* m, double const ZL, V& PysL, V& PyiL):
+      DPalgo(m), _ZL(ZL), _PysL(PysL), _PyiL(PyiL) {}
       template<int e, int e1>
       void on_outside_transition(int const i, int const j,
                                  int const k, int const l,
@@ -209,22 +209,25 @@ namespace iyak {
                                  double const wt,
                                  double etc) const {
 
-        if (-inf == tsc) return;
-        double z = lnPpath<e,e1>(i,j,k,l,s,s1,s2,s3,
-                           (1-lam)*wt + lam*tsc + etc, _lnZ);
-        if (-inf == z) return;
+        if (zeroL == tsc) return;
+        double z = PpathL<e,e1>(i,j,k,l,s,s1,s2,s3,
+                                mulL(wt, (debug&DBG_NO_LOGSUM)?
+                                     pow(tsc, lam): lam*tsc,
+                                     etc),
+                                _ZL);
+        if (zeroL == z) return;
 
         DPalgo::on_outside_transition<e,e1>(i, j, k, l,
-                                      s, s1, s2, s3, tsc, wt, etc);
+                                            s, s1, s2, s3, tsc, wt, etc);
 
         switch(e1) {
           case EM::ST_P: {
             if (k==i-1 and j==l-1) {
-              if (0==s1.l and 1==s.l) logaddexp(_lnPys[k], z);
-              if (0==s.r and 1==s1.r) logaddexp(_lnPys[j], z);
+              if (0==s1.l and 1==s.l) addL(_PysL[k], z);
+              if (0==s.r and 1==s1.r) addL(_PysL[j], z);
 
-              if (0!=s.l and M-1!=s.l) logaddexp(_lnPyi[k], z);
-              if (0!=s1.r and M-1!=s1.r) logaddexp(_lnPyi[j], z);
+              if (0!=s.l and M-1!=s.l) addL(_PyiL[k], z);
+              if (0!=s1.r and M-1!=s1.r) addL(_PyiL[j], z);
             }
             break;
           }
@@ -233,18 +236,18 @@ namespace iyak {
           case EM::ST_2:
           case EM::ST_L: {
             if (i==k and j==l-1) {
-              if (0==s.r and 1==s1.r) logaddexp(_lnPys[j], z);
+              if (0==s.r and 1==s1.r) addL(_PysL[j], z);
 
-              if (0!=s1.r and M-1!=s1.r) logaddexp(_lnPyi[j], z);
+              if (0!=s1.r and M-1!=s1.r) addL(_PyiL[j], z);
             }
             break;
           }
 
           case EM::ST_M: {
             if (k==i-1 and j==l) {
-              if (0==s1.l and 1==s.l) logaddexp(_lnPys[k], z);
+              if (0==s1.l and 1==s.l) addL(_PysL[k], z);
 
-              if (0!=s.l and M-1!=s.l) logaddexp(_lnPyi[k], z);
+              if (0!=s.l and M-1!=s.l) addL(_PyiL[k], z);
             }
             break;
           }
@@ -269,8 +272,8 @@ namespace iyak {
         switch(e) {
           case EM::ST_P: {
             if (i==k-1 and l==j-1) {
-              if (i==_Ys) if (0!=s.l or 1!=s1.l) etc = -inf;
-              if (l==_Ys) if (0!=s1.r or 1!=s.r) etc = -inf;
+              if (i==_Ys) if (0!=s.l or 1!=s1.l) etc = zeroL;
+              if (l==_Ys) if (0!=s1.r or 1!=s.r) etc = zeroL;
             }
             break;
           }
@@ -279,14 +282,14 @@ namespace iyak {
           case EM::ST_2:
           case EM::ST_L: {
             if (i==k and l==j-1) {
-              if (l==_Ys) if (0!=s1.r or 1!=s.r) etc = -inf;
+              if (l==_Ys) if (0!=s1.r or 1!=s.r) etc = zeroL;
             }
             break;
           }
 
           case EM::ST_M: {
             if (i==k-1 and l==j) {
-              if (i==_Ys) if (0!=s.l or 1!=s1.l) etc = -inf;
+              if (i==_Ys) if (0!=s.l or 1!=s1.l) etc = zeroL;
             }
             break;
           }
@@ -294,17 +297,17 @@ namespace iyak {
         }
 
         DPalgo::on_inside_transition<e,e1>(i, j, k, l,
-                                     s, s1, s2, s3, tsc, wt, etc);
+                                           s, s1, s2, s3, tsc, wt, etc);
       }
     };
 
     class OutsideEndFun: virtual public DPalgo {
       int _Ys;
-      double const _lnZe;
-      V& _lnPye;
+      double const _ZeL;
+      V& _PyeL;
     public:
-      OutsideEndFun(RNAelem* m, int Ys, double const lnZe, V& lnPye):
-      DPalgo(m), _Ys(Ys), _lnZe(lnZe), _lnPye(lnPye) {}
+      OutsideEndFun(RNAelem* m, int Ys, double const ZeL, V& PyeL):
+      DPalgo(m), _Ys(Ys), _ZeL(ZeL), _PyeL(PyeL) {}
       template<int e, int e1>
       void on_outside_transition(int const i, int const j,
                                  int const k, int const l,
@@ -314,21 +317,24 @@ namespace iyak {
                                  double const wt,
                                  double etc) const {
 
-        if (-inf == tsc) return;
-        double z = lnPpath<e,e1>(i,j,k,l,s,s1,s2,s3,
-                           (1-lam)*wt + lam*tsc + etc, _lnZe);
-        if (-inf == z) return;
+        if (zeroL == tsc) return;
+        double z = PpathL<e,e1>(i,j,k,l,s,s1,s2,s3,
+                                mulL(wt, (debug&DBG_NO_LOGSUM)?
+                                     pow(tsc, lam): lam*tsc,
+                                     etc),
+                                _ZeL);
+        if (zeroL == z) return;
 
-        double extra = 0.;
+        double extra = oneL;
         switch(e1) {
           case EM::ST_P: {
             if (k==i-1 and j==l-1) {
-              if (_Ys==k) if (0!=s1.l or 1!=s.l) extra = -inf;
-              if (_Ys==j) if (0!=s.r or 1!=s1.r) extra = -inf;
+              if (_Ys==k) if (0!=s1.l or 1!=s.l) extra = zeroL;
+              if (_Ys==j) if (0!=s.r or 1!=s1.r) extra = zeroL;
 
-              if (M-2==s1.l and M-1==s.l) logaddexp(_lnPye[k], z+extra);
-              if (M-2==s.r and M-1==s1.r) logaddexp(_lnPye[j], z+extra);
-              if (M-2==s1.r and L==l) logaddexp(_lnPye[L], z+extra);
+              if (M-2==s1.l and M-1==s.l) addL(_PyeL[k], mulL(z, extra));
+              if (M-2==s.r and M-1==s1.r) addL(_PyeL[j], mulL(z, extra));
+              if (M-2==s1.r and L==l) addL(_PyeL[L], mulL(z, extra));
             }
             break;
           }
@@ -337,25 +343,25 @@ namespace iyak {
           case EM::ST_2:
           case EM::ST_L: {
             if (i==k and j==l-1) {
-              if (_Ys==j) if (0!=s.r or 1!=s1.r) extra = -inf;
+              if (_Ys==j) if (0!=s.r or 1!=s1.r) extra = zeroL;
 
-              if (M-2==s.r and M-1==s1.r) logaddexp(_lnPye[j], z+extra);
-              if (M-2==s1.r and L==l) logaddexp(_lnPye[L], z+extra);
+              if (M-2==s.r and M-1==s1.r) addL(_PyeL[j], mulL(z, extra));
+              if (M-2==s1.r and L==l) addL(_PyeL[L], mulL(z, extra));
             }
             break;
           }
 
           case EM::ST_M: {
             if (k==i-1 and j==l) {
-              if (_Ys==k) if (0!=s1.l or 1!=s.l) extra = -inf;
-              if (M-2==s1.l and M-1==s.l) logaddexp(_lnPye[k], z+extra);
+              if (_Ys==k) if (0!=s1.l or 1!=s.l) extra = zeroL;
+              if (M-2==s1.l and M-1==s.l) addL(_PyeL[k], mulL(z, extra));
             }
             break;
           }
           default:{break;}
         }
         DPalgo::on_outside_transition<e,e1>(i, j, k, l,
-                                      s, s1, s2, s3, tsc, wt, etc+extra);
+                                            s, s1, s2, s3, tsc, wt, mulL(etc, extra));
       }
     };
 
@@ -376,12 +382,12 @@ namespace iyak {
         switch (e) {
           case EM::ST_P: {
             if (i==k-1 and l==j-1) {
-              if (i==_ys and !(0==s.l and 1==s1.l)) etc += -inf;
-              if (l==_ys and !(0==s1.r and 1==s.r)) etc += -inf;
+              if (i==_ys and !(0==s.l and 1==s1.l)) etc = mulL(etc, 0);
+              if (l==_ys and !(0==s1.r and 1==s.r)) etc = mulL(etc, 0);
 
-              if (i==_ye and !(M-2==s.l and M-1==s1.l)) etc += -inf;
-              if (l==_ye and !(M-2==s1.r and M-1==s.r)) etc += -inf;
-              if ((j==_ye and L==j) and M-2!=s.r) etc += -inf;
+              if (i==_ye and !(M-2==s.l and M-1==s1.l)) etc = mulL(etc, 0);
+              if (l==_ye and !(M-2==s1.r and M-1==s.r)) etc = mulL(etc, 0);
+              if ((j==_ye and L==j) and M-2!=s.r) etc = mulL(etc, 0);
             }
             break;
           }
@@ -390,17 +396,17 @@ namespace iyak {
           case EM::ST_2:
           case EM::ST_L: {
             if (i==k and l==j-1) {
-              if (l==_ys and !(0==s1.r and 1==s.r)) etc += -inf;
-              if (l==_ye and !(M-2==s1.r and M-1==s.r)) etc += -inf;
-              if ((j==_ye and L==j) and M-2!=s.r) etc += -inf;
+              if (l==_ys and !(0==s1.r and 1==s.r)) etc = mulL(etc, 0);
+              if (l==_ye and !(M-2==s1.r and M-1==s.r)) etc = mulL(etc, 0);
+              if ((j==_ye and L==j) and M-2!=s.r) etc = mulL(etc, 0);
             }
             break;
           }
 
           case EM::ST_M: {
             if (i==k-1 and l==j) {
-              if (i==_ys and !(0==s.l and 1==s1.l)) etc += -inf;
-              if (i==_ye and !(M-2==s.l and M-1==s1.l)) etc += -inf;
+              if (i==_ys and !(0==s.l and 1==s1.l)) etc = mulL(etc, 0);
+              if (i==_ye and !(M-2==s.l and M-1==s1.l)) etc = mulL(etc, 0);
             }
             break;
           }
@@ -408,7 +414,7 @@ namespace iyak {
         }
 
         DPalgo::on_cyk_transition<e,e1>(i, j, k, l,
-                                      s, s1, s2, s3, tsc, wt, etc);
+                                        s, s1, s2, s3, tsc, wt, etc);
       }
     };
   };

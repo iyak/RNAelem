@@ -27,12 +27,12 @@ namespace iyak {
 
   class ProfileHMM {
 
-    public:
+  public:
 
     using VIS = vector<IS>;
     using VVIS = vector<VIS>;
 
-    private:
+  private:
 
     VI* _seq;
     int M;
@@ -43,9 +43,9 @@ namespace iyak {
     VVI _edge_to;
     VVI _edge_from;
     VI _weight_id;
-    VV _weight;
-    VVI _reachable;
-    VVI _reachable_as_loop;
+    VV _weightL;
+    VVB _reachable;
+    VVB _reachable_as_loop;
     VIS _state;
     VVIS _nodes_to_state;
     VIS _loop_state;
@@ -53,7 +53,7 @@ namespace iyak {
     VVIS _loop_left_trans;
     VVIS _pair_trans;
 
-    public:
+  public:
 
     /* getter */
     string const& pattern() {return _pattern;}
@@ -65,7 +65,7 @@ namespace iyak {
     int weight_id(int i) {return _weight_id[i];}
 
     int node(int i) {return _node[i];}
-    int reachable(int s, int s1) {return _reachable[s][s1];}
+    bool reachable(int s, int s1) {return _reachable[s][s1];}
 
     IS n2s(int h, int h1) {
 
@@ -81,17 +81,17 @@ namespace iyak {
     }
 
     size_t size() {return _node.size();}
-    VV& weight() {return _weight;}
+    VV& weightL() {return _weightL;}
 
-    double weight(int const h, int const h1, int const i, int const j) {
+    double weightL(int const h, int const h1, int const i, int const j) {
       char const cl = _node[h];
       char const cr = _node[h1];
 
       if (')'==cr) {
         if (debug&DBG_PROOF)
           check(h==_pair[h1], h, _pair[h1]);
-        return (debug&DBG_NO_WEIGHT? 0:
-                _weight[_weight_id[h1]][bp[(*_seq)[i]][(*_seq)[j]]]);
+        return (debug&DBG_NO_WEIGHT? oneL:
+                _weightL[_weight_id[h1]][bp[(*_seq)[i]][(*_seq)[j]]]);
       }
 
       if (debug&DBG_PROOF)
@@ -104,13 +104,13 @@ namespace iyak {
 
               "weight", cl, cr);
 
-      return debug&DBG_NO_WEIGHT? 0:
-        _weight[_weight_id[h]][(*_seq)[i]] +
-        _weight[_weight_id[h1]][(*_seq)[j]];
+      return debug&DBG_NO_WEIGHT? oneL:
+      _weightL[_weight_id[h]][(*_seq)[i]] +
+      _weightL[_weight_id[h1]][(*_seq)[j]];
     }
 
-    double weight(int const h, int const j) {
-      return debug&DBG_NO_WEIGHT? 0: _weight[_weight_id[h]][(*_seq)[j]];
+    double weightL(int const h, int const j) {
+      return debug&DBG_NO_WEIGHT? oneL: _weightL[_weight_id[h]][(*_seq)[j]];
     }
 
     /* setter */
@@ -235,17 +235,17 @@ namespace iyak {
     void set_weight() {
 
       _weight_id.assign(_node.size(), -1);
-      _weight.assign(1, V(nchar, debug&DBG_NO_WEIGHT? 0.: -log(nchar)));
+      _weightL.assign(1, V(nchar, debug&DBG_NO_WEIGHT? oneL: logL(1./nchar)));
 
       for (int h=0; h < (int)_node.size(); ++h) {
         switch (_node[h]) {
           case ')':
-            _weight_id[h] = (int)_weight.size();
-            _weight.push_back(V(nchar2, debug&DBG_NO_WEIGHT? 0.: -log(nchar2)));
+            _weight_id[h] = (int)_weightL.size();
+            _weightL.push_back(V(nchar2, debug&DBG_NO_WEIGHT? oneL: logL(1./nchar2)));
             break;
           case '.':
-            _weight_id[h] = (int)_weight.size();
-            _weight.push_back(V(nchar, debug&DBG_NO_WEIGHT? 0.: -log(nchar)));
+            _weight_id[h] = (int)_weightL.size();
+            _weightL.push_back(V(nchar, debug&DBG_NO_WEIGHT? oneL: logL(1./nchar)));
             break;
           case '*':
           case 'z':
@@ -267,8 +267,8 @@ namespace iyak {
     /* define reachable nodes, which will form IS.*/
     void set_reachable() {
 
-      _reachable.assign(M, VI(M, 0));
-      _reachable_as_loop.assign(M, VI(M, 0));
+      _reachable.assign(M, VB(M, 0));
+      _reachable_as_loop.assign(M, VB(M, 0));
 
       for (int h = 0; h < M; ++h) {
         int c = _node[h];
@@ -306,7 +306,7 @@ namespace iyak {
     }
 
     /* Warshall's algorithm to fill the adjacency matrix */
-    void compute_transitive_closure(VVI& mat) {
+    void compute_transitive_closure(VVB& mat) {
       int n = (int)mat.size();
       for (int k = 0; k < n; ++k) {
         for (int i = 0; i < n; ++i) {

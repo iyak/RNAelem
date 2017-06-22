@@ -65,46 +65,46 @@ namespace iyak {
     /* getter */
     double& inside(int const i,int const j,int const e,IS const& s) {
       return (debug&DBG_PROOF)?
-        _inside.at(i).at(j-i).at(e).at(s.id):
-        _inside[i][j-i][e][s.id];
+      _inside.at(i).at(j-i).at(e).at(s.id):
+      _inside[i][j-i][e][s.id];
     }
     double& inside_o(int const j,IS const& s) {
       return (debug&DBG_PROOF)?
-        _inside_o.at(j).at(s.id):
-        _inside_o[j][s.id];
+      _inside_o.at(j).at(s.id):
+      _inside_o[j][s.id];
     }
 
     double& outside(int const i,int const j,int const e,IS const& s) {
       return (debug&DBG_PROOF)?
-        _outside.at(i).at(j-i).at(e).at(s.id):
-        _outside[i][j-i][e][s.id];
+      _outside.at(i).at(j-i).at(e).at(s.id):
+      _outside[i][j-i][e][s.id];
     }
     double& outside_o(int const j,IS const& s) {
       return (debug&DBG_PROOF)?
-        _outside_o.at(j).at(s.id):
-        _outside_o[j][s.id];
+      _outside_o.at(j).at(s.id):
+      _outside_o[j][s.id];
     }
 
     double& cyk(int const i,int const j,int const e,IS const& s) {
       return (debug&DBG_PROOF)?
-        _cyk.at(i).at(j-i).at(e).at(s.id):
-        _cyk[i][j-i][e][s.id];
+      _cyk.at(i).at(j-i).at(e).at(s.id):
+      _cyk[i][j-i][e][s.id];
     }
     double& cyk_o(int const j,IS const& s) {
       return (debug&DBG_PROOF)?
-        _cyk_o.at(j).at(s.id):
-        _cyk_o[j][s.id];
+      _cyk_o.at(j).at(s.id):
+      _cyk_o[j][s.id];
     }
 
     Trace& trace(int const i,int const j,int const e,IS const& s) {
       return (debug&DBG_PROOF)?
-        _trace_back.at(i).at(j-i).at(e).at(s.id):
-        _trace_back[i][j-i][e][s.id];
+      _trace_back.at(i).at(j-i).at(e).at(s.id):
+      _trace_back[i][j-i][e][s.id];
     }
     Trace& trace_o(int const j,IS const& s) {
       return (debug&DBG_PROOF)?
-        _trace_back_o.at(j).at(s.id):
-        _trace_back_o[j][s.id];
+      _trace_back_o.at(j).at(s.id):
+      _trace_back_o[j][s.id];
     }
 
     EM em;
@@ -163,6 +163,7 @@ namespace iyak {
     double& rho_lambda() {return _rho_lambda;}
     double& tau() {return _tau;}
     double& ltau() {return _log_tau;}
+    double& tauL() {return (debug&DBG_NO_LOGSUM)? _tau: _log_tau;}
     double& lambda() {return _lambda;}
     double& lambda_prior() {return _lambda_prior;}
     double& theta_prior() {return _theta_prior;}
@@ -180,14 +181,14 @@ namespace iyak {
 
     void pack_params(V& to) {
       to.clear();
-      for (auto& wi: mm.weight())
+      for (auto& wi: mm.weightL())
         to.insert(to.end(), wi.begin(), wi.end());
       to.push_back(_lambda);
     }
 
     void unpack_params(V const& from) {
       int i = 0;
-      for (auto& wi: mm.weight())
+      for (auto& wi: mm.weightL())
         for (auto& wij: wi)
           wij = from[i++];
       _lambda = from[i++];
@@ -208,7 +209,6 @@ namespace iyak {
         else {
           if (_no_prf) *xi = 0;
           else {
-            *xi -= _theta_prior;
             double y = *xi - _theta_prior;
             fn += y*y * _rho_theta / 2.;
           }
@@ -238,9 +238,9 @@ namespace iyak {
     }
 
     double part_func() {
-      return logsumexp(inside_o(L, mm.n2s(0,0)),
-                       inside_o(L, mm.n2s(0,M-2)),
-                       inside_o(L, mm.n2s(0,M-1)));
+      return sumL(inside_o(L, mm.n2s(0,0)),
+                  inside_o(L, mm.n2s(0,M-2)),
+                  inside_o(L, mm.n2s(0,M-1)));
     }
 
     double part_func_outside() { /* for debug */
@@ -253,11 +253,11 @@ namespace iyak {
         for (int i=1; i<=L; ++i) {
           for (auto const& s: mm.state()) {
             for (auto const& s1: mm.loop_right_trans(s.id)) {
-              double w = mm.weight(s.r, i-1);
+              double w = mm.weightL(s.r, i-1);
               double t = (s.r == s1.r and
-                          '.' == mm.node(s.r))? ltau(): 0.;
+                          '.' == mm.node(s.r))? tauL(): oneL;
               f.template on_inside_transition<EM::ST_O,EM::ST_O>
-              (0, i, 0, i-1, s, s1, _s, _s, 0., w+t, 0.);
+              (0, i, 0, i-1, s, s1, _s, _s, oneL, mulL(w,t), oneL);
             }
           }
         }
@@ -273,51 +273,51 @@ namespace iyak {
         for (int i=L; 1<=i; --i) {
           for (auto const& s: mm.state()) {
             for (auto const& s1: mm.loop_right_trans(s.id)) {
-              double w = mm.weight(s.r, i-1);
+              double w = mm.weightL(s.r, i-1);
               double t = (s.r == s1.r and
-                          '.' == mm.node(s.r))? ltau(): 0.;
+                          '.' == mm.node(s.r))? tauL(): oneL;
               f.template on_outside_transition<EM::ST_O,EM::ST_O>
-              (0, i-1, 0, i, s1, s, _s, _s, 0., w+t, 0.);
+              (0, i-1, 0, i, s1, s, _s, _s, oneL, mulL(w,t), oneL);
             }
           }
         }
       } else {
         em.compute_outside(OutsideFun<F>(f));
       }
-      double const in_lnZ = part_func();
-      double const out_lnZ = part_func_outside();
-      expect(double_eq(in_lnZ, out_lnZ),
-             "forward / backward mismatch:", in_lnZ, out_lnZ);
+      double const in_ZL = part_func();
+      double const out_ZL = part_func_outside();
+      expect(double_eq(in_ZL, out_ZL),
+             "forward / backward mismatch:", in_ZL, out_ZL);
     }
 
     void init_inside_tables() {
-      _inside.assign(L+1, VVV(W+1, VV(E-1, V(S, -inf))));
+      _inside.assign(L+1, VVV(W+1, VV(E-1, V(S, zeroL))));
       for (int i=0; i<L+1; ++i) {
         for (int k=0; k < M; ++k) {
-          inside(i, i, EM::ST_L, mm.n2s(k,k)) = 0.;
+          inside(i, i, EM::ST_L, mm.n2s(k,k)) = oneL;
         }
       }
-      _inside_o.assign(L+1, V(S, -inf));
-      inside_o(0, mm.n2s(0,0)) = 0.;
+      _inside_o.assign(L+1, V(S, zeroL));
+      inside_o(0, mm.n2s(0,0)) = oneL;
     }
 
     void init_outside_tables() {
-      _outside.assign(L+1, VVV(W+1, VV(E-1, V(S, -inf))));
-      _outside_o.assign(L+1, V(S, -inf));
-      outside_o(L, mm.n2s(0,0)) = 0.;
-      outside_o(L, mm.n2s(0,M-1)) = 0.;
-      outside_o(L, mm.n2s(0,M-2)) = 0.;
+      _outside.assign(L+1, VVV(W+1, VV(E-1, V(S, zeroL))));
+      _outside_o.assign(L+1, V(S, zeroL));
+      outside_o(L, mm.n2s(0,0)) = oneL;
+      outside_o(L, mm.n2s(0,M-1)) = oneL;
+      outside_o(L, mm.n2s(0,M-2)) = oneL;
     }
 
     void init_cyk_tables(void) {
-      _cyk.assign(L+1, VVV(W+1, VV(E-1, V(S, -inf))));
+      _cyk.assign(L+1, VVV(W+1, VV(E-1, V(S, zeroL))));
       for (int i = 0; i < L+1; ++i) {
         for (int k = 0; k < M; ++k) {
-          cyk(i, i, EM::ST_L, mm.n2s(k,k)) = 0.;
+          cyk(i, i, EM::ST_L, mm.n2s(k,k)) = oneL;
         }
       }
-      _cyk_o.assign(L+1, V(S, -inf));
-      cyk_o(0, mm.n2s(0,0)) = 0.;
+      _cyk_o.assign(L+1, V(S, zeroL));
+      cyk_o(0, mm.n2s(0,0)) = oneL;
     }
 
     void init_trace_back_tables(void) {
@@ -428,11 +428,11 @@ namespace iyak {
         for (int i=j-1; i0<=i; --i) {
           for (auto const& s: _f.mm.loop_state()) {
             for (auto const& s1: _f.mm.loop_right_trans(s.id)) {
-              double w = _f.model.no_prf()? 0.: _f.mm.weight(s.r, j-1);
+              double w = _f.model.no_prf()? oneL: _f.mm.weightL(s.r, j-1);
               double t = (s.r == s1.r and
-                          '.' == _f.mm.node(s.r))? _f.model.ltau(): 0.;
+                          '.' == _f.mm.node(s.r))? _f.model.tauL(): oneL;
               _f.template on_inside_transition<EM::ST_L,EM::ST_L>
-              (i, j, i, j-1, s, s1, _s, _s, 0., w+t, 0.);
+              (i, j, i, j-1, s, s1, _s, _s, oneL, mulL(w,t), oneL);
             }
           }
         }
@@ -447,18 +447,18 @@ namespace iyak {
           case EM::TT_E_H: {
             for (auto const& s: _f.mm.loop_state())
               _f.template on_inside_transition<EM::ST_E,EM::ST_L>
-              (i, j, k, l, s, s, _s, _s, tsc, 0., 0.);
+              (i, j, k, l, s, s, _s, _s, tsc, oneL, oneL);
             break;
           }
 
           case EM::TT_P_E: {
             for (auto const& s: _f.mm.state()) {
               for (auto const& s1: _f.mm.pair_trans(s.id)) {
-                double w = _f.model.no_prf()? 0.: _f.mm.weight(s1.l, s.r, i, j-1);
+                double w = _f.model.no_prf()? oneL: _f.mm.weightL(s1.l, s.r, i, j-1);
                 double t = (s.r == s1.r and
-                            ')' == _f.mm.node(s1.r))? _f.model.ltau(): 0.;
+                            ')' == _f.mm.node(s1.r))? _f.model.tauL(): oneL;
                 _f.template on_inside_transition<EM::ST_P,EM::ST_E>
-                (i, j, k, l, s, s1, _s, _s, tsc, w+t, 0.);
+                (i, j, k, l, s, s1, _s, _s, tsc, mulL(w,t), oneL);
               }
             }
             break;
@@ -467,11 +467,11 @@ namespace iyak {
           case EM::TT_P_P: {
             for (auto const& s: _f.mm.state()) {
               for (auto const& s1: _f.mm.pair_trans(s.id)) {
-                double w = _f.model.no_prf()? 0.: _f.mm.weight(s1.l, s.r, i, l);
+                double w = _f.model.no_prf()? oneL: _f.mm.weightL(s1.l, s.r, i, l);
                 double t = (s.r == s1.r and
-                            ')' == _f.mm.node(s1.r))? _f.model.ltau(): 0.;
+                            ')' == _f.mm.node(s1.r))? _f.model.tauL(): oneL;
                 _f.template on_inside_transition<EM::ST_P,EM::ST_P>
-                (i, j, k, l, s, s1, _s, _s, tsc, w+t, 0.);
+                (i, j, k, l, s, s1, _s, _s, tsc, mulL(w,t), oneL);
               }
             }
             break;
@@ -480,11 +480,11 @@ namespace iyak {
           case EM::TT_O_O: {
             for (auto const& s: _f.mm.state()) {
               for (auto const& s1: _f.mm.loop_right_trans(s.id)) {
-                double w = _f.model.no_prf()? 0.: _f.mm.weight(s.r, l);
+                double w = _f.model.no_prf()? oneL: _f.mm.weightL(s.r, l);
                 double t = (s.r == s1.r and
-                            '.' == _f.mm.node(s.r))? _f.model.ltau(): 0.;
+                            '.' == _f.mm.node(s.r))? _f.model.tauL(): oneL;
                 _f.template on_inside_transition<EM::ST_O,EM::ST_O>
-                (i, j, k, l, s, s1, _s, _s, tsc, w+t, 0.);
+                (i, j, k, l, s, s1, _s, _s, tsc, mulL(w,t), oneL);
               }
             }
             break;
@@ -497,7 +497,7 @@ namespace iyak {
                   IS const& s1 = _f.mm.n2s(h, s.r);
                   IS const& s2 = _f.mm.n2s(s.l, h);
                   _f.template on_inside_transition<EM::ST_O,EM::ST_P>
-                  (i, j, l, j, s, s1, s2, _s, tsc, 0., 0.);
+                  (i, j, l, j, s, s1, s2, _s, tsc, oneL, oneL);
                 }
               }
             }
@@ -511,7 +511,7 @@ namespace iyak {
                 IS const& s = _f.mm.n2s(s2.l, s3.r);
                 IS const& s1 = _f.mm.n2s(s2.r, s3.l);
                 _f.template on_inside_transition<EM::ST_E,EM::ST_P>
-                (i, j, k, l, s, s1, s2, s3, tsc, 0., 0.);
+                (i, j, k, l, s, s1, s2, s3, tsc, oneL, oneL);
               }
             }
             break;
@@ -520,7 +520,7 @@ namespace iyak {
           case EM::TT_E_M: {
             for (auto const& s: _f.mm.state()) {
               _f.template on_inside_transition<EM::ST_E,EM::ST_M>
-              (i, j, k, l, s, s, _s, _s, tsc, 0., 0.);
+              (i, j, k, l, s, s, _s, _s, tsc, oneL, oneL);
             }
             break;
           }
@@ -528,11 +528,11 @@ namespace iyak {
           case EM::TT_M_M: {
             for (auto const& s: _f.mm.state()) {
               for (auto const& s1: _f.mm.loop_left_trans(s.id)) {
-                double w = _f.model.no_prf()? 0.: _f.mm.weight(s1.l, i);
+                double w = _f.model.no_prf()? oneL: _f.mm.weightL(s1.l, i);
                 double t = (s.l == s1.l and
-                            '.' == _f.mm.node(s.l))? _f.model.ltau(): 0.;
+                            '.' == _f.mm.node(s.l))? _f.model.tauL(): oneL;
                 _f.template on_inside_transition<EM::ST_M,EM::ST_M>
-                (i, j, k, l, s, s1, _s, _s, tsc, w+t, 0.);
+                (i, j, k, l, s, s1, _s, _s, tsc, mulL(w,t), oneL);
               }
             }
             break;
@@ -541,7 +541,7 @@ namespace iyak {
           case EM::TT_M_B: {
             for (auto const& s: _f.mm.state()) {
               _f.template on_inside_transition<EM::ST_M,EM::ST_B>
-              (i, j, k, l, s, s, _s, _s, tsc, 0., 0.);
+              (i, j, k, l, s, s, _s, _s, tsc, oneL, oneL);
             }
             break;
           }
@@ -554,7 +554,7 @@ namespace iyak {
                 IS const& s1 = _f.mm.n2s(s.l, h);
                 IS const& s2 = _f.mm.n2s(h, s.r);
                 _f.template on_inside_transition<EM::ST_B,EM::ST_1>
-                (i, j, k, l, s, s1, s2, _s, tsc, 0., 0.);
+                (i, j, k, l, s, s1, s2, _s, tsc, oneL, oneL);
               }
             }
             break;
@@ -563,11 +563,11 @@ namespace iyak {
           case EM::TT_2_2: {
             for (auto const& s: _f.mm.state()) {
               for (auto const& s1: _f.mm.loop_right_trans(s.id)) {
-                double w = _f.model.no_prf()? 0.: _f.mm.weight(s.r, l);
+                double w = _f.model.no_prf()? oneL: _f.mm.weightL(s.r, l);
                 double t = (s.r == s1.r and
-                            '.' == _f.mm.node(s.r))? _f.model.ltau(): 0.;
+                            '.' == _f.mm.node(s.r))? _f.model.tauL(): oneL;
                 _f.template on_inside_transition<EM::ST_2,EM::ST_2>
-                (i, j, k, l, s, s1, _s, _s, tsc, w+t, 0.);
+                (i, j, k, l, s, s1, _s, _s, tsc, mulL(w,t), oneL);
               }
             }
             break;
@@ -576,21 +576,21 @@ namespace iyak {
           case EM::TT_2_P: {
             for (auto const& s: _f.mm.state())
               _f.template on_inside_transition<EM::ST_2,EM::ST_P>
-              (i, j, k, l, s, s, _s, _s, tsc, 0., 0.);
+              (i, j, k, l, s, s, _s, _s, tsc, oneL, oneL);
             break;
           }
 
           case EM::TT_1_2: {
             for (auto const& s: _f.mm.state())
               _f.template on_inside_transition<EM::ST_1,EM::ST_2>
-              (i, j, k, l, s, s, _s, _s, tsc, 0., 0.);
+              (i, j, k, l, s, s, _s, _s, tsc, oneL, oneL);
             break;
           }
 
           case EM::TT_1_B: {
             for (auto const& s: _f.mm.state())
               _f.template on_inside_transition<EM::ST_1,EM::ST_B>
-              (i, j, k, l, s, s, _s, _s, tsc, 0., 0.);
+              (i, j, k, l, s, s, _s, _s, tsc, oneL, oneL);
             break;
           }
         }
@@ -612,11 +612,11 @@ namespace iyak {
         for (int i=j0; i<=j; ++i) {
           for (auto const& s1: _f.mm.loop_state()) {
             for (auto const& s: _f.mm.loop_right_trans(s1.id)) {
-              double w = _f.model.no_prf()? 0.: _f.mm.weight(s1.r, j);
+              double w = _f.model.no_prf()? oneL: _f.mm.weightL(s1.r, j);
               double t = (s.r == s1.r and
-                          '.' == _f.mm.node(s1.r))? _f.model.ltau(): 0.;
+                          '.' == _f.mm.node(s1.r))? _f.model.tauL(): oneL;
               _f.template on_outside_transition<EM::ST_L,EM::ST_L>
-              (i, j, i, j+1, s, s1, _s, _s, 0, w+t, 0.);
+              (i, j, i, j+1, s, s1, _s, _s, oneL, mulL(w,t), oneL);
             }
           }
         }
@@ -628,7 +628,7 @@ namespace iyak {
           case EM::TT_E_H: {
             for (auto const& s: _f.mm.loop_state()) {
               _f.template on_outside_transition<EM::ST_L,EM::ST_E>
-              (i, j, k, l, s, s, _s, _s, tsc, 0., 0.);
+              (i, j, k, l, s, s, _s, _s, tsc, oneL, oneL);
             }
             break;
           }
@@ -636,11 +636,11 @@ namespace iyak {
           case EM::TT_P_E: {
             for (auto const& s1: _f.mm.state()) {
               for (auto const& s: _f.mm.pair_trans(s1.id)) {
-                double w = _f.model.no_prf()? 0.: _f.mm.weight(s.l, s1.r, k, j);
+                double w = _f.model.no_prf()? oneL: _f.mm.weightL(s.l, s1.r, k, j);
                 double t = (s.r == s1.r and
-                            ')' == _f.mm.node(s1.r))? _f.model.ltau(): 0.;
+                            ')' == _f.mm.node(s1.r))? _f.model.tauL(): oneL;
                 _f.template on_outside_transition<EM::ST_E,EM::ST_P>
-                (i, j, k, l, s, s1, _s, _s, tsc, w+t, 0.);
+                (i, j, k, l, s, s1, _s, _s, tsc, mulL(w,t), oneL);
               }
             }
             break;
@@ -649,11 +649,11 @@ namespace iyak {
           case EM::TT_P_P: {
             for (auto const& s1: _f.mm.state()) {
               for (auto const& s: _f.mm.pair_trans(s1.id)) {
-                double w = _f.model.no_prf()? 0.: _f.mm.weight(s.l, s1.r, k, j);
+                double w = _f.model.no_prf()? oneL: _f.mm.weightL(s.l, s1.r, k, j);
                 double t = (s.r == s1.r and
-                            ')' == _f.mm.node(s1.r))? _f.model.ltau(): 0.;
+                            ')' == _f.mm.node(s1.r))? _f.model.tauL(): oneL;
                 _f.template on_outside_transition<EM::ST_P,EM::ST_P>
-                (i, j, k, l, s, s1, _s, _s, tsc, w+t, 0.);
+                (i, j, k, l, s, s1, _s, _s, tsc, mulL(w,t), oneL);
               }
             }
             break;
@@ -662,11 +662,11 @@ namespace iyak {
           case EM::TT_O_O: {
             for (auto const& s1: _f.mm.state()) {
               for (auto const& s: _f.mm.loop_right_trans(s1.id)) {
-                double w = _f.model.no_prf()? 0.: _f.mm.weight(s1.r, j);
+                double w = _f.model.no_prf()? oneL: _f.mm.weightL(s1.r, j);
                 double t = (s.r == s1.r and
-                            '.' == _f.mm.node(s1.r))? _f.model.ltau(): 0.;
+                            '.' == _f.mm.node(s1.r))? _f.model.tauL(): oneL;
                 _f.template on_outside_transition<EM::ST_O,EM::ST_O>
-                (i, j, k, l, s, s1, _s, _s, tsc, w+t, 0.);
+                (i, j, k, l, s, s1, _s, _s, tsc, mulL(w,t), oneL);
               }
             }
             break;
@@ -679,7 +679,7 @@ namespace iyak {
                   IS const& s = _f.mm.n2s(h, s1.r);
                   IS const& s2 = _f.mm.n2s(s1.l, h);
                   _f.template on_outside_transition<EM::ST_P,EM::ST_O>
-                  (j, l, i, l, s, s1, s2, _s, tsc, 0., 0.);
+                  (j, l, i, l, s, s1, s2, _s, tsc, oneL, oneL);
                 }
               }
             }
@@ -696,7 +696,7 @@ namespace iyak {
                 auto const& s = _f.mm.n2s(s2.r, s3.l);
                 auto const& s1 = _f.mm.n2s(s2.l, s3.r);
                 _f.template on_outside_transition<EM::ST_P,EM::ST_E>
-                (i, j, k, l, s, s1, s2, s3, tsc, 0., 0.);
+                (i, j, k, l, s, s1, s2, s3, tsc, oneL, oneL);
               }
             }
             break;
@@ -705,7 +705,7 @@ namespace iyak {
           case EM::TT_E_M: {
             for (auto const& s: _f.mm.state()) {
               _f.template on_outside_transition<EM::ST_M,EM::ST_E>
-              (i, j, k, l, s, s, _s, _s, tsc, 0., 0.);
+              (i, j, k, l, s, s, _s, _s, tsc, oneL, oneL);
             }
             break;
           }
@@ -713,11 +713,11 @@ namespace iyak {
           case EM::TT_M_M: {
             for (auto const& s1: _f.mm.state()) {
               for (auto const& s: _f.mm.loop_left_trans(s1.id)) {
-                double w = _f.model.no_prf()? 0.: _f.mm.weight(s.l, k);
+                double w = _f.model.no_prf()? oneL: _f.mm.weightL(s.l, k);
                 double t = (s.l == s1.l and
-                            '.' == _f.mm.node(s1.l))? _f.model.ltau(): 0.;
+                            '.' == _f.mm.node(s1.l))? _f.model.tauL(): oneL;
                 _f.template on_outside_transition<EM::ST_M,EM::ST_M>
-                (i, j, k, l, s, s1, _s, _s, tsc, w+t, 0.);
+                (i, j, k, l, s, s1, _s, _s, tsc, mulL(w,t), oneL);
               }
             }
             break;
@@ -726,11 +726,11 @@ namespace iyak {
           case EM::TT_2_2: {
             for (auto const& s1: _f.mm.state()) {
               for (auto const& s: _f.mm.loop_right_trans(s1.id)) {
-                double w = _f.model.no_prf()? 0.: _f.mm.weight(s1.r, j);
+                double w = _f.model.no_prf()? oneL: _f.mm.weightL(s1.r, j);
                 double t = (s.r == s1.r and
-                            '.' == _f.mm.node(s1.r))? _f.model.ltau(): 0.;
+                            '.' == _f.mm.node(s1.r))? _f.model.tauL(): oneL;
                 _f.template on_outside_transition<EM::ST_2,EM::ST_2>
-                (i, j, k, l, s, s1, _s, _s, tsc, w+t, 0.);
+                (i, j, k, l, s, s1, _s, _s, tsc, mulL(w,t), oneL);
               }
             }
             break;
@@ -739,7 +739,7 @@ namespace iyak {
           case EM::TT_2_P: {
             for (auto const& s: _f.mm.state()) {
               _f.template on_outside_transition<EM::ST_P,EM::ST_2>
-              (i, j, k, l, s, s, _s, _s, tsc, 0., 0.);
+              (i, j, k, l, s, s, _s, _s, tsc, oneL, oneL);
             }
             break;
           }
@@ -747,7 +747,7 @@ namespace iyak {
           case EM::TT_1_2: {
             for (auto const& s: _f.mm.state()) {
               _f.template on_outside_transition<EM::ST_2,EM::ST_1>
-              (i, j, k, l, s, s, _s, _s, tsc, 0., 0.);
+              (i, j, k, l, s, s, _s, _s, tsc, oneL, oneL);
             }
             break;
           }
@@ -755,7 +755,7 @@ namespace iyak {
           case EM::TT_1_B: {
             for (auto const& s: _f.mm.state()) {
               _f.template on_outside_transition<EM::ST_B,EM::ST_1>
-              (i, j, k, l, s, s, _s, _s, tsc, 0., 0.);
+              (i, j, k, l, s, s, _s, _s, tsc, oneL, oneL);
             }
             break;
           }
@@ -763,7 +763,7 @@ namespace iyak {
           case EM::TT_M_B: {
             for (auto const& s: _f.mm.state()) {
               _f.template on_outside_transition<EM::ST_B,EM::ST_M>
-              (i, j, k, l, s, s, _s, _s, tsc, 0., 0.);
+              (i, j, k, l, s, s, _s, _s, tsc, oneL, oneL);
             }
             break;
           }
@@ -776,7 +776,7 @@ namespace iyak {
                 auto const& s = _f.mm.n2s(s1.l, h);
                 auto const& s2 = _f.mm.n2s(h, s1.r);
                 _f.template on_outside_transition<EM::ST_1,EM::ST_B>
-                (i, j, k, l, s, s1, s2, _s, tsc, 0., 0.);
+                (i, j, k, l, s, s1, s2, _s, tsc, oneL, oneL);
               }
             }
             break;

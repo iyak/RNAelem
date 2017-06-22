@@ -21,10 +21,11 @@ namespace iyak {
     DBG_ARRAY = 1<<6,
     DBG_KEEP_TMP = 1<<7,
     DBG_CORE_FILE = 1<<8,
+    DBG_NO_LOGSUM = 1<<9,
   };
   enum {
-    debug =
-    DBG_PROOF,
+    debug = DBG_NONE
+    | DBG_PROOF
   };
 }
 #endif /* const_options_test_h */

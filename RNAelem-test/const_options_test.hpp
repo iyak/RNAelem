@@ -21,14 +21,15 @@ namespace iyak {
     DBG_ARRAY = 1<<6,
     DBG_KEEP_TMP = 1<<7,
     DBG_CORE_FILE = 1<<8,
+    DBG_NO_LOGSUM = 1<<9,
   };
   enum {
-    debug =
-    DBG_NO_WEIGHT |
-    DBG_NO_ENE |
-    DBG_FIX_RSS |
-    DBG_NO_TURN |
-    DBG_PROOF,
+    debug = DBG_NONE
+    | DBG_NO_WEIGHT
+    | DBG_NO_ENE
+    | DBG_FIX_RSS
+    | DBG_NO_TURN
+    | DBG_PROOF
   };
 }
 #endif /* const_options_test_h */

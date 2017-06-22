@@ -137,7 +137,7 @@ namespace iyak {
     double bpp_eff() {return _bpp_eff;}
 
     bool no_ene() {return _no_ene;}
- 
+
     /* setter */
     void set_param_file(string const& s) {
       param_fname = s;
@@ -167,11 +167,11 @@ namespace iyak {
     double min_BPP() {return _min_BPP;}
 
     void init_dp_tables() {
-      _inside_o.assign(L+1, -inf);
-      _inside.assign(L+1, VV(W+1, V(E-1, -inf)));
-      _outside_o.assign(L+1, -inf);
-      _outside.assign(L+1, VV(W+1, V(E-1, -inf)));
-      inside_o(0) = outside_o(L) = 0.;
+      _inside_o.assign(L+1, zeroL);
+      _inside.assign(L+1, VV(W+1, V(E-1, zeroL)));
+      _outside_o.assign(L+1, zeroL);
+      _outside.assign(L+1, VV(W+1, V(E-1, zeroL)));
+      inside_o(0) = outside_o(L) = oneL;
     }
 
     void calc_BPP() {
@@ -184,7 +184,7 @@ namespace iyak {
     double lnBPP(int i, int j) {
       if (0<=i and j<=L and j-i<=W and
           ((debug&DBG_NO_TURN)? true: (turn+2<=j-i))) {
-        return inside(i,j,ST_P) + outside(i,j,ST_P) - inside_o(L);
+        return logNL(divL(mulL(inside(i,j,ST_P), outside(i,j,ST_P)), inside_o(L)));
       }
       return -inf;
     }
@@ -335,12 +335,12 @@ namespace iyak {
 
           if (is_parsable<ST_P>(i, j)) {
             if (is_parsable<ST_E>(i+1, j-1)) {
-              f.template on_transition<TT_P_E>(i, j, i+1, j-1, 0.);
+              f.template on_transition<TT_P_E>(i, j, i+1, j-1, oneL);
             }
             if (is_parsable<ST_P>(i+1, j-1)) {
-              tsc = _ep.log_loop_energy(i, j-1, i+1, j-2, *_seq);
+              tsc = _ep.loop_energy(i, j-1, i+1, j-2, *_seq);
               f.template on_transition<TT_P_P>(i, j, i+1, j-1,
-                                               _no_ene? 0: tsc);
+                                               _no_ene? oneL: tsc);
             }
           }
 
@@ -348,7 +348,7 @@ namespace iyak {
             for (int k = i; k <= j; ++ k) {
               if (is_parsable<ST_1>(i, k) and
                   is_parsable<ST_2>(k, j)) {
-                f.template on_transition<TT_B_12>(i, j, i, k, 0.);
+                f.template on_transition<TT_B_12>(i, j, i, k, oneL);
               }
             }
           }
@@ -357,22 +357,21 @@ namespace iyak {
             if (is_parsable<ST_2>(i, j-1)) {
 
               if (debug&DBG_FIX_RSS and '.'!=_fix_s[j-1]) {} else
-                f.template on_transition<TT_2_2>(i, j, i, j-1, 0.);
+                f.template on_transition<TT_2_2>(i, j, i, j-1, oneL);
             }
             if (is_parsable<ST_P>(i, j)) {
-              tsc = _ep.sum_ext_m(i, j-1, false, *_seq)
-                 +_ep.logmlintern();
+              tsc = mulL(_ep.sum_ext_m(i, j-1, false, *_seq),_ep.mlintern());
               f.template on_transition<TT_2_P>(i, j, i, j,
-                                               _no_ene? 0: tsc);
+                                               _no_ene? oneL: tsc);
             }
           }
 
           if (is_parsable<ST_1>(i, j)) {
             if (is_parsable<ST_2>(i, j)) {
-              f.template on_transition<TT_1_2>(i, j, i, j, 0.);
+              f.template on_transition<TT_1_2>(i, j, i, j, oneL);
             }
             if (is_parsable<ST_B>(i, j)) {
-              f.template on_transition<TT_1_B>(i, j, i, j, 0.);
+              f.template on_transition<TT_1_B>(i, j, i, j, oneL);
             }
           }
 
@@ -380,39 +379,39 @@ namespace iyak {
             if (is_parsable<ST_M>(i+1, j)) {
 
               if (debug&DBG_FIX_RSS and '.'!=_fix_s[i]) {} else 
-                f.template on_transition<TT_M_M>(i, j, i+1, j, 0.);
+                f.template on_transition<TT_M_M>(i, j, i+1, j, oneL);
             }
             if (is_parsable<ST_B>(i, j)) {
-              f.template on_transition<TT_M_B>(i, j, i, j, 0.);
+              f.template on_transition<TT_M_B>(i, j, i, j, oneL);
             }
           }
 
           if (is_parsable<ST_E>(i, j)) {
             if (is_parsable<ST_M>(i, j)) {
-              tsc = (_ep.sum_ext_m(j, i-1, false, *_seq) +
-                     _ep.logmlclosing() +
-                     _ep.logmlintern());
+              tsc = mulL(_ep.sum_ext_m(j, i-1, false, *_seq),
+                         _ep.mlclosing(),
+                         _ep.mlintern());
               f.template on_transition<TT_E_M>(i, j, i, j,
-                                               _no_ene? 0: tsc);
+                                               _no_ene? oneL: tsc);
             }
-            tsc = _ep.log_hairpin_energy(i-1, j, *_seq);
+            tsc = _ep.hairpin_energy(i-1, j, *_seq);
 
             if (debug&DBG_FIX_RSS and
                 string(j-i,'.') != _fix_s.substr(i,j-i)) {} else
-              f.template on_transition<TT_E_H>(i, j, i, j,
-                                               _no_ene? 0: tsc);
+                  f.template on_transition<TT_E_H>(i, j, i, j,
+                                                   _no_ene? oneL: tsc);
 
             for (int volatile l = j; l >= i; -- l) {
               for (int volatile k = i; k <= l; ++ k) {
                 if (i == k and l == j) continue;
                 if (is_parsable<ST_P>(k, l)) {
-                  tsc = _ep.log_loop_energy(i-1, j, k, l-1, *_seq);
+                  tsc = _ep.loop_energy(i-1, j, k, l-1, *_seq);
 
                   if (debug&DBG_FIX_RSS and
                       (string(k-i,'.') != _fix_s.substr(i,k-i) or
                        string(j-l,'.') != _fix_s.substr(l,j-l))) {} else
                          f.template on_transition<TT_E_P>(i, j, k, l,
-                                         _no_ene? 0: tsc);
+                                                          _no_ene? oneL: tsc);
                 }
               }
             }
@@ -422,12 +421,12 @@ namespace iyak {
           if (is_parsable<ST_P>(i, j)) {
             tsc = _ep.sum_ext_m(i, j-1, true, *_seq);
             f.template on_transition<TT_O_OP>(0, j, 0, i,
-                                              _no_ene? 0: tsc);
+                                              _no_ene? oneL: tsc);
           }
 
           if (i0==i and 0 < j) {
             if (debug&DBG_FIX_RSS and '.'!=_fix_s[j-1]) {} else
-              f.template on_transition<TT_O_O>(0, j, 0, j-1, 0.);
+              f.template on_transition<TT_O_O>(0, j, 0, j-1, oneL);
           }
 
         }
@@ -449,53 +448,53 @@ namespace iyak {
 
           if (i0==i and j<L) {
             if (debug&DBG_FIX_RSS and '.'!=_fix_s[j]) {} else
-              f.template on_transition<TT_O_O>(0, j, 0, j+1, 0.);
+              f.template on_transition<TT_O_O>(0, j, 0, j+1, oneL);
           }
 
           if (is_parsable<ST_2>(i, j)) {
             if (is_parsable<ST_2>(i, j+1)) {
 
               if (debug&DBG_FIX_RSS and '.'!=_fix_s[j]) {} else
-                f.template on_transition<TT_2_2>(i, j, i, j+1, 0.);
+                f.template on_transition<TT_2_2>(i, j, i, j+1, oneL);
             }
             if (is_parsable<ST_1>(i, j)) {
-              f.template on_transition<TT_1_2>(i, j, i, j, 0.);
+              f.template on_transition<TT_1_2>(i, j, i, j, oneL);
             }
           }
 
           if (is_parsable<ST_P>(i, j)) {
             tsc = _ep.sum_ext_m(i, j-1, true, *_seq);
             f.template on_transition<TT_O_OP>(0, i, 0, j,
-                                              _no_ene? 0: tsc);
+                                              _no_ene? oneL: tsc);
             if (is_parsable<ST_P>(i-1, j+1)) {
-              tsc = _ep.log_loop_energy(i-1, j, i, j-1, *_seq);
+              tsc = _ep.loop_energy(i-1, j, i, j-1, *_seq);
               f.template on_transition<TT_P_P>(i, j, i-1, j+1,
-                                               _no_ene? 0: tsc);
+                                               _no_ene? oneL: tsc);
             }
             if (is_parsable<ST_2>(i, j)) {
-              tsc = _ep.sum_ext_m(i, j-1, false, *_seq) +_ep.logmlintern();
+              tsc = mulL(_ep.sum_ext_m(i, j-1, false, *_seq), _ep.mlintern());
               f.template on_transition<TT_2_P>(i, j, i, j,
-                                               _no_ene? 0: tsc);
+                                               _no_ene? oneL: tsc);
             }
           }
 
           if (is_parsable<ST_E>(i, j)) {
             if (is_parsable<ST_P>(i-1, j+1)) {
-              f.template on_transition<TT_P_E>(i, j, i-1, j+1, 0.);
+              f.template on_transition<TT_P_E>(i, j, i-1, j+1, oneL);
             }
-            tsc = _ep.log_hairpin_energy(i-1, j, *_seq);
+            tsc = _ep.hairpin_energy(i-1, j, *_seq);
 
             if (debug&DBG_FIX_RSS and
                 string(j-i,'.') != _fix_s.substr(i,j-i)) {} else
-              f.template on_transition<TT_E_H>(i, j, i, j,
-                                               _no_ene? 0: tsc);
+                  f.template on_transition<TT_E_H>(i, j, i, j,
+                                                   _no_ene? oneL: tsc);
 
             if (is_parsable<ST_M>(i, j)) {
-              tsc = (_ep.sum_ext_m(j, i-1, false, *_seq) +
-                     _ep.logmlclosing() +
-                     _ep.logmlintern());
+              tsc = mulL(_ep.sum_ext_m(j, i-1, false, *_seq),
+                         _ep.mlclosing(),
+                         _ep.mlintern());
               f.template on_transition<TT_E_M>(i, j, i, j,
-                                               _no_ene? 0: tsc);
+                                               _no_ene? oneL: tsc);
             }
           }
 
@@ -503,20 +502,20 @@ namespace iyak {
               is_parsable<ST_M>(i-1, j)) {
 
             if (debug&DBG_FIX_RSS and '.'!=_fix_s[i-1]) {} else
-              f.template on_transition<TT_M_M>(i, j, i-1, j, 0.);
+              f.template on_transition<TT_M_M>(i, j, i-1, j, oneL);
           }
 
           if (is_parsable<ST_B>(i, j)) {
             if (is_parsable<ST_1>(i, j)) {
-              f.template on_transition<TT_1_B>(i, j, i, j, 0.);
+              f.template on_transition<TT_1_B>(i, j, i, j, oneL);
             }
             if (is_parsable<ST_M>(i, j)) {
-              f.template on_transition<TT_M_B>(i, j, i, j, 0.);
+              f.template on_transition<TT_M_B>(i, j, i, j, oneL);
             }
             for (int k = j; k >= i; -- k) {
               if (is_parsable<ST_1>(i, k) and
                   is_parsable<ST_2>(k, j)) {
-                f.template on_transition<TT_B_12>(i, k, i, j, 0.);
+                f.template on_transition<TT_B_12>(i, k, i, j, oneL);
               }
             }
           }
@@ -526,13 +525,13 @@ namespace iyak {
               for (int l = j; l >= k+2; -- l) {
                 if (i == k and l == j) continue;
                 if (is_parsable<ST_P>(k, l)) {
-                  tsc = _ep.log_loop_energy(i-1, j, k, l-1, *_seq);
+                  tsc = _ep.loop_energy(i-1, j, k, l-1, *_seq);
 
                   if (debug&DBG_FIX_RSS and
                       (string(k-i,'.') != _fix_s.substr(i,k-i) or
                        string(j-l,'.') != _fix_s.substr(l,j-l))) {} else
                          f.template on_transition<TT_E_P>(k, l, i, j,
-                                         _no_ene? 0: tsc);
+                                                          _no_ene? oneL: tsc);
                 }
               }
             }
@@ -560,24 +559,24 @@ namespace iyak {
       void on_transition(int i, int j, int k, int l, double tsc) {
         switch (t) {
           case EM::TT_O_OP: {
-            logaddexp(_em.inside_o(j),
-                      _em.inside_o(l) +
-                      _em.inside(l, j, EM::ST_P) + tsc);
+            addL(_em.inside_o(j),
+                 mulL(_em.inside_o(l),
+                      _em.inside(l, j, EM::ST_P), tsc));
             break;
           }
           case EM::TT_B_12: {
-            logaddexp(_em.inside(i, j, EM::ST_B),
-                      _em.inside(k, l, EM::ST_1) +
-                      _em.inside(l, j, EM::ST_2) + tsc);
+            addL(_em.inside(i, j, EM::ST_B),
+                 mulL(_em.inside(k, l, EM::ST_1),
+                      _em.inside(l, j, EM::ST_2), tsc));
             break;
           }
           case EM::TT_O_O: {
-            logaddexp(_em.inside_o(j),
-                      _em.inside_o(l) + tsc);
+            addL(_em.inside_o(j),
+                 mulL(_em.inside_o(l), tsc));
             break;
           }
           case EM::TT_E_H: {
-            logaddexp(_em.inside(i, j, EM::ST_E), tsc);
+            addL(_em.inside(i, j, EM::ST_E), tsc);
             break;
           }
 
@@ -591,8 +590,8 @@ namespace iyak {
           case EM::TT_M_B:
           case EM::TT_P_E:
           case EM::TT_P_P: {
-            logaddexp(_em.inside(i,j,_em.trans_to_states[t].first),
-                      _em.inside(k,l,_em.trans_to_states[t].second) + tsc);
+            addL(_em.inside(i,j,_em.trans_to_states[t].first),
+                 mulL(_em.inside(k,l,_em.trans_to_states[t].second), tsc));
             break;
           }
         }
@@ -606,26 +605,26 @@ namespace iyak {
       void on_transition(int i, int j, int k, int l, double tsc) {
         switch (t) {
           case EM::TT_O_OP: {
-            logaddexp(_em.outside_o(j),
-                      _em.inside(j, l, EM::ST_P) +
-                      _em.outside_o(l) + tsc);
-            logaddexp(_em.outside(j, l, EM::ST_P),
-                      _em.inside_o(j) +
-                      _em.outside_o(l) + tsc);
+            addL(_em.outside_o(j),
+                 mulL(_em.inside(j, l, EM::ST_P),
+                      _em.outside_o(l), tsc));
+            addL(_em.outside(j, l, EM::ST_P),
+                 mulL(_em.inside_o(j),
+                      _em.outside_o(l), tsc));
             break;
           }
           case EM::TT_B_12: {
-            logaddexp(_em.outside(i, j, EM::ST_1),
-                      _em.inside(j, l, EM::ST_2) +
-                      _em.outside(k, l, EM::ST_B) + tsc);
-            logaddexp(_em.outside(j, l, EM::ST_2),
-                      _em.inside(i, j, EM::ST_1) +
-                      _em.outside(k, l, EM::ST_B) + tsc);
+            addL(_em.outside(i, j, EM::ST_1),
+                 mulL(_em.inside(j, l, EM::ST_2),
+                      _em.outside(k, l, EM::ST_B), tsc));
+            addL(_em.outside(j, l, EM::ST_2),
+                 mulL(_em.inside(i, j, EM::ST_1),
+                      _em.outside(k, l, EM::ST_B), tsc));
             break;
           }
           case EM::TT_O_O: {
-            logaddexp(_em.outside_o(j),
-                      _em.outside_o(l) + tsc);
+            addL(_em.outside_o(j),
+                 mulL(_em.outside_o(l), tsc));
             break;
           }
           case EM::TT_E_H: {
@@ -643,8 +642,8 @@ namespace iyak {
           case EM::TT_M_B:
           case EM::TT_P_E:
           case EM::TT_P_P: {
-            logaddexp(_em.outside(i, j, _em.trans_to_states[t].second),
-                      _em.outside(k, l, _em.trans_to_states[t].first) + tsc);
+            addL(_em.outside(i, j, _em.trans_to_states[t].second),
+                 mulL(_em.outside(k, l, _em.trans_to_states[t].first), tsc));
           }
         }
       }

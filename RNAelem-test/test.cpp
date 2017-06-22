@@ -60,6 +60,9 @@ namespace iyak {
     EXPECT_TRUE(any({1,2,0}, 0));
     EXPECT_TRUE(any({false,false}, false));
     EXPECT_FALSE(any({false,false}, true));
+
+    EXPECT_EQ(to_str(V{2,1}), to_str(apply(sqrt,V{4,1})));
+    EXPECT_EQ(to_str(VV{{2},{3,1}}), to_str(apply(sqrt,VV{{4},{9,1}})));
   }
 
   class RNAelemDPTest: public ::testing::Test {
@@ -86,82 +89,82 @@ namespace iyak {
     model.set_motif_pattern(".");
 
     f.eval(model, "A", ".");
-    EXPECT_DOUBLE_EQ(2, exp(model.part_func()));
-    EXPECT_DOUBLE_EQ(2, exp(model.part_func_outside()));
+    EXPECT_DOUBLE_EQ(2, expL(model.part_func()));
+    EXPECT_DOUBLE_EQ(2, expL(model.part_func_outside()));
 
     f.eval(model, "AA", "..");
-    EXPECT_DOUBLE_EQ(4, exp(model.part_func()));
-    EXPECT_DOUBLE_EQ(4, exp(model.part_func_outside()));
+    EXPECT_DOUBLE_EQ(4, expL(model.part_func()));
+    EXPECT_DOUBLE_EQ(4, expL(model.part_func_outside()));
 
     f.eval(model, "CAAAG", "(...)");
-    EXPECT_DOUBLE_EQ(7, exp(model.part_func()));
-    EXPECT_DOUBLE_EQ(7, exp(model.part_func_outside()));
+    EXPECT_DOUBLE_EQ(7, expL(model.part_func()));
+    EXPECT_DOUBLE_EQ(7, expL(model.part_func_outside()));
 
     f.eval(model, "ACAAAGA", ".(...).");
-    EXPECT_DOUBLE_EQ(9, exp(model.part_func()));
-    EXPECT_DOUBLE_EQ(9, exp(model.part_func_outside()));
+    EXPECT_DOUBLE_EQ(9, expL(model.part_func()));
+    EXPECT_DOUBLE_EQ(9, expL(model.part_func_outside()));
 
     f.eval(model, "ACACAAAGGA", ".(.(...)).");
-    EXPECT_DOUBLE_EQ(10, exp(model.part_func()));
-    EXPECT_DOUBLE_EQ(10, exp(model.part_func_outside()));
+    EXPECT_DOUBLE_EQ(10, expL(model.part_func()));
+    EXPECT_DOUBLE_EQ(10, expL(model.part_func_outside()));
 
     f.eval(model, "ACACAGACAGAAGA", ".(.(.).(.)..).");
-    EXPECT_DOUBLE_EQ(10, exp(model.part_func()));
-    EXPECT_DOUBLE_EQ(10, exp(model.part_func_outside()));
+    EXPECT_DOUBLE_EQ(10, expL(model.part_func()));
+    EXPECT_DOUBLE_EQ(10, expL(model.part_func_outside()));
 
     f.eval(model, "CACAGAG", "(.(.).)");
-    EXPECT_DOUBLE_EQ(4, exp(model.part_func()));
-    EXPECT_DOUBLE_EQ(4, exp(model.part_func_outside()));
+    EXPECT_DOUBLE_EQ(4, expL(model.part_func()));
+    EXPECT_DOUBLE_EQ(4, expL(model.part_func_outside()));
 
     model.set_motif_pattern("(.)");
 
     f.eval(model, "CAAAG", "(...)");
-    EXPECT_DOUBLE_EQ(2, exp(model.part_func()));
-    EXPECT_DOUBLE_EQ(2, exp(model.part_func_outside()));
+    EXPECT_DOUBLE_EQ(2, expL(model.part_func()));
+    EXPECT_DOUBLE_EQ(2, expL(model.part_func_outside()));
 
     f.eval(model, "CCAAAGG", "((...))");
-    EXPECT_DOUBLE_EQ(3, exp(model.part_func()));
-    EXPECT_DOUBLE_EQ(3, exp(model.part_func_outside()));
+    EXPECT_DOUBLE_EQ(3, expL(model.part_func()));
+    EXPECT_DOUBLE_EQ(3, expL(model.part_func_outside()));
 
     model.set_motif_pattern("(.*)");
 
     f.eval(model, "CAAAG", "(...)");
-    EXPECT_DOUBLE_EQ(4, exp(model.part_func()));
-    EXPECT_DOUBLE_EQ(4, exp(model.part_func_outside()));
+    EXPECT_DOUBLE_EQ(4, expL(model.part_func()));
+    EXPECT_DOUBLE_EQ(4, expL(model.part_func_outside()));
 
     f.eval(model, "CCAAAGG", "((...))");
-    EXPECT_DOUBLE_EQ(7, exp(model.part_func()));
-    EXPECT_DOUBLE_EQ(7, exp(model.part_func_outside()));
+    EXPECT_DOUBLE_EQ(7, expL(model.part_func()));
+    EXPECT_DOUBLE_EQ(7, expL(model.part_func_outside()));
 
     model.set_motif_pattern(".*.");
 
     f.eval(model, "AA", "..");
-    EXPECT_DOUBLE_EQ(2, exp(model.part_func()));
-    EXPECT_DOUBLE_EQ(2, exp(model.part_func_outside()));
+    EXPECT_DOUBLE_EQ(2, expL(model.part_func()));
+    EXPECT_DOUBLE_EQ(2, expL(model.part_func_outside()));
 
     f.eval(model, "CAAAG", "(...)");
-    EXPECT_DOUBLE_EQ(6, exp(model.part_func()));
-    EXPECT_DOUBLE_EQ(6, exp(model.part_func_outside()));
+    EXPECT_DOUBLE_EQ(6, expL(model.part_func()));
+    EXPECT_DOUBLE_EQ(6, expL(model.part_func_outside()));
 
     model.set_motif_pattern("(.).(.)");
 
     f.eval(model, "CAGACAG", "(.).(.)");
-    EXPECT_DOUBLE_EQ(2, exp(model.part_func()));
-    EXPECT_DOUBLE_EQ(2, exp(model.part_func_outside()));
+    EXPECT_DOUBLE_EQ(2, expL(model.part_func()));
+    EXPECT_DOUBLE_EQ(2, expL(model.part_func_outside()));
 
     f.eval(model, "CCAGACAGG", "((.).(.))");
-    EXPECT_DOUBLE_EQ(2, exp(model.part_func()));
-    EXPECT_DOUBLE_EQ(2, exp(model.part_func_outside()));
+    EXPECT_DOUBLE_EQ(2, expL(model.part_func()));
+    EXPECT_DOUBLE_EQ(2, expL(model.part_func_outside()));
 
     model.set_motif_pattern("(.)*(.)");
 
     f.eval(model, "CAGCAG", "(.)(.)");
-    EXPECT_DOUBLE_EQ(2, exp(model.part_func()));
-    EXPECT_DOUBLE_EQ(2, exp(model.part_func_outside()));
+    EXPECT_DOUBLE_EQ(2, expL(model.part_func()));
+    EXPECT_DOUBLE_EQ(2, expL(model.part_func_outside()));
 
     f.eval(model, "CCAGCAGG", "((.)(.))");
-    EXPECT_DOUBLE_EQ(2, exp(model.part_func()));
-    EXPECT_DOUBLE_EQ(2, exp(model.part_func_outside()));
+    EXPECT_DOUBLE_EQ(2, expL(model.part_func()));
+    EXPECT_DOUBLE_EQ(2, expL(model.part_func_outside()));
   }
 
   TEST_F(RNAelemDPTest, EMISSION_COUNT_CASES) {

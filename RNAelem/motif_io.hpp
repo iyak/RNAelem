@@ -68,7 +68,7 @@ namespace iyak {
       _m = &m;
 
       dat(_out, "pattern:", _m->mm.pattern());
-      dat(_out, "weight:", _m->mm.weight());
+      dat(_out, "weight:", apply(logNL, _m->mm.weightL()));
       dat(_out, "ene-param:", _m->em.param_fname);
       dat(_out, "max-span:", _m->em.max_pair());
       dat(_out, "rho-theta:", _m->rho_theta());
@@ -81,7 +81,7 @@ namespace iyak {
       dat(_out, "no-profile:", _m->no_prf());
       dat(_out, "no-energy:", _m->em.no_ene());
 
-      pict(_m->mm.pattern(), _m->mm.weight());
+      pict(_m->mm.pattern(), apply(logNL, _m->mm.weightL()));
     }
   };
 
@@ -214,9 +214,9 @@ namespace iyak {
       check((1<<9)-1 == set, "motif file broken:", _model_fname);
 
       _m->set_motif_pattern(pattern, no_rss, no_prf);
-      for (int i=0; i<(int)_m->mm.weight().size(); ++i)
-        for (int j=0; j<(int)_m->mm.weight()[i].size(); ++j)
-          _m->mm.weight().at(i).at(j) = w.at(i).at(j);
+      for (int i=0; i<size(_m->mm.weightL()); ++i)
+        for (int j=0; j<size(_m->mm.weightL()[i]); ++j)
+          _m->mm.weightL().at(i).at(j) = expNL(w.at(i).at(j));
       _m->set_energy_params(ene_fname, max_span, min_bpp, no_ene);
       _m->set_hyper_param(rho_theta, rho_lambda, tau, lambda_prior);
 
