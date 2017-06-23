@@ -23,7 +23,7 @@ namespace iyak {
 
   V RNAelemTrainer::eval(RNAelem& model) {
 
-    if (_mode & TR_ARRAYEVAL) {
+    if (_mode&TR_ARRAYEVAL) {
       auto range = assinged_range(_qr.N(), _n, tid());
       _from = range.first;
       _to = range.second;

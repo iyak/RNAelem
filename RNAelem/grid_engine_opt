@@ -20,4 +20,4 @@
 " environment: -V                                                        \n"
 "                                                                        \n"
 " other command options you like such as path to error log.              \n"
-" other: -e /dev/null -o /dev/null -l s_vmem=3G,mem_req=3G               \n"
+" other: -e $HOME/.ugeerr -o $HOME/.ugeout -l s_vmem=1G,mem_req=1G       \n"

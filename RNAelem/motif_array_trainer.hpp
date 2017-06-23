@@ -18,7 +18,7 @@
 namespace iyak {
 
   void RNAelemTrainer::collect_fn_gr_eff (double& fn, V& gr, double& eff) {
-    check(_mode & TR_ARRAY, "not in array-job mode");
+    check(_mode&TR_ARRAY, "not in array-job mode");
 
     for (int i=1; i<=_n; ++i) {
 
@@ -58,7 +58,7 @@ namespace iyak {
   }
 
   void RNAelemTrainer::set_array(int n, string const& sge_opt_file) {
-    check(_mode & TR_ARRAY, "not in array-job mode");
+    check((_mode&TR_ARRAY) or (_mode&TR_ARRAYEVAL), "not in array-job mode");
 
     _n=n;
     set_sge_option(sge_opt_file);

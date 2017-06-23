@@ -28,7 +28,7 @@ int main(int const argc, char const* argv[]) {
         break;
       }
 
-      case App::PM_EVAL: {
+      case App::PM_EVAL: case App::PM_ARRAY_EVAL: {
 
         RNAelem model;
         RNAelemReader reader;
