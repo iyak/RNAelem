@@ -52,6 +52,7 @@ namespace iyak {
     VVIS _loop_right_trans;
     VVIS _loop_left_trans;
     VVIS _pair_trans;
+    VVIS _loop_loop_states;
 
   public:
 
@@ -62,6 +63,7 @@ namespace iyak {
     VIS const& loop_right_trans(int s) {return _loop_right_trans[s];}
     VIS const& loop_left_trans(int s) {return _loop_left_trans[s];}
     VIS const& pair_trans(int s) {return _pair_trans[s];}
+    VVIS const& loop_loop_states() {return _loop_loop_states;}
     int weight_id(int i) {return _weight_id[i];}
 
     int node(int i) {return _node[i];}
@@ -74,7 +76,9 @@ namespace iyak {
               h1 < int(_nodes_to_state[h].size()),
               "bad args to nodes to state:",h,h1);
 
-      IS& is = _nodes_to_state[h][h1];
+      IS& is = (debug&DBG_PROOF)?
+      _nodes_to_state.at(h).at(h1):
+      _nodes_to_state[h][h1];
       if (debug&DBG_PROOF)
         check(is.id >= 0, "nodes to state failed:", h, h1);
       return is;
@@ -170,6 +174,8 @@ namespace iyak {
       set_reachable();
       set_interval_state();
       set_interval_state_trans();
+
+      set_states_pairs();
 
       save();
     }
@@ -400,6 +406,20 @@ namespace iyak {
       }
     }
 
+    void set_states_pairs() {
+      _loop_loop_states.clear();
+        for (auto const s2: loop_state()) {
+          for (auto const s3: loop_state()) {
+            if (s3.r < s2.l or
+                !reachable(s2.r, s3.l) or
+                !reachable(s2.l, s3.r)) continue;
+            IS const s = n2s(s2.l, s3.r);
+            IS const s1 = n2s(s2.r, s3.l);
+            _loop_loop_states.push_back(VIS{s,s1,s2,s3});
+          }
+        }
+    }
+    
     void save() {
       for (auto const& si: _state) {
         say(si.id, ":", si.l, si.r);

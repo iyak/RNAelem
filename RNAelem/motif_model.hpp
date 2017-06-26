@@ -505,14 +505,9 @@ namespace iyak {
           }
 
           case EM::TT_E_P: {
-            for (auto const& s2: _f.mm.loop_state()) {
-              for (auto const& s3: _f.mm.loop_state()) {
-                if (s3.r < s2.l or !_f.mm.reachable(s2.r, s3.l)) continue;
-                IS const& s = _f.mm.n2s(s2.l, s3.r);
-                IS const& s1 = _f.mm.n2s(s2.r, s3.l);
-                _f.template on_inside_transition<EM::ST_E,EM::ST_P>
-                (i, j, k, l, s, s1, s2, s3, tsc, oneL, oneL);
-              }
+            for (auto const& ss: _f.mm.loop_loop_states()) {
+              _f.template on_inside_transition<EM::ST_E,EM::ST_P>
+              (i, j, k, l, ss[0], ss[1], ss[2], ss[3], tsc, oneL, oneL);
             }
             break;
           }
@@ -687,17 +682,9 @@ namespace iyak {
           }
 
           case EM::TT_E_P: {
-            for (auto const& s2: _f.mm.loop_state()) {
-              for (auto const& s3: _f.mm.loop_state()) {
-                if (s3.l < s2.r or
-                    !_f.mm.reachable(s2.r, s3.l) or
-                    !_f.mm.reachable(s2.l, s3.r))
-                  continue;
-                auto const& s = _f.mm.n2s(s2.r, s3.l);
-                auto const& s1 = _f.mm.n2s(s2.l, s3.r);
-                _f.template on_outside_transition<EM::ST_P,EM::ST_E>
-                (i, j, k, l, s, s1, s2, s3, tsc, oneL, oneL);
-              }
+            for (auto const& ss: _f.mm.loop_loop_states()) {
+              _f.template on_outside_transition<EM::ST_P,EM::ST_E>
+              (i, j, k, l, ss[1], ss[0], ss[2], ss[3], tsc, oneL, oneL);
             }
             break;
           }
