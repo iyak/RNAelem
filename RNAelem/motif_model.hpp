@@ -125,9 +125,9 @@ namespace iyak {
     }
 
     void set_energy_params(string const& param_fname, int const max_span,
-                           double const min_bpp, bool no_ene) {
+                           int const max_iloop, double const min_bpp, bool no_ene) {
       em.set_param_file(param_fname);
-      em.set_max_pair(max_span);
+      em.set_params(max_span, max_iloop);
       em.set_min_BPP(min_bpp);
       em.set_no_ene(no_ene);
 

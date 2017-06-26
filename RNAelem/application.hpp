@@ -36,6 +36,7 @@ namespace iyak {
 
     int max_iter;
     int max_span;
+    int max_iloop;
 
     double eps;
     double rho_theta;
@@ -90,7 +91,7 @@ namespace iyak {
       .metavar("FILE");
 
       _parser
-      .add_option("-c", "--pict")
+      .add_option("--pict")
       .help("output filename (motif pict).")
       .dest("pic_fname")
       .set_default("~NONE~")
@@ -135,7 +136,14 @@ namespace iyak {
       .add_option("-w", "--max-span")
       .help("maximal span for base pair.")
       .dest("max_span")
-       .set_default(50)
+      .set_default(50)
+      .metavar("INT");
+
+      _parser
+      .add_option("-c", "--max-internal-loop")
+      .help("maximal internal loop length.")
+      .dest("max_iloop")
+      .set_default(30)
       .metavar("INT");
 
       _parser
@@ -316,6 +324,7 @@ namespace iyak {
 
       max_iter = (int)options.get("max_iter");
       max_span = (int)options.get("max_span");
+      max_iloop = (int)options.get("max_iloop");
 
       eps = (double)options.get("eps");
       rho_theta = (double)options.get("rho_theta");

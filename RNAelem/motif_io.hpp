@@ -71,6 +71,7 @@ namespace iyak {
       dat(_out, "weight:", apply(logNL, _m->mm.weightL()));
       dat(_out, "ene-param:", _m->em.param_fname);
       dat(_out, "max-span:", _m->em.max_pair());
+      dat(_out, "max-internal-loop:", _m->em.max_iloop());
       dat(_out, "rho-theta:", _m->rho_theta());
       dat(_out, "rho-lambda:", _m->rho_lambda());
       dat(_out, "tau:", _m->tau());
@@ -118,6 +119,7 @@ namespace iyak {
 
       string ene_fname = "";
       int max_span = 0;
+      int max_iloop = 0;
       VV w;
       string pattern;
       double rho_theta = 0.;
@@ -194,6 +196,11 @@ namespace iyak {
           set |= (1<<8);
         }
 
+        else if ("max-internal-loop" == p[0]) {
+          max_iloop = iss_cast<int>(p[1]);
+          set |= (1<<9);
+        }
+        
         else if ("no-rss" == p[0]) {
           no_rss = iss_cast<bool>(p[1]); /* optional */
         }
@@ -211,16 +218,14 @@ namespace iyak {
         }
       }
 
-      check((1<<9)-1 == set, "motif file broken:", _model_fname);
+      check((1<<10)-1 == set, "motif file broken:", _model_fname);
 
       _m->set_motif_pattern(pattern, no_rss, no_prf);
       for (int i=0; i<size(_m->mm.weightL()); ++i)
         for (int j=0; j<size(_m->mm.weightL()[i]); ++j)
           _m->mm.weightL().at(i).at(j) = expNL(w.at(i).at(j));
-      _m->set_energy_params(ene_fname, max_span, min_bpp, no_ene);
+      _m->set_energy_params(ene_fname, max_span, max_iloop, min_bpp, no_ene);
       _m->set_hyper_param(rho_theta, rho_lambda, tau, lambda_prior);
-
-      //cry(ene_fname, max_span);
     }
   };
 }

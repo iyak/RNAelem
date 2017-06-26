@@ -71,7 +71,7 @@ namespace iyak {
     RNAelemDP f;
 
     RNAelemDPTest() {
-      model.set_energy_params("~T2004~", 999, 0., true);
+      model.set_energy_params("~T2004~", large, large, 0., true);
       model.set_hyper_param(0., 0., 1., -1.);
 
       f.set_preprocess({1}, 0);

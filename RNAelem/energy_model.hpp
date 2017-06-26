@@ -21,6 +21,7 @@ namespace iyak {
     EP _ep;
     VI* _seq;
     int _max_pair = large;
+    int _max_iloop = large;
     double _min_BPP = 0;
     double _min_lnBPP = -inf;
     double _bpp_eff = 0;
@@ -28,6 +29,7 @@ namespace iyak {
 
     int L = -1;
     int W = -1;
+    int C = -1;
     int const E = 8;
 
     V _inside_o;
@@ -127,6 +129,7 @@ namespace iyak {
 
     /* getter */
     int max_pair() {return _max_pair;}
+    int max_iloop() {return _max_iloop;}
     EnergyParam& ep() {return _ep;}
 
     double& inside_o(int j) {return _inside_o[j];}
@@ -148,7 +151,7 @@ namespace iyak {
       }
       else _ep.read_param_file(s);
     }
-    void set_max_pair(int m) {_max_pair = m;}
+    void set_params(int w, int c) {_max_pair=w; _max_iloop=c;}
 
     /*
      * instead of iterating through all the possible base pairs, we can limit
@@ -258,7 +261,8 @@ namespace iyak {
       _seq = &z;
 
       L=size(z);
-      W = min(L, max_pair());
+      W=min(L, max_pair());
+      C=min(W-2-((debug&DBG_NO_TURN)?2:5), max_iloop());
 
       fill_bpp_tables();
     }
@@ -401,9 +405,9 @@ namespace iyak {
                   f.template on_transition<TT_E_H>(i, j, i, j,
                                                    _no_ene? oneL: tsc);
 
-            for (int volatile l = j; l >= i; -- l) {
-              for (int volatile k = i; k <= l; ++ k) {
-                if (i == k and l == j) continue;
+            for (int volatile l=j; l>=max(i,j-C); -- l) {
+              for (int volatile k=i; k<=min(l,i+C-(j-l)); ++ k) {
+                if (i==k and l==j) continue;
                 if (is_parsable<ST_P>(k, l)) {
                   tsc = _ep.loop_energy(i-1, j, k, l-1, *_seq);
 
@@ -521,9 +525,9 @@ namespace iyak {
           }
 
           if (is_parsable<ST_E>(i, j)) {
-            for (int k = i; k <= j-2; ++ k) {
-              for (int l = j; l >= k+2; -- l) {
-                if (i == k and l == j) continue;
+            for (int k=i; k<=min(j-2,i+C); ++k) {
+              for (int l=j; l>=max(k+2,l-(C-(k-i))); --l) {
+                if (i==k and l==j) continue;
                 if (is_parsable<ST_P>(k, l)) {
                   tsc = _ep.loop_energy(i-1, j, k, l-1, *_seq);
 
