@@ -336,7 +336,10 @@ namespace iyak {
 
         case EM::TT_L_L:
         case EM::TT_O_O:
-        case EM::TT_2_2: {
+#if !DBG_NO_MULTI
+        case EM::TT_2_2:
+#endif
+        {
           if (0!=s.r and M-1!=s.r) {
             cyk_state_path[t.l] = mm.node(s.r);
           }
@@ -346,11 +349,14 @@ namespace iyak {
         }
 
         case EM::TT_E_H:
+#if !DBG_NO_MULTI
         case EM::TT_E_M:
         case EM::TT_M_B:
         case EM::TT_2_P:
         case EM::TT_1_2:
-        case EM::TT_1_B: {
+        case EM::TT_1_B:
+#endif
+        {
           trace_back(t.k, t.l, t.e1, s);
           break;
         }
@@ -385,6 +391,7 @@ namespace iyak {
           break;
         }
 
+#if !DBG_NO_MULTI
         case EM::TT_B_12: {
           IS const& s2 = mm.n2s(s1.r, s.r);
           trace_back(t.k, t.l, t.e1, s1);
@@ -400,6 +407,7 @@ namespace iyak {
           trace_back(t.k, t.l, EM::ST_M, s1);
           break;
         }
+#endif
       }
     }
 
@@ -512,6 +520,7 @@ namespace iyak {
             break;
           }
 
+#if !DBG_NO_MULTI
           case EM::TT_E_M: {
             for (auto const& s: _f.mm.state()) {
               _f.template on_inside_transition<EM::ST_E,EM::ST_M>
@@ -588,6 +597,7 @@ namespace iyak {
               (i, j, k, l, s, s, _s, _s, tsc, oneL, oneL);
             break;
           }
+#endif
         }
       }
     };
@@ -689,6 +699,7 @@ namespace iyak {
             break;
           }
 
+#if !DBG_NO_MULTI
           case EM::TT_E_M: {
             for (auto const& s: _f.mm.state()) {
               _f.template on_outside_transition<EM::ST_M,EM::ST_E>
@@ -768,6 +779,7 @@ namespace iyak {
             }
             break;
           }
+#endif
         }
       }
     };

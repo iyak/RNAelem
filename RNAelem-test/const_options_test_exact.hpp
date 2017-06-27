@@ -27,5 +27,6 @@ namespace iyak {
     debug = DBG_NONE
     | DBG_PROOF
   };
+#define DBG_NO_MULTI 0
 }
 #endif /* const_options_test_h */

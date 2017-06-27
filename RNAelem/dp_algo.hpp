@@ -45,10 +45,11 @@ namespace iyak {
                         (EM::ST_O==e1 and EM::ST_P==e)?
                         mulL(_model->outside_o(l,s1),
                              _model->inside_o(i,s2)):
-
+#if !DBG_NO_MULTI
                         (EM::ST_B==e1 and EM::ST_1==e)?
                         mulL(_model->outside(k,l,e1,s1),
                              _model->inside(j,l,EM::ST_2,s2)):
+#endif
 
                         (EM::ST_O==e1 and EM::ST_O==e)?
                         _model->outside_o(l,s1):
@@ -84,11 +85,13 @@ namespace iyak {
                   _model->inside(k, l, e1, s1), diff));
       }
 
+#if !DBG_NO_MULTI
       else if (EM::ST_B==e and EM::ST_1==e1) {
         addL(_model->inside(i, j, e, s),
              mulL(_model->inside(k, l, EM::ST_1, s1),
                   _model->inside(l, j, EM::ST_2, s2), diff));
       }
+#endif
 
       else if (EM::ST_O==e and EM::ST_O==e1) {
         addL(_model->inside_o(j, s),
@@ -138,6 +141,7 @@ namespace iyak {
                   _model->inside(i, j, e, s), diff));
       }
 
+#if !DBG_NO_MULTI
       else if (EM::ST_B==e1 and EM::ST_1==e) {
         addL(_model->outside(i, j, e, s),
              mulL(_model->outside(k, l, e1, s1),
@@ -146,6 +150,7 @@ namespace iyak {
              mulL(_model->inside(i, j, e, s),
                   _model->outside(k, l, e1, s1), diff));
       }
+#endif
 
       else if (EM::ST_O==e1 and EM::ST_O==e) {
         addL(_model->outside_o(j, s),
@@ -203,12 +208,14 @@ namespace iyak {
                            _model->cyk(k, l, e1, s1), diff));
       }
 
+#if !DBG_NO_MULTI
       else if (EM::ST_B==e and EM::ST_1==e1) {
         compare<e,e1>(i, j, k, l, s, s1,
                       _model->cyk(i, j, e, s),
                       mulL(_model->cyk(k, l, e1, s1),
                            _model->cyk(l, j, EM::ST_2, s2), diff));
       }
+#endif
 
       else if (EM::ST_O==e and EM::ST_O==e1) {
         compare<e,e1>(i, j, k, l, s, s1,

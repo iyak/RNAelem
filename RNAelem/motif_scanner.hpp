@@ -233,7 +233,9 @@ namespace iyak {
           }
 
           case EM::ST_O:
+#if !DBG_NO_MULTI
           case EM::ST_2:
+#endif
           case EM::ST_L: {
             if (i==k and j==l-1) {
               if (0==s.r and 1==s1.r) addL(_PysL[j], z);
@@ -243,6 +245,7 @@ namespace iyak {
             break;
           }
 
+#if !DBG_NO_MULTI
           case EM::ST_M: {
             if (k==i-1 and j==l) {
               if (0==s1.l and 1==s.l) addL(_PysL[k], z);
@@ -251,6 +254,7 @@ namespace iyak {
             }
             break;
           }
+#endif
           default:{break;}
         }
       }
@@ -279,7 +283,9 @@ namespace iyak {
           }
 
           case EM::ST_O:
+#if !DBG_NO_MULTI
           case EM::ST_2:
+#endif
           case EM::ST_L: {
             if (i==k and l==j-1) {
               if (l==_Ys) if (0!=s1.r or 1!=s.r) etc = zeroL;
@@ -287,12 +293,14 @@ namespace iyak {
             break;
           }
 
+#if !DBG_NO_MULTI
           case EM::ST_M: {
             if (i==k-1 and l==j) {
               if (i==_Ys) if (0!=s.l or 1!=s1.l) etc = zeroL;
             }
             break;
           }
+#endif
           default:{break;}
         }
 
@@ -340,7 +348,9 @@ namespace iyak {
           }
 
           case EM::ST_O:
+#if !DBG_NO_MULTI
           case EM::ST_2:
+#endif
           case EM::ST_L: {
             if (i==k and j==l-1) {
               if (_Ys==j) if (0!=s.r or 1!=s1.r) extra = zeroL;
@@ -351,6 +361,7 @@ namespace iyak {
             break;
           }
 
+#if !DBG_NO_MULTI
           case EM::ST_M: {
             if (k==i-1 and j==l) {
               if (_Ys==k) if (0!=s1.l or 1!=s.l) extra = zeroL;
@@ -358,6 +369,7 @@ namespace iyak {
             }
             break;
           }
+#endif
           default:{break;}
         }
         DPalgo::on_outside_transition<e,e1>(i, j, k, l,
@@ -393,7 +405,9 @@ namespace iyak {
           }
 
           case EM::ST_O:
+#if !DBG_NO_MULTI
           case EM::ST_2:
+#endif
           case EM::ST_L: {
             if (i==k and l==j-1) {
               if (l==_ys and !(0==s1.r and 1==s.r)) etc = mulL(etc, 0);
@@ -403,6 +417,7 @@ namespace iyak {
             break;
           }
 
+#if !DBG_NO_MULTI
           case EM::ST_M: {
             if (i==k-1 and l==j) {
               if (i==_ys and !(0==s.l and 1==s1.l)) etc = mulL(etc, 0);
@@ -410,6 +425,7 @@ namespace iyak {
             }
             break;
           }
+#endif
           default:{break;}
         }
 

@@ -41,8 +41,6 @@ namespace iyak {
 
     public:
 
-    static int const nstate = 8;
-    static int const ntrans = 15;
     static int const turn = 3;
 
     string param_fname;
@@ -60,12 +58,15 @@ namespace iyak {
     enum StateType {
       ST_P = 0,
       ST_E,
+#if !DBG_NO_MULTI
       ST_M,
       ST_B,
       ST_1,
       ST_2,
+#endif
       ST_L, /* ad-hoc */
       ST_O, /* ad-hoc */
+      nstate
     };
 
     enum TransType {
@@ -75,6 +76,7 @@ namespace iyak {
       TT_O_O,
       TT_O_OP,
       TT_E_P,
+#if !DBG_NO_MULTI
       TT_E_M,
       TT_M_M,
       TT_M_B,
@@ -83,7 +85,9 @@ namespace iyak {
       TT_1_2,
       TT_2_2,
       TT_2_P,
+#endif
       TT_L_L,
+      ntrans
     };
 
     /* ad-hoc table */
@@ -98,6 +102,7 @@ namespace iyak {
       x[ST_O][ST_O] = TT_O_O;
       x[ST_O][ST_P] = TT_O_OP;
       x[ST_E][ST_P] = TT_E_P;
+#if !DBG_NO_MULTI
       x[ST_E][ST_M] = TT_E_M;
       x[ST_M][ST_M] = TT_M_M;
       x[ST_M][ST_B] = TT_M_B;
@@ -106,6 +111,7 @@ namespace iyak {
       x[ST_1][ST_2] = TT_1_2;
       x[ST_2][ST_2] = TT_2_2;
       x[ST_2][ST_P] = TT_2_P;
+#endif
       x[ST_L][ST_L] = TT_L_L;
 
       auto& y = trans_to_states;
@@ -116,6 +122,7 @@ namespace iyak {
       y[TT_O_O] = {ST_O,ST_O};
       y[TT_O_OP]= {ST_O,ST_P};
       y[TT_E_P] = {ST_E,ST_P};
+#if !DBG_NO_MULTI
       y[TT_E_M] = {ST_E,ST_M};
       y[TT_M_M] = {ST_M,ST_M};
       y[TT_M_B] = {ST_M,ST_B};
@@ -124,6 +131,7 @@ namespace iyak {
       y[TT_1_2] = {ST_1,ST_2};
       y[TT_2_2] = {ST_2,ST_2};
       y[TT_2_P] = {ST_2,ST_P};
+#endif
       y[TT_L_L] = {ST_L,ST_L};
     }
 
@@ -295,6 +303,7 @@ namespace iyak {
           _bp_ok[i-1][j-i+2];
         }
 
+#if !DBG_NO_MULTI
         case ST_M: {
           return
           0<i and j<L and
@@ -322,6 +331,7 @@ namespace iyak {
           j-i <= W and
           _left_bp_ok[i][j-i];
         }
+#endif
       }
       return false;
     }
@@ -348,6 +358,7 @@ namespace iyak {
             }
           }
 
+#if !DBG_NO_MULTI
           if (is_parsable<ST_B>(i, j)) {
             for (int k = i; k <= j; ++ k) {
               if (is_parsable<ST_1>(i, k) and
@@ -389,8 +400,10 @@ namespace iyak {
               f.template on_transition<TT_M_B>(i, j, i, j, oneL);
             }
           }
+#endif
 
           if (is_parsable<ST_E>(i, j)) {
+#if !DBG_NO_MULTI
             if (is_parsable<ST_M>(i, j)) {
               tsc = mulL(_ep.sum_ext_m(j, i-1, false, *_seq),
                          _ep.mlclosing(),
@@ -398,6 +411,7 @@ namespace iyak {
               f.template on_transition<TT_E_M>(i, j, i, j,
                                                _no_ene? oneL: tsc);
             }
+#endif
             tsc = _ep.hairpin_energy(i-1, j, *_seq);
 
             if (debug&DBG_FIX_RSS and
@@ -455,6 +469,7 @@ namespace iyak {
               f.template on_transition<TT_O_O>(0, j, 0, j+1, oneL);
           }
 
+#if !DBG_NO_MULTI
           if (is_parsable<ST_2>(i, j)) {
             if (is_parsable<ST_2>(i, j+1)) {
 
@@ -465,6 +480,7 @@ namespace iyak {
               f.template on_transition<TT_1_2>(i, j, i, j, oneL);
             }
           }
+#endif
 
           if (is_parsable<ST_P>(i, j)) {
             tsc = _ep.sum_ext_m(i, j-1, true, *_seq);
@@ -475,11 +491,13 @@ namespace iyak {
               f.template on_transition<TT_P_P>(i, j, i-1, j+1,
                                                _no_ene? oneL: tsc);
             }
+#if !DBG_NO_MULTI
             if (is_parsable<ST_2>(i, j)) {
               tsc = mulL(_ep.sum_ext_m(i, j-1, false, *_seq), _ep.mlintern());
               f.template on_transition<TT_2_P>(i, j, i, j,
                                                _no_ene? oneL: tsc);
             }
+#endif
           }
 
           if (is_parsable<ST_E>(i, j)) {
@@ -493,6 +511,7 @@ namespace iyak {
                   f.template on_transition<TT_E_H>(i, j, i, j,
                                                    _no_ene? oneL: tsc);
 
+#if !DBG_NO_MULTI
             if (is_parsable<ST_M>(i, j)) {
               tsc = mulL(_ep.sum_ext_m(j, i-1, false, *_seq),
                          _ep.mlclosing(),
@@ -500,8 +519,10 @@ namespace iyak {
               f.template on_transition<TT_E_M>(i, j, i, j,
                                                _no_ene? oneL: tsc);
             }
+#endif
           }
 
+#if !DBG_NO_MULTI
           if (is_parsable<ST_M>(i, j) and
               is_parsable<ST_M>(i-1, j)) {
 
@@ -523,6 +544,7 @@ namespace iyak {
               }
             }
           }
+#endif
 
           if (is_parsable<ST_E>(i, j)) {
             for (int k=i; k<=min(j-2,i+C); ++k) {
@@ -568,12 +590,6 @@ namespace iyak {
                       _em.inside(l, j, EM::ST_P), tsc));
             break;
           }
-          case EM::TT_B_12: {
-            addL(_em.inside(i, j, EM::ST_B),
-                 mulL(_em.inside(k, l, EM::ST_1),
-                      _em.inside(l, j, EM::ST_2), tsc));
-            break;
-          }
           case EM::TT_O_O: {
             addL(_em.inside_o(j),
                  mulL(_em.inside_o(l), tsc));
@@ -584,14 +600,23 @@ namespace iyak {
             break;
           }
 
+#if !DBG_NO_MULTI
+          case EM::TT_B_12: {
+            addL(_em.inside(i, j, EM::ST_B),
+                 mulL(_em.inside(k, l, EM::ST_1),
+                      _em.inside(l, j, EM::ST_2), tsc));
+            break;
+          }
+
           case EM::TT_1_B:
           case EM::TT_1_2:
           case EM::TT_2_2:
           case EM::TT_2_P:
-          case EM::TT_E_P:
           case EM::TT_E_M:
           case EM::TT_M_M:
           case EM::TT_M_B:
+#endif
+          case EM::TT_E_P:
           case EM::TT_P_E:
           case EM::TT_P_P: {
             addL(_em.inside(i,j,_em.trans_to_states[t].first),
@@ -617,15 +642,6 @@ namespace iyak {
                       _em.outside_o(l), tsc));
             break;
           }
-          case EM::TT_B_12: {
-            addL(_em.outside(i, j, EM::ST_1),
-                 mulL(_em.inside(j, l, EM::ST_2),
-                      _em.outside(k, l, EM::ST_B), tsc));
-            addL(_em.outside(j, l, EM::ST_2),
-                 mulL(_em.inside(i, j, EM::ST_1),
-                      _em.outside(k, l, EM::ST_B), tsc));
-            break;
-          }
           case EM::TT_O_O: {
             addL(_em.outside_o(j),
                  mulL(_em.outside_o(l), tsc));
@@ -635,15 +651,26 @@ namespace iyak {
             break;
             // no-op;
           }
+#if !DBG_NO_MULTI
+          case EM::TT_B_12: {
+            addL(_em.outside(i, j, EM::ST_1),
+                 mulL(_em.inside(j, l, EM::ST_2),
+                      _em.outside(k, l, EM::ST_B), tsc));
+            addL(_em.outside(j, l, EM::ST_2),
+                 mulL(_em.inside(i, j, EM::ST_1),
+                      _em.outside(k, l, EM::ST_B), tsc));
+            break;
+          }
 
           case EM::TT_1_B:
           case EM::TT_1_2:
           case EM::TT_2_2:
           case EM::TT_2_P:
-          case EM::TT_E_P:
           case EM::TT_E_M:
           case EM::TT_M_M:
           case EM::TT_M_B:
+#endif
+          case EM::TT_E_P:
           case EM::TT_P_E:
           case EM::TT_P_P: {
             addL(_em.outside(i, j, _em.trans_to_states[t].second),

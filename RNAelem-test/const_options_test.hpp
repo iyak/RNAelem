@@ -31,5 +31,6 @@ namespace iyak {
     | DBG_NO_TURN
     | DBG_PROOF
   };
+#define DBG_NO_MULTI 0
 }
 #endif /* const_options_test_h */

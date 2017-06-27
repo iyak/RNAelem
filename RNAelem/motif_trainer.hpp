@@ -343,8 +343,10 @@ namespace iyak {
             break;
           }
 
-          case EM::ST_O:
+#if !DBG_NO_MULTI
           case EM::ST_2:
+#endif
+          case EM::ST_O:
           case EM::ST_L: {
             if (k==i and j==l-1) {
               if (not model.no_prf())
@@ -353,6 +355,7 @@ namespace iyak {
             break;
           }
 
+#if !DBG_NO_MULTI
           case EM::ST_M: {
             if (k==i-1 and j==l) {
               if (not model.no_prf())
@@ -360,6 +363,7 @@ namespace iyak {
             }
             break;
           }
+#endif
           default:{break;}
         }
         DPalgo::on_outside_transition<e,e1>(i, j, k, l,
@@ -393,7 +397,9 @@ namespace iyak {
           }
 
           case EM::ST_O:
+#if !DBG_NO_MULTI
           case EM::ST_2:
+#endif
           case EM::ST_L: {
             if (i==k and l==j-1) {
               if (0==s1.r and 1==s.r) extra = mulL(extra, _wsL[l]);
@@ -401,12 +407,14 @@ namespace iyak {
             break;
           }
 
+#if !DBG_NO_MULTI
           case EM::ST_M: {
             if (i==k-1 and l==j) {
               if (0==s.l and 1==s1.l) extra = mulL(extra, _wsL[i]);
             }
             break;
           }
+#endif
           default:{break;}
         }
 
@@ -457,7 +465,9 @@ namespace iyak {
           }
 
           case EM::ST_O:
+#if !DBG_NO_MULTI
           case EM::ST_2:
+#endif
           case EM::ST_L: {
             if (i==k and j==l-1) {
               if (0==s.r and 1==s1.r) extra = mulL(extra,_wsL[j]);
@@ -468,6 +478,7 @@ namespace iyak {
             break;
           }
 
+#if !DBG_NO_MULTI
           case EM::ST_M: {
             if (k==i-1 and j==l) {
               if (0==s1.l and 1==s.l) extra = mulL(extra,_wsL[k]);
@@ -476,6 +487,7 @@ namespace iyak {
             }
             break;
           }
+#endif
           default:{break;}
         }
         _dEH -= logNL(tsc) * expL(mulL(z,extra));
