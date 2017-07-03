@@ -132,7 +132,7 @@ namespace iyak {
                   inside_o(L, _motif->mm.n2s(0,_motif->M-2)),
                   inside_o(L, _motif->mm.n2s(0,_motif->M-1)));
     }
-    
+
     double part_func_outside() { /* for debug */
       return outside_o(0, _motif->mm.n2s(0,0));
     }
@@ -258,7 +258,7 @@ namespace iyak {
   public:
     RNAelemScanner(int t=1): _thread(t) {}
     RNAelem* model() {return _motif;}
-    
+
     /* setter */
     void set_fq_name(string const& s) {
       _fq_name = s;
@@ -298,7 +298,7 @@ namespace iyak {
 
       say("scan end:", lap());
     }
-    
+
     void trace_back(int i, int j, int e, IS const& s) {
 
       Trace& t = (EM::ST_O==e? trace_o(j,s): trace(i,j,e,s));
@@ -401,7 +401,7 @@ namespace iyak {
                                 double const tsc,
                                 double const wt,
                                 double const etc) const {
-        
+
         if (zeroL == tsc) return;
         double diff = mulL(wt, (debug&DBG_NO_LOGSUM)?
                            pow(tsc, lam): lam*tsc,
@@ -413,14 +413,14 @@ namespace iyak {
                     _s->inside(l, j, EM::ST_L, s3),
                     diff));
         }
-        
+
         else if (EM::ST_O==e and EM::ST_P==e1) {
           addL(_s->inside_o(j, s),
                mulL(_s->inside_o(k, s2),
                     _s->inside(k, l, e1, s1),
                     diff));
         }
-        
+
 #if !DBG_NO_MULTI
         else if (EM::ST_B==e and EM::ST_1==e1) {
           addL(_s->inside(i, j, e, s),
@@ -429,13 +429,13 @@ namespace iyak {
                     diff));
         }
 #endif
-        
+
         else if (EM::ST_O==e and EM::ST_O==e1) {
           addL(_s->inside_o(j, s),
                mulL(_s->inside_o(l, s1),
                     diff));
         }
-        
+
         else {
           addL(_s->inside(i, j, e, s),
                mulL(_s->inside(k, l, e1, s1),
@@ -443,7 +443,7 @@ namespace iyak {
         }
       }
     };
-    
+
     class OutsideFun {
       RNAelemScanner* _s;
       double const _ZL;
@@ -477,7 +477,7 @@ namespace iyak {
                               mulL(_s->outside(k,l,e1,s1),
                                    _s->inside(k,i,EM::ST_L,s2),
                                    _s->inside(j,l,EM::ST_L,s3)):
-                              
+
                               (EM::ST_O==e1 and EM::ST_P==e)?
                               mulL(_s->outside_o(l,s1),
                                    _s->inside_o(i,s2)):
@@ -488,9 +488,9 @@ namespace iyak {
 #endif
                               (EM::ST_O==e1 and EM::ST_O==e)?
                               _s->outside_o(l,s1):
-                              
+
                               _s->outside(k,l,e1,s1))
-                             
+
                              ,
                              mulL(wt, (debug&DBG_NO_LOGSUM)?
                                   pow(tsc, lam): lam*tsc,
@@ -519,7 +519,7 @@ namespace iyak {
                     _s->inside(k, i, EM::ST_L, s2),
                     diff));
         }
-        
+
         else if (EM::ST_O==e1 and EM::ST_P==e) {
           addL(_s->outside(i, j, e, s),
                mulL(_s->outside_o(l, s1),
@@ -530,7 +530,7 @@ namespace iyak {
                     _s->inside(i, j, e, s),
                     diff));
         }
-        
+
 #if !DBG_NO_MULTI
         else if (EM::ST_B==e1 and EM::ST_1==e) {
           addL(_s->outside(i, j, e, s),
@@ -543,13 +543,13 @@ namespace iyak {
                     diff));
         }
 #endif
-        
+
         else if (EM::ST_O==e1 and EM::ST_O==e) {
           addL(_s->outside_o(j, s),
                mulL(_s->outside_o(l, s1),
                     diff));
         }
-        
+
         else {
           addL(_s->outside(i, j, e, s),
                mulL(_s->outside(k, l, e1, s1),
@@ -658,14 +658,14 @@ namespace iyak {
                     _s->inside(l, j, EM::ST_L, s3),
                     diff));
         }
-        
+
         else if (EM::ST_O==e and EM::ST_P==e1) {
           addL(_s->inside_o(j, s),
                mulL(_s->inside_o(k, s2),
                     _s->inside(k, l, e1, s1),
                     diff));
         }
-        
+
 #if !DBG_NO_MULTI
         else if (EM::ST_B==e and EM::ST_1==e1) {
           addL(_s->inside(i, j, e, s),
@@ -674,13 +674,13 @@ namespace iyak {
                     diff));
         }
 #endif
-        
+
         else if (EM::ST_O==e and EM::ST_O==e1) {
           addL(_s->inside_o(j, s),
                mulL(_s->inside_o(l, s1),
                     diff));
         }
-        
+
         else {
           addL(_s->inside(i, j, e, s),
                mulL(_s->inside(k, l, e1, s1),
@@ -688,7 +688,7 @@ namespace iyak {
         }
       }
     };
-    
+
     class OutsideEndFun {
       RNAelemScanner* _s;
       int _Ys;
@@ -713,7 +713,7 @@ namespace iyak {
                                  double const tsc,
                                  double const wt,
                                  double etc) const {
-        
+
         if (zeroL == tsc) return;
         double z = divL(mulL((EM::ST_O==e?
                               _s->inside_o(j,s):
@@ -723,7 +723,7 @@ namespace iyak {
                               mulL(_s->outside(k,l,e1,s1),
                                    _s->inside(k,i,EM::ST_L,s2),
                                    _s->inside(j,l,EM::ST_L,s3)):
-                              
+
                               (EM::ST_O==e1 and EM::ST_P==e)?
                               mulL(_s->outside_o(l,s1),
                                    _s->inside_o(i,s2)):
@@ -734,9 +734,9 @@ namespace iyak {
 #endif
                               (EM::ST_O==e1 and EM::ST_O==e)?
                               _s->outside_o(l,s1):
-                              
+
                               _s->outside(k,l,e1,s1))
-                             
+
                              ,
                              mulL(wt, (debug&DBG_NO_LOGSUM)?
                                   pow(tsc, lam): lam*tsc,
@@ -789,7 +789,7 @@ namespace iyak {
         double diff = mulL(wt, (debug&DBG_NO_LOGSUM)?
                            pow(tsc,lam): lam*tsc,
                            mulL(etc, extra));
-        
+
         if (EM::ST_E==e1 and EM::ST_P==e) {
           addL(_s->outside(i, j, e, s),
                mulL(_s->outside(k, l, e1, s1),
@@ -807,7 +807,7 @@ namespace iyak {
                     _s->inside(k, i, EM::ST_L, s2),
                     diff));
         }
-        
+
         else if (EM::ST_O==e1 and EM::ST_P==e) {
           addL(_s->outside(i, j, e, s),
                mulL(_s->outside_o(l, s1),
@@ -818,7 +818,7 @@ namespace iyak {
                     _s->inside(i, j, e, s),
                     diff));
         }
-        
+
 #if !DBG_NO_MULTI
         else if (EM::ST_B==e1 and EM::ST_1==e) {
           addL(_s->outside(i, j, e, s),
@@ -831,13 +831,13 @@ namespace iyak {
                     diff));
         }
 #endif
-        
+
         else if (EM::ST_O==e1 and EM::ST_O==e) {
           addL(_s->outside_o(j, s),
                mulL(_s->outside_o(l, s1),
                     diff));
         }
-        
+
       else {
         addL(_s->outside(i, j, e, s),
              mulL(_s->outside(k, l, e1, s1),
@@ -880,20 +880,20 @@ namespace iyak {
                                 double const tsc,
                                 double const wt,
                                 double etc) const {
-        
+
         switch (e) {
           case EM::ST_P: {
             if (i==k-1 and l==j-1) {
               if (i==_ys and !(0==s.l and 1==s1.l)) etc = mulL(etc, 0);
               if (l==_ys and !(0==s1.r and 1==s.r)) etc = mulL(etc, 0);
-              
+
               if (i==_ye and !(M-2==s.l and M-1==s1.l)) etc = mulL(etc, 0);
               if (l==_ye and !(M-2==s1.r and M-1==s.r)) etc = mulL(etc, 0);
               if ((j==_ye and L==j) and M-2!=s.r) etc = mulL(etc, 0);
             }
             break;
           }
-            
+
           case EM::ST_O:
 #if !DBG_NO_MULTI
           case EM::ST_2:
@@ -906,7 +906,7 @@ namespace iyak {
             }
             break;
           }
-            
+
 #if !DBG_NO_MULTI
           case EM::ST_M: {
             if (i==k-1 and l==j) {
@@ -918,11 +918,11 @@ namespace iyak {
 #endif
           default:{break;}
         }
-        
+
         double diff = mulL(wt, (debug&DBG_NO_LOGSUM)?
                            pow(tsc, lam): lam*tsc,
                            etc);
-        
+
         if (EM::ST_E==e and EM::ST_P==e1) {
           compare<e,e1>(i, j, k, l, s, s1,
                         _s->cyk(i, j, e, s),
@@ -931,7 +931,7 @@ namespace iyak {
                              _s->cyk(l, j, EM::ST_L, s3),
                              diff));
         }
-        
+
         else if (EM::ST_O==e and EM::ST_P==e1) {
           compare<e,e1>(i, j, k, l, s, s1,
                         _s->cyk_o(j, s),
@@ -939,7 +939,7 @@ namespace iyak {
                              _s->cyk(k, l, e1, s1),
                              diff));
         }
-        
+
 #if !DBG_NO_MULTI
         else if (EM::ST_B==e and EM::ST_1==e1) {
           compare<e,e1>(i, j, k, l, s, s1,
@@ -949,7 +949,7 @@ namespace iyak {
                              diff));
         }
 #endif
-        
+
       else if (EM::ST_O==e and EM::ST_O==e1) {
         compare<e,e1>(i, j, k, l, s, s1,
                       _s->cyk_o(j, s),

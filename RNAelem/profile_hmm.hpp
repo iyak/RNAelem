@@ -419,7 +419,7 @@ namespace iyak {
           }
         }
     }
-    
+
     void save() {
       for (auto const& si: _state) {
         say(si.id, ":", si.l, si.r);

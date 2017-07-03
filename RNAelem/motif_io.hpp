@@ -200,7 +200,7 @@ namespace iyak {
           max_iloop = iss_cast<int>(p[1]);
           set |= (1<<9);
         }
-        
+
         else if ("no-rss" == p[0]) {
           no_rss = iss_cast<bool>(p[1]); /* optional */
         }

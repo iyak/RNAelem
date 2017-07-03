@@ -330,7 +330,7 @@ namespace iyak {
   template<class...A,class B> string paste0(B const b, A const... a) {
     return to_str(b) + paste0(a...);
   }
-  
+
   template<class C> class ClassThread {
   private:
     std::vector<uptr<C>> _c;

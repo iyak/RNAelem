@@ -36,6 +36,7 @@ namespace iyak {
     RNAelem* model() {return &_m;}
     int _from;
     int _to;
+    double& _sum_eff;
     mutex& _mx_input;
     mutex& _mx_update;
     FastqReader& _qr;
@@ -43,12 +44,12 @@ namespace iyak {
     double _pseudo_cov;
     V const& _convo_kernel;
     unsigned _mode;
-    RNAelemTrainDP(RNAelem& m, int from, int to, mutex& mx_input,
+    RNAelemTrainDP(RNAelem& m, int from, int to, double& sum_eff, mutex& mx_input,
                    mutex& mx_update, FastqReader& qr, Lbfgsb& opt,
                    double pseudo_cov, V const& convo_kernel, unsigned mode):
-    _m(m), _from(from), _to(to), _mx_input(mx_input), _mx_update(mx_update),
-    _qr(qr), _opt(opt), _pseudo_cov(pseudo_cov), _convo_kernel(convo_kernel),
-    _mode(mode) {};
+    _m(m), _from(from), _to(to), _sum_eff(sum_eff), _mx_input(mx_input),
+    _mx_update(mx_update), _qr(qr), _opt(opt), _pseudo_cov(pseudo_cov),
+    _convo_kernel(convo_kernel), _mode(mode) {};
 
     string _id;
     VI _seq;
@@ -66,7 +67,6 @@ namespace iyak {
     VV _dEN;
     VV _dENn;
     double _fn;
-    double _sum_eff;
 
     double& inside(int const i,int const j,int const e,IS const& s) {
       return (debug&DBG_PROOF)?
@@ -141,7 +141,7 @@ namespace iyak {
     }
 
     void operator() (double& fn, V& gr) {
-      _sum_eff = 0.;
+      double sum_eff = 0.;
       _fn = 0;
       clear_emit_count(_dEN);
       _dEH = 0.;
@@ -163,7 +163,7 @@ namespace iyak {
 
         if (debug&DBG_FIX_RSS) _m.em.fix_rss(_rss);
         _m.set_seq(_seq);
-        _sum_eff += _m.em.bpp_eff();
+        sum_eff += _m.em.bpp_eff();
         calc_ws(_qual);
 
         /* inside-outside */
@@ -215,6 +215,7 @@ namespace iyak {
           }
         }
         gr[k++] += _dEH;
+        _sum_eff += sum_eff;
       }
     }
 
@@ -802,7 +803,7 @@ namespace iyak {
       } else {
         _qr.clear();
         ClassThread<RNAelemTrainDP> ct(_thread,
-                                       *_motif, _from,  _to, _mx_input,
+                                       *_motif, _from,  _to, _sum_eff, _mx_input,
                                        _mx_update, _qr, _opt, _pseudo_cov,
                                        _convo_kernel, _mode);
         ct(fn, gr);
@@ -819,6 +820,5 @@ namespace iyak {
 #include"motif_array_trainer.hpp"
 #include"motif_mask_trainer.hpp"
 #include"motif_eval.hpp"
-#include"motif_array_eval.hpp"
 
 #endif /* motif_trainer_h */

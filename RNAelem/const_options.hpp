@@ -26,7 +26,7 @@ namespace iyak {
   enum {
     debug = DBG_NONE
   };
-#define DBG_NO_MULTI 0
+#define DBG_NO_MULTI 1
 }
 
 #endif /* const_options_h */
