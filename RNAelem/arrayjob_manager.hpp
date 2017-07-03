@@ -145,7 +145,7 @@ namespace iyak {
       if (show) cry(strip(res, "\n"));
     }
 
-    PII assinged_range(int total, int n, int k) {
+    PII assigned_range(int total, int n, int k) {
       int res = total - (total/n) * n;
       int from=0, to=0;
       for (int i=0; i<k; ++i) {

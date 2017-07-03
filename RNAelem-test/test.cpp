@@ -68,146 +68,159 @@ namespace iyak {
   class RNAelemDPTest: public ::testing::Test {
   protected:
     RNAelem model;
-    RNAelemDP f;
+    RNAelemTrainer t;
+    mutex a, b;
 
     RNAelemDPTest() {
       model.set_energy_params("~T2004~", large, large, 0., true);
       model.set_hyper_param(0., 0., 1., -1.);
+      t.set_preprocess({1}, 0);
+      t.set_conditions(-1, 1e-4, 0);
+    }
 
-      f.set_preprocess({1}, 0);
-      f.set_conditions(-1, 1e-4, 0);
+    virtual void SetUp() {
+      
     }
   };
 
   TEST_F(RNAelemDPTest, PATH_COUNT_CASES) {
+    
+    RNAelemDP f(model, t._from, t._to, t._mx_input, t._mx_update, t._qr,
+                t._opt, t._pseudo_cov, t._convo_kernel, t._mode);
 
     //EXPECT_TRUE(debug & DBG_NO_ENE);
     EXPECT_TRUE(debug & DBG_NO_WEIGHT);
     EXPECT_TRUE(debug & DBG_FIX_RSS);
     EXPECT_TRUE(debug & DBG_NO_TURN);
 
-    model.set_motif_pattern(".");
+    f._m.set_motif_pattern(".");
 
-    f.eval(model, "A", ".");
-    EXPECT_DOUBLE_EQ(2, expL(model.part_func()));
-    EXPECT_DOUBLE_EQ(2, expL(model.part_func_outside()));
+    f.eval("A", ".");
+    EXPECT_DOUBLE_EQ(2, expL(f.part_func()));
+    EXPECT_DOUBLE_EQ(2, expL(f.part_func_outside()));
 
-    f.eval(model, "AA", "..");
-    EXPECT_DOUBLE_EQ(4, expL(model.part_func()));
-    EXPECT_DOUBLE_EQ(4, expL(model.part_func_outside()));
+    f.eval("AA", "..");
+    EXPECT_DOUBLE_EQ(4, expL(f.part_func()));
+    EXPECT_DOUBLE_EQ(4, expL(f.part_func_outside()));
 
-    f.eval(model, "CAAAG", "(...)");
-    EXPECT_DOUBLE_EQ(7, expL(model.part_func()));
-    EXPECT_DOUBLE_EQ(7, expL(model.part_func_outside()));
+    f.eval("CAAAG", "(...)");
+    EXPECT_DOUBLE_EQ(7, expL(f.part_func()));
+    EXPECT_DOUBLE_EQ(7, expL(f.part_func_outside()));
 
-    f.eval(model, "ACAAAGA", ".(...).");
-    EXPECT_DOUBLE_EQ(9, expL(model.part_func()));
-    EXPECT_DOUBLE_EQ(9, expL(model.part_func_outside()));
+    f.eval("ACAAAGA", ".(...).");
+    EXPECT_DOUBLE_EQ(9, expL(f.part_func()));
+    EXPECT_DOUBLE_EQ(9, expL(f.part_func_outside()));
 
-    f.eval(model, "ACACAAAGGA", ".(.(...)).");
-    EXPECT_DOUBLE_EQ(10, expL(model.part_func()));
-    EXPECT_DOUBLE_EQ(10, expL(model.part_func_outside()));
+    f.eval("ACACAAAGGA", ".(.(...)).");
+    EXPECT_DOUBLE_EQ(10, expL(f.part_func()));
+    EXPECT_DOUBLE_EQ(10, expL(f.part_func_outside()));
 
-    f.eval(model, "ACACAGACAGAAGA", ".(.(.).(.)..).");
-    EXPECT_DOUBLE_EQ(10, expL(model.part_func()));
-    EXPECT_DOUBLE_EQ(10, expL(model.part_func_outside()));
+    f.eval("ACACAGACAGAAGA", ".(.(.).(.)..).");
+    EXPECT_DOUBLE_EQ(10, expL(f.part_func()));
+    EXPECT_DOUBLE_EQ(10, expL(f.part_func_outside()));
 
-    f.eval(model, "CACAGAG", "(.(.).)");
-    EXPECT_DOUBLE_EQ(4, expL(model.part_func()));
-    EXPECT_DOUBLE_EQ(4, expL(model.part_func_outside()));
+    f.eval("CACAGAG", "(.(.).)");
+    EXPECT_DOUBLE_EQ(4, expL(f.part_func()));
+    EXPECT_DOUBLE_EQ(4, expL(f.part_func_outside()));
 
-    model.set_motif_pattern("(.)");
+    f._m.set_motif_pattern("(.)");
 
-    f.eval(model, "CAAAG", "(...)");
-    EXPECT_DOUBLE_EQ(2, expL(model.part_func()));
-    EXPECT_DOUBLE_EQ(2, expL(model.part_func_outside()));
+    f.eval("CAAAG", "(...)");
+    EXPECT_DOUBLE_EQ(2, expL(f.part_func()));
+    EXPECT_DOUBLE_EQ(2, expL(f.part_func_outside()));
 
-    f.eval(model, "CCAAAGG", "((...))");
-    EXPECT_DOUBLE_EQ(3, expL(model.part_func()));
-    EXPECT_DOUBLE_EQ(3, expL(model.part_func_outside()));
+    f.eval("CCAAAGG", "((...))");
+    EXPECT_DOUBLE_EQ(3, expL(f.part_func()));
+    EXPECT_DOUBLE_EQ(3, expL(f.part_func_outside()));
 
-    model.set_motif_pattern("(.*)");
+    f._m.set_motif_pattern("(.*)");
 
-    f.eval(model, "CAAAG", "(...)");
-    EXPECT_DOUBLE_EQ(4, expL(model.part_func()));
-    EXPECT_DOUBLE_EQ(4, expL(model.part_func_outside()));
+    f.eval("CAAAG", "(...)");
+    EXPECT_DOUBLE_EQ(4, expL(f.part_func()));
+    EXPECT_DOUBLE_EQ(4, expL(f.part_func_outside()));
 
-    f.eval(model, "CCAAAGG", "((...))");
-    EXPECT_DOUBLE_EQ(7, expL(model.part_func()));
-    EXPECT_DOUBLE_EQ(7, expL(model.part_func_outside()));
+    f.eval("CCAAAGG", "((...))");
+    EXPECT_DOUBLE_EQ(7, expL(f.part_func()));
+    EXPECT_DOUBLE_EQ(7, expL(f.part_func_outside()));
 
-    model.set_motif_pattern(".*.");
+    f._m.set_motif_pattern(".*.");
 
-    f.eval(model, "AA", "..");
-    EXPECT_DOUBLE_EQ(2, expL(model.part_func()));
-    EXPECT_DOUBLE_EQ(2, expL(model.part_func_outside()));
+    f.eval("AA", "..");
+    EXPECT_DOUBLE_EQ(2, expL(f.part_func()));
+    EXPECT_DOUBLE_EQ(2, expL(f.part_func_outside()));
 
-    f.eval(model, "CAAAG", "(...)");
-    EXPECT_DOUBLE_EQ(6, expL(model.part_func()));
-    EXPECT_DOUBLE_EQ(6, expL(model.part_func_outside()));
+    f.eval("CAAAG", "(...)");
+    EXPECT_DOUBLE_EQ(6, expL(f.part_func()));
+    EXPECT_DOUBLE_EQ(6, expL(f.part_func_outside()));
 
-    model.set_motif_pattern("(.).(.)");
+    f._m.set_motif_pattern("(.).(.)");
 
-    f.eval(model, "CAGACAG", "(.).(.)");
-    EXPECT_DOUBLE_EQ(2, expL(model.part_func()));
-    EXPECT_DOUBLE_EQ(2, expL(model.part_func_outside()));
+    f.eval("CAGACAG", "(.).(.)");
+    EXPECT_DOUBLE_EQ(2, expL(f.part_func()));
+    EXPECT_DOUBLE_EQ(2, expL(f.part_func_outside()));
 
-    f.eval(model, "CCAGACAGG", "((.).(.))");
-    EXPECT_DOUBLE_EQ(2, expL(model.part_func()));
-    EXPECT_DOUBLE_EQ(2, expL(model.part_func_outside()));
+    f.eval("CCAGACAGG", "((.).(.))");
+    EXPECT_DOUBLE_EQ(2, expL(f.part_func()));
+    EXPECT_DOUBLE_EQ(2, expL(f.part_func_outside()));
 
-    model.set_motif_pattern("(.)*(.)");
+    f._m.set_motif_pattern("(.)*(.)");
 
-    f.eval(model, "CAGCAG", "(.)(.)");
-    EXPECT_DOUBLE_EQ(2, expL(model.part_func()));
-    EXPECT_DOUBLE_EQ(2, expL(model.part_func_outside()));
+    f.eval("CAGCAG", "(.)(.)");
+    EXPECT_DOUBLE_EQ(2, expL(f.part_func()));
+    EXPECT_DOUBLE_EQ(2, expL(f.part_func_outside()));
 
-    f.eval(model, "CCAGCAGG", "((.)(.))");
-    EXPECT_DOUBLE_EQ(2, expL(model.part_func()));
-    EXPECT_DOUBLE_EQ(2, expL(model.part_func_outside()));
+    f.eval("CCAGCAGG", "((.)(.))");
+    EXPECT_DOUBLE_EQ(2, expL(f.part_func()));
+    EXPECT_DOUBLE_EQ(2, expL(f.part_func_outside()));
   }
 
   TEST_F(RNAelemDPTest, EMISSION_COUNT_CASES) {
 
+    RNAelemDP f(model, t._from, t._to, t._mx_input, t._mx_update, t._qr,
+                t._opt, t._pseudo_cov, t._convo_kernel, t._mode);
+    
     //EXPECT_TRUE(debug & DBG_NO_ENE);
     EXPECT_TRUE(debug & DBG_NO_WEIGHT);
     EXPECT_TRUE(debug & DBG_FIX_RSS);
     EXPECT_TRUE(debug & DBG_NO_TURN);
 
-    model.set_motif_pattern(".");
-    auto& ec = f.dEN();
+    f._m.set_motif_pattern(".");
+    auto& ec = f._dEN;
 
-    f.eval(model, "A", ".");
+    f.eval("A", ".");
     EXPECT_EQ(to_str(ec), to_str(VV{{0,1,0,0,0},{0,1,0,0,0}}));
 
-    f.eval(model, "CAG", "(.)");
+    f.eval("CAG", "(.)");
     EXPECT_EQ(to_str(ec), to_str(VV{{0,1,2,2,0},{0,1,0,0,0}}));
 
-    f.eval(model, "CACGG", "(...)");
+    f.eval("CACGG", "(...)");
     EXPECT_EQ(to_str(ec), to_str(VV{{0,4,10,11,0},{0,3,4,3,0}}));
 
-    f.eval(model, "CAGAU", "(.)..");
+    f.eval("CAGAU", "(.)..");
     EXPECT_EQ(to_str(ec), to_str(VV{{0,7,5,5,3},{0,3,0,0,2}}));
   }
 
   TEST_F(RNAelemDPTest, FN_GR_CASES) {
+    
+    RNAelemDP f(model, t._from, t._to, t._mx_input, t._mx_update, t._qr,
+                t._opt, t._pseudo_cov, t._convo_kernel, t._mode);
 
     //EXPECT_TRUE(debug & DBG_NO_ENE);
     EXPECT_TRUE(debug & DBG_NO_WEIGHT);
     EXPECT_TRUE(debug & DBG_FIX_RSS);
     EXPECT_TRUE(debug & DBG_NO_TURN);
 
-    model.set_motif_pattern(".");
+    f._m.set_motif_pattern(".");
 
-    f.eval_fn(model, "A", ".", "#");
+    f.eval_fn("A", ".", "#");
     EXPECT_DOUBLE_EQ(-log(0.5), f.fn());
     EXPECT_EQ(to_str(V{0,0.5,0,0,0, 0,-0.5,0,0,0, 0}), to_str(f.gr()));
 
-    f.eval_fn(model, "CAG", "(.)", "!##");
+    f.eval_fn("CAG", "(.)", "!##");
     EXPECT_DOUBLE_EQ(-log(0.25), f.fn());
     EXPECT_EQ(to_str(V{0,0.5,0,0,0, 0,-0.5,0,0,0, 0}), to_str(f.gr()));
 
-    f.eval_fn(model, "CAG", "(.)", "!#!");
+    f.eval_fn("CAG", "(.)", "!#!");
     EXPECT_DOUBLE_EQ(-log(0.5), f.fn());
     EXPECT_EQ(to_str(V{0,0.5,0,0,0, 0,-0.5,0,0,0, 0}), to_str(f.gr()));
   }

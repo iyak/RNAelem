@@ -35,7 +35,7 @@ int main(int const argc, char const* argv[]) {
         reader.set_model_fname(app.model_fname);
         reader.read_model(model);
 
-        RNAelemTrainer eval(app.tr_mode);
+        RNAelemTrainer eval(app.tr_mode, app.thread);
         eval.set_fq_name(app.seq_fname);
         eval.set_preprocess(app.convo_kernel, app.pseudo_cov);
         if (app.tr_mode & TR_ARRAYEVAL)
@@ -60,7 +60,7 @@ int main(int const argc, char const* argv[]) {
           model.set_motif_pattern(app.pattern, app.no_rss, app.no_prf);
         }
 
-        RNAelemTrainer train(app.tr_mode);
+        RNAelemTrainer train(app.tr_mode, app.thread);
         train.set_fq_name(app.seq_fname);
         train.set_preprocess(app.convo_kernel, app.pseudo_cov);
         train.set_conditions(app.max_iter, app.eps, app.lambda_init);
@@ -101,7 +101,7 @@ int main(int const argc, char const* argv[]) {
           model.set_motif_pattern(app.pattern, app.no_rss, app.no_prf);
         }
 
-        RNAelemTrainer train(app.tr_mode);
+        RNAelemTrainer train(app.tr_mode, app.thread);
         train.set_fq_name(app.seq_fname);
         train.set_preprocess(app.convo_kernel, app.pseudo_cov);
         train.set_conditions(app.max_iter, app.eps, app.lambda_init);
@@ -128,7 +128,7 @@ int main(int const argc, char const* argv[]) {
         reader.set_model_fname(app.model_fname);
         reader.read_model(model);
 
-        RNAelemScanner scan;
+        RNAelemScanner scan(app.thread);
         scan.set_preprocess(app.convo_kernel, app.pseudo_cov);
         scan.set_fq_name(app.seq_fname);
         scan.scan(model);

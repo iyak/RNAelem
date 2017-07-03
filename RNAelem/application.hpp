@@ -66,6 +66,7 @@ namespace iyak {
     unsigned tr_mode = TR_NORMAL;
 
     int array;
+    int thread;
 
     App(int const argc, char const* argv[]) {
 
@@ -262,6 +263,13 @@ namespace iyak {
       .dest("no_ene")
       .action("store_true");
 
+      _parser
+      .add_option("-t", "--thread")
+      .help("number of threads.")
+      .dest("thread")
+      .set_default(1)
+      .metavar("INT");
+
       auto const options = _parser.parse_args(argc, argv);
       auto const args = _parser.args();
 
@@ -275,6 +283,7 @@ namespace iyak {
       "logo"==args[0]? PM_LOGO:
       -1;
       array = (int)options.get("array");
+      thread = (int)options.get("thread");
       check(-1!=mode, "unknown sub-command:", args);
 
       seq_fname = (string)options["seq_fname"];

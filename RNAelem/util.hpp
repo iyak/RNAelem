@@ -80,6 +80,7 @@ namespace iyak {
   using isstream = std::istringstream;
   using osstream = std::ostringstream;
 
+  using thread = std::thread;
   using mutex = std::mutex;
   using lock = std::lock_guard<mutex>;
   using ulock = std::unique_lock<mutex>;
@@ -170,11 +171,11 @@ namespace iyak {
   }
 
   /* timer */
-  clock_t chrn = clock();
+  auto chrn = std::chrono::system_clock::now();
   double lap(void) {
-    double s = double(clock() - chrn) / CLOCKS_PER_SEC;
-    chrn = clock();
-    return s;
+    std::chrono::duration<double> s = std::chrono::system_clock::now() - chrn;
+    chrn = std::chrono::system_clock::now();
+    return s.count();
   }
 
   /* calculation */
@@ -329,6 +330,25 @@ namespace iyak {
   template<class...A,class B> string paste0(B const b, A const... a) {
     return to_str(b) + paste0(a...);
   }
+  
+  template<class C> class ClassThread {
+  private:
+    std::vector<uptr<C>> _c;
+    std::vector<uptr<thread>> _t;
+  public:
+    template <typename... A>
+    ClassThread<C>(int n, A&... a) {
+      check(0 < n, "bad thread number", n);
+      while(n--)_c.emplace_back(new C(std::ref(a)...));
+    }
+    template <typename... A> void operator() (A&... a)  {
+      for (int i=1; i<size(_c); ++i) {
+        _t.emplace_back(new thread(std::ref(*(_c[i].get())), std::ref(a)...));
+      }
+      _c[0]->operator()(std::ref(a)...);
+      for (int i=0; i<size(_t); ++i) {_t[i]->join();}
+    }
+  };
 
   /* misc */
   bool double_eq(double const x, double const y, double const eps=1e-10) {

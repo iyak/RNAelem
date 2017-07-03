@@ -23,28 +23,6 @@ namespace iyak {
 
   class RNAelem {
 
-    friend class DPalgo;
-
-    VI* _seq;
-
-    VVVV _inside; /* L+1 W E S */
-    VV _inside_o; /* L+1 S */
-    VVVV _outside;
-    VV _outside_o;
-
-    struct Trace {
-      int k, l, t, e1, s1_id;
-    };
-
-    using VT = vector<Trace>;
-    using VVT =  vector<VT>;
-    using VVVT =  vector<VVT>;
-    using VVVVT =  vector<VVVT>;
-    VVVVT _trace_back;
-    VVT _trace_back_o;
-    VVVV _cyk;
-    VV _cyk_o;
-
     double _rho_theta; /* regularization scaler */
     double _rho_lambda; /* regularization scaler */
     double _tau; /* transition score */
@@ -60,63 +38,16 @@ namespace iyak {
 
   public:
 
-    int L=0, M=0, S=0, E=0, W=0;
-
-    /* getter */
-    double& inside(int const i,int const j,int const e,IS const& s) {
-      return (debug&DBG_PROOF)?
-      _inside.at(i).at(j-i).at(e).at(s.id):
-      _inside[i][j-i][e][s.id];
-    }
-    double& inside_o(int const j,IS const& s) {
-      return (debug&DBG_PROOF)?
-      _inside_o.at(j).at(s.id):
-      _inside_o[j][s.id];
-    }
-
-    double& outside(int const i,int const j,int const e,IS const& s) {
-      return (debug&DBG_PROOF)?
-      _outside.at(i).at(j-i).at(e).at(s.id):
-      _outside[i][j-i][e][s.id];
-    }
-    double& outside_o(int const j,IS const& s) {
-      return (debug&DBG_PROOF)?
-      _outside_o.at(j).at(s.id):
-      _outside_o[j][s.id];
-    }
-
-    double& cyk(int const i,int const j,int const e,IS const& s) {
-      return (debug&DBG_PROOF)?
-      _cyk.at(i).at(j-i).at(e).at(s.id):
-      _cyk[i][j-i][e][s.id];
-    }
-    double& cyk_o(int const j,IS const& s) {
-      return (debug&DBG_PROOF)?
-      _cyk_o.at(j).at(s.id):
-      _cyk_o[j][s.id];
-    }
-
-    Trace& trace(int const i,int const j,int const e,IS const& s) {
-      return (debug&DBG_PROOF)?
-      _trace_back.at(i).at(j-i).at(e).at(s.id):
-      _trace_back[i][j-i][e][s.id];
-    }
-    Trace& trace_o(int const j,IS const& s) {
-      return (debug&DBG_PROOF)?
-      _trace_back_o.at(j).at(s.id):
-      _trace_back_o[j][s.id];
-    }
+    int L=0, M=0, S=0, E=EnergyModel::nstate, W=0;
 
     EM em;
     MM mm;
 
-    int seq(int i) {return (*_seq)[i];}
     string cyk_structure_path;
     string cyk_state_path;
 
     /* setter */
     void set_seq(VI& seq) {
-      _seq = &seq;
       if (not _no_prf) mm.set_seq(seq);
       if (not _no_rss) em.set_seq(seq);
 
@@ -130,8 +61,6 @@ namespace iyak {
       em.set_params(max_span, max_iloop);
       em.set_min_BPP(min_bpp);
       em.set_no_ene(no_ene);
-
-      E = EnergyModel::nstate;
     }
 
     void set_motif_pattern(string const& pattern,
@@ -237,16 +166,6 @@ namespace iyak {
       return x;
     }
 
-    double part_func() {
-      return sumL(inside_o(L, mm.n2s(0,0)),
-                  inside_o(L, mm.n2s(0,M-2)),
-                  inside_o(L, mm.n2s(0,M-1)));
-    }
-
-    double part_func_outside() { /* for debug */
-      return outside_o(0, mm.n2s(0,0));
-    }
-
     template<class F> void compute_inside(F const& f) {
       if (_no_rss) {
         /* forward */
@@ -284,131 +203,10 @@ namespace iyak {
       } else {
         em.compute_outside(OutsideFun<F>(f));
       }
-      double const in_ZL = part_func();
-      double const out_ZL = part_func_outside();
+      double const in_ZL = f.part_func();
+      double const out_ZL = f.part_func_outside();
       expect(double_eq(in_ZL, out_ZL),
              "forward / backward mismatch:", in_ZL, out_ZL);
-    }
-
-    void init_inside_tables() {
-      _inside.assign(L+1, VVV(W+1, VV(E-1, V(S, zeroL))));
-      for (int i=0; i<L+1; ++i) {
-        for (int k=0; k < M; ++k) {
-          inside(i, i, EM::ST_L, mm.n2s(k,k)) = oneL;
-        }
-      }
-      _inside_o.assign(L+1, V(S, zeroL));
-      inside_o(0, mm.n2s(0,0)) = oneL;
-    }
-
-    void init_outside_tables() {
-      _outside.assign(L+1, VVV(W+1, VV(E-1, V(S, zeroL))));
-      _outside_o.assign(L+1, V(S, zeroL));
-      outside_o(L, mm.n2s(0,0)) = oneL;
-      outside_o(L, mm.n2s(0,M-1)) = oneL;
-      outside_o(L, mm.n2s(0,M-2)) = oneL;
-    }
-
-    void init_cyk_tables(void) {
-      _cyk.assign(L+1, VVV(W+1, VV(E-1, V(S, zeroL))));
-      for (int i = 0; i < L+1; ++i) {
-        for (int k = 0; k < M; ++k) {
-          cyk(i, i, EM::ST_L, mm.n2s(k,k)) = oneL;
-        }
-      }
-      _cyk_o.assign(L+1, V(S, zeroL));
-      cyk_o(0, mm.n2s(0,0)) = oneL;
-    }
-
-    void init_trace_back_tables(void) {
-      _trace_back.assign(L+1, VVVT(W+1, VVT(E-1, VT(S, Trace({-1,-1,-1,-1,-1})))));
-      _trace_back_o.assign(L+1, VT(S, Trace({-1,-1,-1,-1,-1})));
-      cyk_structure_path.assign(L, ' ');
-      cyk_state_path.assign(L, ' ');
-    }
-
-    void trace_back(int i, int j, int e, IS const& s) {
-
-      Trace& t = (EM::ST_O==e? trace_o(j,s): trace(i,j,e,s));
-      IS const& s1 = mm.state()[t.s1_id];
-
-      switch (t.t) {
-
-        case EM::TT_L_L:
-        case EM::TT_O_O:
-#if !DBG_NO_MULTI
-        case EM::TT_2_2:
-#endif
-        {
-          if (0!=s.r and M-1!=s.r) {
-            cyk_state_path[t.l] = mm.node(s.r);
-          }
-          cyk_structure_path[t.l] = '.';
-          trace_back(t.k, t.l, t.e1, s1);
-          break;
-        }
-
-        case EM::TT_E_H:
-#if !DBG_NO_MULTI
-        case EM::TT_E_M:
-        case EM::TT_M_B:
-        case EM::TT_2_P:
-        case EM::TT_1_2:
-        case EM::TT_1_B:
-#endif
-        {
-          trace_back(t.k, t.l, t.e1, s);
-          break;
-        }
-
-        case EM::TT_P_E:
-        case EM::TT_P_P: {
-          if (0!=s1.l and M-1!=s1.l) {
-            cyk_state_path[i] = mm.node(s1.l);
-          }
-          cyk_structure_path[i] = '(';
-          if (0!=s.r and M-1!=s.r) {
-            cyk_state_path[t.l] = mm.node(s.r);
-          }
-          cyk_structure_path[t.l] = ')';
-          trace_back(t.k, t.l, t.e1, s1);
-          break;
-        }
-
-        case EM::TT_O_OP: {
-          IS const& s2 = mm.n2s(s.l, s1.l);
-          trace_back(s.l, t.k, EM::ST_O, s2);
-          trace_back(t.k, t.l, t.e1, s1);
-          break;
-        }
-
-        case EM::TT_E_P: {
-          IS const& s2 = mm.n2s(s.l, s1.l);
-          IS const& s3 = mm.n2s(s1.r, s.r);
-          trace_back(t.k, t.l, t.e1, s1);
-          trace_back(i, t.k, EM::ST_L, s2);
-          trace_back(t.l, j, EM::ST_L, s3);
-          break;
-        }
-
-#if !DBG_NO_MULTI
-        case EM::TT_B_12: {
-          IS const& s2 = mm.n2s(s1.r, s.r);
-          trace_back(t.k, t.l, t.e1, s1);
-          trace_back(t.l, j, EM::ST_2, s2);
-          break;
-        }
-
-        case EM::TT_M_M: {
-          if (0!=s1.l and M-1!=s1.l) {
-            cyk_state_path[i] = mm.node(s1.l);
-          }
-          cyk_structure_path[i] = '.';
-          trace_back(t.k, t.l, EM::ST_M, s1);
-          break;
-        }
-#endif
-      }
     }
 
     /*
