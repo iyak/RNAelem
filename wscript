@@ -52,7 +52,8 @@ def build(bld):
           source="RNAelem/main.cpp",
           includes="RNAelem",
           target="bin/RNAelem",
-          use="freetype")
+          use="freetype",
+          lib="pthread")
 
     bld(
           features="cxx",
@@ -65,22 +66,22 @@ def build(bld):
     bld.program(
           features="test",
           cxxflags="-std=c++14 -Wall -O3",
-          linkflags="-pthread", # necessary for icpc
           source="RNAelem-test/test.cpp",
           includes="RNAelem RNAelem-test"
           " RNAelem-test/gtest/include",
           target="bin/RNAelem-test",
-          use="gtest freetype")
+          use="gtest freetype",
+          lib="pthread")
 
     bld.program(
           features="test",
           cxxflags="-std=c++14 -Wall -O3",
-          linkflags="-pthread", # necessary for icpc
           source="RNAelem-test/test-exact.cpp",
           includes="RNAelem RNAelem-test"
           " RNAelem-test/gtest/include",
           target="bin/RNAelem-test-exact",
-          use="gtest freetype")
+          use="gtest freetype",
+          lib="pthread")
 
 def test(ctx):
     ctx.exec_command("build/bin/RNAelem-test --gtest_color=yes")
