@@ -48,7 +48,7 @@ def configure(cnf):
 def build(bld):
     bld.program(
           features="cxx cxxprogram",
-          cxxflags="-std=c++14 -Wall -O3",
+          cxxflags="-std=c++14 -Wall -O3 -ipo -static",
           source="RNAelem/main.cpp",
           includes="RNAelem",
           target="bin/RNAelem",
