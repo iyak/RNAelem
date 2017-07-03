@@ -367,9 +367,10 @@ namespace iyak {
       no_ene = options.get("no_ene");
 
       if (any(pattern, '_')) {
-        check(all(pattern, '_'), "patten cannot be mixture of _ & the others");
+        check((not any(pattern, '(')) and (not any(pattern, ')')),
+              "patten cannot be mixture of _ & 'base pair'");
         no_rss = true;
-        for (auto& c: pattern) c = '.';
+        for (auto& c: pattern) if ('_'==c) c='.';
       }
     }
   };

@@ -264,7 +264,7 @@ namespace iyak {
             /* no-op */
             break;
           default:
-            die(string("bad motif char:") + char(_node[h]));
+            die("bad motif char:", _node[h]);
             break;
         };
       }
