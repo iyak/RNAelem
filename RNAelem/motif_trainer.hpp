@@ -159,7 +159,6 @@ namespace iyak {
             if (_to+1 <= _qr.cnt())
               break;
           }
-          cry("seq:", _qr.cnt());
         }
 
         if (debug&DBG_FIX_RSS) _m.em.fix_rss(_rss);
