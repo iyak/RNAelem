@@ -17,7 +17,6 @@
 #include"motif_model.hpp"
 #include"fastq_io.hpp"
 #include"optimizer.hpp"
-#include"dp_algo.hpp"
 
 namespace iyak {
 
