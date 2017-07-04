@@ -212,16 +212,16 @@ namespace iyak {
 
     f._m.set_motif_pattern(".");
 
-    f.eval_fn("A", ".", "#");
-    EXPECT_DOUBLE_EQ(-log(0.5), f.fn());
+    f.eval_fn("A", ".", "#!");
+    EXPECT_NEAR(log(2./2.), f.fn(), 1e-15);
     EXPECT_EQ(to_str(V{0,0.5,0,0,0, 0,-0.5,0,0,0, 0}), to_str(f.gr()));
 
-    f.eval_fn("CAG", "(.)", "!##");
-    EXPECT_DOUBLE_EQ(-log(0.25), f.fn());
+    f.eval_fn("CAG", "(.)", "!$#!");
+    EXPECT_NEAR(log(2./3.), f.fn(), 1e-15);
     EXPECT_EQ(to_str(V{0,0.5,0,0,0, 0,-0.5,0,0,0, 0}), to_str(f.gr()));
 
-    f.eval_fn("CAG", "(.)", "!#!");
-    EXPECT_DOUBLE_EQ(-log(0.5), f.fn());
+    f.eval_fn("CAG", "(.)", "!#!!");
+    EXPECT_NEAR(log(2./2.), f.fn(), 1e-15);
     EXPECT_EQ(to_str(V{0,0.5,0,0,0, 0,-0.5,0,0,0, 0}), to_str(f.gr()));
   }
 }

@@ -130,14 +130,12 @@ namespace iyak {
     void calc_ws(VI const& q) {
       V const& c = _convo_kernel;
 
-      _wsL.assign(size(q)+1, logL(_pseudo_cov));
-      for (int i=0; i<size(q); ++i)
+      _wsL.assign(size(q), logL(_pseudo_cov));
+      for (int i=0; i<size(q)-1; ++i)
         for (int j=0; j<size(c); ++ j)
-          if (0<=i+j-size(c)/2 and i+j-size(c)/2<size(q))
+          if (0<=i+j-size(c)/2 and i+j-size(c)/2<size(q)-1)
             addL(_wsL[i], logL(_convo_kernel[j]*q[i+j-size(c)/2]));
-      _wsL.back() = zeroL;
-
-      normalizeL(_wsL);
+      _wsL.back() = logL(q.back());
     }
 
     void operator() (double& fn, V& gr) {
@@ -153,6 +151,7 @@ namespace iyak {
           if (_qr.is_end())
             break;
           _qr.read_seq(_id, _seq, _qual, _rss);
+          check(size(_seq)+1 == size(_qual), "bad seq format.");
           if (_mode & TR_ARRAYEVAL) {
             if (_qr.cnt() < _from+1)
               continue;

@@ -34,7 +34,6 @@ namespace iyak {
 
     string _id;
     VI _seq;
-    VI _qual;
     string _rss;
 
     int Ys;
@@ -46,7 +45,6 @@ namespace iyak {
     double PyNL;
     double ZL;
     double ZeL;
-    V _wsL;
 
     VVVV _inside; /* L+1 W E S */
     VV _inside_o; /* L+1 S */
@@ -159,19 +157,6 @@ namespace iyak {
     }
 
 
-    void calc_ws(VI const& q) {
-      V& c = _convo_kernel;
-
-      _wsL.assign(size(q)+1, logL(_pseudo_cov));
-      for (int i=0; i<size(q); ++i)
-        for (int j=0; j<size(c); ++ j)
-          if (0<=i+j-size(c)/2 and i+j-size(c)/2<size(q))
-            addL(_wsL[i], logL(_convo_kernel[j]*q[i+j-size(c)/2]));
-      _wsL.back() = zeroL;
-
-      normalizeL(_wsL);
-    }
-
     void calc_viterbi_full_alignment() { /* obsolete */
       init_cyk_tables();
       init_trace_back_tables();
@@ -238,13 +223,13 @@ namespace iyak {
           lock l(_mx_input);
           if (_qr.is_end()) break;
           /* read one record */
-          _qr.read_seq(_id, _seq, _qual, _rss);
+          VI qual;
+          _qr.read_seq(_id, _seq, qual, _rss);
           if (debug&DBG_FIX_RSS)
               _m.em.fix_rss(_rss);
           _m.set_seq(_seq);
         }
 
-        calc_ws(_qual);
         PysL.assign(_m.L+1, zeroL);
         PyeL.assign(_m.L+1, zeroL);
         PyiL.assign(_m.L+1, zeroL);
@@ -259,7 +244,6 @@ namespace iyak {
           dat(_out, "start:", apply(logNL, PysL));
           dat(_out, "end:", apply(logNL, PyeL));
           dat(_out, "inner:", apply(logNL, PyiL));
-          dat(_out, "w:", apply(logNL, _wsL));
           dat(_out, "motif region:", Ys, "-", Ye);
           dat(_out, "exist prob:", expL(sumL(PysL)));
 
