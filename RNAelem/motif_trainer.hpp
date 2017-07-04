@@ -221,12 +221,12 @@ namespace iyak {
 
     class InsideFun {
       RNAelemTrainDP* _t;
-      double lam = _t->model()->lambda();
+      double lam;
     public:
       RNAelem& model = *(_t->model());
       ProfileHMM& mm = _t->model()->mm;
       EnergyModel& em = _t->model()->em;
-      InsideFun(RNAelemTrainDP* t): _t(t){}
+      InsideFun(RNAelemTrainDP* t): _t(t), lam(_t->model()->lambda()) {}
       double part_func() const {return _t->part_func();}
       double part_func_outside() const {return _t->part_func_outside();}
       template<int e, int e1>
@@ -280,7 +280,8 @@ namespace iyak {
       double const _ZL;
       double& _dEH;
       VV& _dEN;
-      double lam = _t->model()->lambda();
+      VI& _seq;
+      double lam;
     public:
       RNAelem& model = *(_t->model());
       ProfileHMM& mm = _t->model()->mm;
@@ -288,7 +289,8 @@ namespace iyak {
       double part_func() const {return _t->part_func();}
       double part_func_outside() const {return _t->part_func_outside();}
       OutsideFun(RNAelemTrainDP* t, double ZL, double& dEH, VV& dEN):
-      _t(t), _ZL(ZL), _dEH(dEH), _dEN(dEN) {}
+      _t(t), _ZL(ZL), _dEH(dEH), _dEN(dEN), _seq(*(_t->model()->_seq)),
+      lam(_t->model()->lambda()) {}
       template<int e, int e1>
       void on_outside_transition(int const i, int const j,
                                  int const k, int const l,
@@ -328,7 +330,8 @@ namespace iyak {
         switch (e1) {
           case EM::ST_P: {
             if (k==i-1 and j==l-1 and not _t->model()->no_prf())
-              _t->model()->mm.add_emit_count(_dEN, s.l, s1.r, k, j, +expL(z));
+              _t->model()->mm.add_emit_count(_dEN, s.l, s1.r,
+                                             _seq[k], _seq[j], +expL(z));
             break;
           }
 #if !DBG_NO_MULTI
@@ -337,13 +340,13 @@ namespace iyak {
           case EM::ST_O:
           case EM::ST_L: {
             if (k==i and j==l-1 and not _t->model()->no_prf())
-              _t->model()->mm.add_emit_count(_dEN, s1.r, j, +expL(z));
+              _t->model()->mm.add_emit_count(_dEN, s1.r, _seq[j], +expL(z));
             break;
           }
 #if !DBG_NO_MULTI
           case EM::ST_M: {
             if (k==i-1 and j==l and not _t->model()->no_prf())
-              _t->model()->mm.add_emit_count(_dEN, s.l, k, +expL(z));
+              _t->model()->mm.add_emit_count(_dEN, s.l, _seq[k], +expL(z));
             break;
           }
 #endif
@@ -409,14 +412,15 @@ namespace iyak {
       RNAelemTrainDP* _t;
       V const& _wsL;
       int L = _t->model()->L;
-      double lam = _t->model()->lambda();
+      double lam;
     public:
       RNAelem& model = *(_t->model());
       ProfileHMM& mm = _t->model()->mm;
       EnergyModel& em = _t->model()->em;
       double part_func() const {return _t->part_func();}
       double part_func_outside() const {return _t->part_func_outside();}
-      InsideFeatFun(RNAelemTrainDP* t, V const& ws):_t(t), _wsL(ws) {}
+      InsideFeatFun(RNAelemTrainDP* t, V const& ws):
+      _t(t), _wsL(ws), lam(_t->model()->lambda()) {}
       template<int e, int e1>
       void on_inside_transition(int const i, int const j,
                                 int const k, int const l,
@@ -508,8 +512,9 @@ namespace iyak {
       double& _dEH;
       VV& _dEN;
       V const& _wsL;
-      double lam = _t->model()->lambda();
       int L = _t->model()->L;
+      VI& _seq;
+      double lam;
     public:
       RNAelem& model = *(_t->model());
       ProfileHMM& mm = _t->model()->mm;
@@ -517,7 +522,8 @@ namespace iyak {
       double part_func() const {return _t->part_func();}
       double part_func_outside() const {return _t->part_func_outside();}
       OutsideFeatFun(RNAelemTrainDP* t, double ZwL, double& dEH, VV& dEN, V const& ws):
-      _t(t), _ZwL(ZwL), _dEH(dEH), _dEN(dEN), _wsL(ws) {}
+      _t(t), _ZwL(ZwL), _dEH(dEH), _dEN(dEN), _wsL(ws),
+      _seq(*(_t->model()->_seq)), lam(_t->model()->lambda()) {}
       template<int e, int e1>
       void on_outside_transition(int const i, int const j,
                                  int const k, int const l,
@@ -569,7 +575,9 @@ namespace iyak {
               if (0==s.r and 1==s1.r) extra = mulL(extra,_wsL[j]);
               if (0==s1.r and L==l) extra = mulL(extra,_wsL[L]);
               if (not _t->model()->no_prf())
-                _t->model()->mm.add_emit_count(_dEN, s.l, s1.r, k, j, -expL(mulL(z,extra)));
+                _t->model()->mm.add_emit_count(_dEN, s.l, s1.r,
+                                               _seq[k], _seq[j],
+                                               -expL(mulL(z,extra)));
             }
             break;
           }
@@ -583,7 +591,8 @@ namespace iyak {
               if (0==s.r and 1==s1.r) extra = mulL(extra,_wsL[j]);
               if (0==s1.r and L==l) extra = mulL(extra,_wsL[L]);
               if (not _t->model()->no_prf())
-                _t->model()->mm.add_emit_count(_dEN, s1.r, j, -expL(mulL(z,extra)));
+                _t->model()->mm.add_emit_count(_dEN, s1.r,
+                                               _seq[j], -expL(mulL(z,extra)));
             }
             break;
           }
@@ -593,7 +602,8 @@ namespace iyak {
             if (k==i-1 and j==l) {
               if (0==s1.l and 1==s.l) extra = mulL(extra,_wsL[k]);
               if (not _t->model()->no_prf())
-                _t->model()->mm.add_emit_count(_dEN, s.l, k, -expL(mulL(z,extra)));
+                _t->model()->mm.add_emit_count(_dEN, s.l,
+                                               _seq[k], -expL(mulL(z,extra)));
             }
             break;
           }

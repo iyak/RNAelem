@@ -34,7 +34,6 @@ namespace iyak {
 
   private:
 
-    VI* _seq;
     int M;
 
     string _pattern;
@@ -95,7 +94,7 @@ namespace iyak {
         if (debug&DBG_PROOF)
           check(h==_pair[h1], h, _pair[h1]);
         return (debug&DBG_NO_WEIGHT? oneL:
-                _weightL[_weight_id[h1]][bp[(*_seq)[i]][(*_seq)[j]]]);
+                _weightL[_weight_id[h1]][bp[i][j]]);
       }
 
       if (debug&DBG_PROOF)
@@ -109,12 +108,12 @@ namespace iyak {
               "weight", cl, cr);
 
       return debug&DBG_NO_WEIGHT? oneL:
-      _weightL[_weight_id[h]][(*_seq)[i]] +
-      _weightL[_weight_id[h1]][(*_seq)[j]];
+      _weightL[_weight_id[h]][i] +
+      _weightL[_weight_id[h1]][j];
     }
 
     double weightL(int const h, int const j) {
-      return debug&DBG_NO_WEIGHT? oneL: _weightL[_weight_id[h]][(*_seq)[j]];
+      return debug&DBG_NO_WEIGHT? oneL: _weightL[_weight_id[h]][j];
     }
 
     /* setter */
@@ -127,7 +126,7 @@ namespace iyak {
 
         if (debug&DBG_PROOF)
           check(h==_pair[h1], h, _pair[h1]);
-        double &c = e[_weight_id[h1]][bp[(*_seq)[i]][(*_seq)[j]]];
+        double &c = e[_weight_id[h1]][bp[i][j]];
         c += w;
 
       } else {
@@ -142,21 +141,17 @@ namespace iyak {
 
                 "add_emit_count", cl, cr);
 
-        double &c = e[_weight_id[h]][(*_seq)[i]];
+        double &c = e[_weight_id[h]][i];
         c += w;
-        double &d = e[_weight_id[h1]][(*_seq)[j]];
+        double &d = e[_weight_id[h1]][j];
         d += w;
 
       }
     }
 
     void add_emit_count(VV& e, int const h, int const j, double const w) {
-      double &c = e[_weight_id[h]][(*_seq)[j]];
+      double &c = e[_weight_id[h]][j];
       c += w;
-    }
-
-    void set_seq(VI& s) {
-      _seq = &s;
     }
 
     void build(string const& str) {

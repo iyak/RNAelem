@@ -19,10 +19,10 @@ namespace iyak {
   using EM = EnergyModel;
   using MM = ProfileHMM;
 
-  class DPalgo; /* forward */
-
   class RNAelem {
+  public:
 
+    VI* _seq;
     double _rho_theta; /* regularization scaler */
     double _rho_lambda; /* regularization scaler */
     double _tau; /* transition score */
@@ -36,8 +36,6 @@ namespace iyak {
     bool _no_rss=false; /* consider linear sequence only (bench) */
     bool _no_prf=false; /* consider RSS only (bench) */
 
-  public:
-
     int L=0, M=0, S=0, E=EnergyModel::nstate, W=0;
 
     EM em;
@@ -48,7 +46,7 @@ namespace iyak {
 
     /* setter */
     void set_seq(VI& seq) {
-      if (not _no_prf) mm.set_seq(seq);
+      _seq = &seq;
       if (not _no_rss) em.set_seq(seq);
 
       L = (int)seq.size();
@@ -172,7 +170,7 @@ namespace iyak {
         for (int i=1; i<=L; ++i) {
           for (auto const& s: mm.state()) {
             for (auto const& s1: mm.loop_right_trans(s.id)) {
-              double w = mm.weightL(s.r, i-1);
+              double w = mm.weightL(s.r, (*_seq)[i-1]);
               double t = (s.r == s1.r and
                           '.' == mm.node(s.r))? tauL(): oneL;
               f.template on_inside_transition<EM::ST_O,EM::ST_O>
@@ -192,7 +190,7 @@ namespace iyak {
         for (int i=L; 1<=i; --i) {
           for (auto const& s: mm.state()) {
             for (auto const& s1: mm.loop_right_trans(s.id)) {
-              double w = mm.weightL(s.r, i-1);
+              double w = mm.weightL(s.r, (*_seq)[i-1]);
               double t = (s.r == s1.r and
                           '.' == mm.node(s.r))? tauL(): oneL;
               f.template on_outside_transition<EM::ST_O,EM::ST_O>
@@ -226,15 +224,16 @@ namespace iyak {
 
       F const& _f;
       IS const _s = IS{-1, -1, -1};
+      VI& _seq;
 
     public:
-      InsideFun(F const& f): _f(f) {}
+      InsideFun(F const& f): _f(f), _seq(*(_f.model._seq)) {}
 
       void before_transition(int const i0, int const j) {
         for (int i=j-1; i0<=i; --i) {
           for (auto const& s: _f.mm.loop_state()) {
             for (auto const& s1: _f.mm.loop_right_trans(s.id)) {
-              double w = _f.model.no_prf()? oneL: _f.mm.weightL(s.r, j-1);
+              double w = _f.model.no_prf()? oneL: _f.mm.weightL(s.r, _seq[j-1]);
               double t = (s.r == s1.r and
                           '.' == _f.mm.node(s.r))? _f.model.tauL(): oneL;
               _f.template on_inside_transition<EM::ST_L,EM::ST_L>
@@ -260,7 +259,8 @@ namespace iyak {
           case EM::TT_P_E: {
             for (auto const& s: _f.mm.state()) {
               for (auto const& s1: _f.mm.pair_trans(s.id)) {
-                double w = _f.model.no_prf()? oneL: _f.mm.weightL(s1.l, s.r, i, j-1);
+                double w = _f.model.no_prf()? oneL:
+                _f.mm.weightL(s1.l, s.r, _seq[i], _seq[j-1]);
                 double t = (s.r == s1.r and
                             ')' == _f.mm.node(s1.r))? _f.model.tauL(): oneL;
                 _f.template on_inside_transition<EM::ST_P,EM::ST_E>
@@ -273,7 +273,8 @@ namespace iyak {
           case EM::TT_P_P: {
             for (auto const& s: _f.mm.state()) {
               for (auto const& s1: _f.mm.pair_trans(s.id)) {
-                double w = _f.model.no_prf()? oneL: _f.mm.weightL(s1.l, s.r, i, l);
+                double w = _f.model.no_prf()? oneL:
+                _f.mm.weightL(s1.l, s.r, _seq[i], _seq[l]);
                 double t = (s.r == s1.r and
                             ')' == _f.mm.node(s1.r))? _f.model.tauL(): oneL;
                 _f.template on_inside_transition<EM::ST_P,EM::ST_P>
@@ -286,7 +287,7 @@ namespace iyak {
           case EM::TT_O_O: {
             for (auto const& s: _f.mm.state()) {
               for (auto const& s1: _f.mm.loop_right_trans(s.id)) {
-                double w = _f.model.no_prf()? oneL: _f.mm.weightL(s.r, l);
+                double w = _f.model.no_prf()? oneL: _f.mm.weightL(s.r, _seq[l]);
                 double t = (s.r == s1.r and
                             '.' == _f.mm.node(s.r))? _f.model.tauL(): oneL;
                 _f.template on_inside_transition<EM::ST_O,EM::ST_O>
@@ -330,7 +331,7 @@ namespace iyak {
           case EM::TT_M_M: {
             for (auto const& s: _f.mm.state()) {
               for (auto const& s1: _f.mm.loop_left_trans(s.id)) {
-                double w = _f.model.no_prf()? oneL: _f.mm.weightL(s1.l, i);
+                double w = _f.model.no_prf()? oneL: _f.mm.weightL(s1.l, _seq[i]);
                 double t = (s.l == s1.l and
                             '.' == _f.mm.node(s.l))? _f.model.tauL(): oneL;
                 _f.template on_inside_transition<EM::ST_M,EM::ST_M>
@@ -365,7 +366,7 @@ namespace iyak {
           case EM::TT_2_2: {
             for (auto const& s: _f.mm.state()) {
               for (auto const& s1: _f.mm.loop_right_trans(s.id)) {
-                double w = _f.model.no_prf()? oneL: _f.mm.weightL(s.r, l);
+                double w = _f.model.no_prf()? oneL: _f.mm.weightL(s.r, _seq[l]);
                 double t = (s.r == s1.r and
                             '.' == _f.mm.node(s.r))? _f.model.tauL(): oneL;
                 _f.template on_inside_transition<EM::ST_2,EM::ST_2>
@@ -404,9 +405,10 @@ namespace iyak {
 
       F const& _f;
       IS const _s = {-1, -1, -1};
+      VI& _seq;
 
     public:
-      OutsideFun(F const& f): _f(f) {}
+      OutsideFun(F const& f): _f(f), _seq(*(_f.model._seq)) {}
 
       void before_transition(int const, int const) {
       }
@@ -415,7 +417,7 @@ namespace iyak {
         for (int i=j0; i<=j; ++i) {
           for (auto const& s1: _f.mm.loop_state()) {
             for (auto const& s: _f.mm.loop_right_trans(s1.id)) {
-              double w = _f.model.no_prf()? oneL: _f.mm.weightL(s1.r, j);
+              double w = _f.model.no_prf()? oneL: _f.mm.weightL(s1.r, _seq[j]);
               double t = (s.r == s1.r and
                           '.' == _f.mm.node(s1.r))? _f.model.tauL(): oneL;
               _f.template on_outside_transition<EM::ST_L,EM::ST_L>
@@ -439,7 +441,8 @@ namespace iyak {
           case EM::TT_P_E: {
             for (auto const& s1: _f.mm.state()) {
               for (auto const& s: _f.mm.pair_trans(s1.id)) {
-                double w = _f.model.no_prf()? oneL: _f.mm.weightL(s.l, s1.r, k, j);
+                double w = _f.model.no_prf()? oneL:
+                _f.mm.weightL(s.l, s1.r, _seq[k], _seq[j]);
                 double t = (s.r == s1.r and
                             ')' == _f.mm.node(s1.r))? _f.model.tauL(): oneL;
                 _f.template on_outside_transition<EM::ST_E,EM::ST_P>
@@ -452,7 +455,8 @@ namespace iyak {
           case EM::TT_P_P: {
             for (auto const& s1: _f.mm.state()) {
               for (auto const& s: _f.mm.pair_trans(s1.id)) {
-                double w = _f.model.no_prf()? oneL: _f.mm.weightL(s.l, s1.r, k, j);
+                double w = _f.model.no_prf()? oneL:
+                _f.mm.weightL(s.l, s1.r, _seq[k], _seq[j]);
                 double t = (s.r == s1.r and
                             ')' == _f.mm.node(s1.r))? _f.model.tauL(): oneL;
                 _f.template on_outside_transition<EM::ST_P,EM::ST_P>
@@ -465,7 +469,7 @@ namespace iyak {
           case EM::TT_O_O: {
             for (auto const& s1: _f.mm.state()) {
               for (auto const& s: _f.mm.loop_right_trans(s1.id)) {
-                double w = _f.model.no_prf()? oneL: _f.mm.weightL(s1.r, j);
+                double w = _f.model.no_prf()? oneL: _f.mm.weightL(s1.r, _seq[j]);
                 double t = (s.r == s1.r and
                             '.' == _f.mm.node(s1.r))? _f.model.tauL(): oneL;
                 _f.template on_outside_transition<EM::ST_O,EM::ST_O>
@@ -509,7 +513,7 @@ namespace iyak {
           case EM::TT_M_M: {
             for (auto const& s1: _f.mm.state()) {
               for (auto const& s: _f.mm.loop_left_trans(s1.id)) {
-                double w = _f.model.no_prf()? oneL: _f.mm.weightL(s.l, k);
+                double w = _f.model.no_prf()? oneL: _f.mm.weightL(s.l, _seq[k]);
                 double t = (s.l == s1.l and
                             '.' == _f.mm.node(s1.l))? _f.model.tauL(): oneL;
                 _f.template on_outside_transition<EM::ST_M,EM::ST_M>
@@ -522,7 +526,7 @@ namespace iyak {
           case EM::TT_2_2: {
             for (auto const& s1: _f.mm.state()) {
               for (auto const& s: _f.mm.loop_right_trans(s1.id)) {
-                double w = _f.model.no_prf()? oneL: _f.mm.weightL(s1.r, j);
+                double w = _f.model.no_prf()? oneL: _f.mm.weightL(s1.r, _seq[j]);
                 double t = (s.r == s1.r and
                             '.' == _f.mm.node(s1.r))? _f.model.tauL(): oneL;
                 _f.template on_outside_transition<EM::ST_2,EM::ST_2>

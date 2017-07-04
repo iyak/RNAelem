@@ -218,7 +218,8 @@ namespace iyak {
         }
       }
 
-      check((1<<10)-1 == set, "motif file broken:", _model_fname);
+      check((1<<10)-1 == set, "motif file broken:",
+            _model_fname, bit_index(((1<<10)-1)^set));
 
       _m->set_motif_pattern(pattern, no_rss, no_prf);
       for (int i=0; i<size(_m->mm.weightL()); ++i)

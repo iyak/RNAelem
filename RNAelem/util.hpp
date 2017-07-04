@@ -380,6 +380,14 @@ namespace iyak {
     for (auto const& w:v) if (w!=e) return false;
     return true;
   }
+
+  VI bit_index(unsigned x) {
+    VI y {};
+    for (int i=0; i<8*sizeof(unsigned); ++i, x>>=1)
+      if (x & 0x1)
+        y.push_back(i);
+    return y;
+  }
 }
 
 #endif /* util_h */
