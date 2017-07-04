@@ -135,9 +135,6 @@ namespace iyak {
         for (int j=0; j<size(c); ++ j)
           if (0<=i+j-size(c)/2 and i+j-size(c)/2<size(q))
             addL(_wsL[i], logL(_convo_kernel[j]*q[i+j-size(c)/2]));
-      _wsL.back() = zeroL;
-
-      normalizeL(_wsL);
     }
 
     void operator() (double& fn, V& gr) {
