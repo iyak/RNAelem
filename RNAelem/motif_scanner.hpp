@@ -16,24 +16,45 @@
 
 namespace iyak {
 
-  class RNAelemScanner {
+  class RNAelemScanDP {
+  public:
+    RNAelem _m;
+    RNAelem* model() {return &_m;}
+    mutex& _mx_input;
+    mutex& _mx_output;
+    FastqReader& _qr;
+    double _pseudo_cov;
+    V _convo_kernel {1};
+    int _out;
+    RNAelemScanDP(RNAelem& m, mutex& mx_input, mutex& mx_output,
+                  double pseudo_cov, V const& convo_kernel, FastqReader& qr,
+                  int out):
+    _m(m), _mx_input(mx_input), _mx_output(mx_output), _qr(qr),
+    _pseudo_cov(pseudo_cov), _convo_kernel(convo_kernel), _out(out) {}
 
-    string _fq_name;
-    FastqReader _qr;
-    int _out=1;
-    int _thread;
+    string _id;
+    VI _seq;
+    VI _qual;
+    string _rss;
 
-    RNAelem *_motif;
+    int Ys;
+    int Ye;
+    VV lnPy;
+    V PysL;
+    V PyeL;
+    V PyiL;
+    double PyNL;
+    double ZL;
+    double ZeL;
+    V _wsL;
 
     VVVV _inside; /* L+1 W E S */
     VV _inside_o; /* L+1 S */
     VVVV _outside;
     VV _outside_o;
-
     struct Trace {
       int k, l, t, e1, s1_id;
     };
-
     using VT = vector<Trace>;
     using VVT =  vector<VT>;
     using VVVT =  vector<VVT>;
@@ -91,75 +112,52 @@ namespace iyak {
     }
 
     void init_inside_tables() {
-      _inside.assign(L+1, VVV(_motif->W+1, VV(_motif->E-1, V(_motif->S, zeroL))));
-      for (int i=0; i<L+1; ++i) {
-        for (int k=0; k < _motif->M; ++k) {
-          inside(i, i, EM::ST_L, _motif->mm.n2s(k,k)) = oneL;
+      _inside.assign(_m.L+1, VVV(_m.W+1, VV(_m.E-1, V(_m.S, zeroL))));
+      for (int i=0; i<_m.L+1; ++i) {
+        for (int k=0; k < _m.M; ++k) {
+          inside(i, i, EM::ST_L, _m.mm.n2s(k,k)) = oneL;
         }
       }
-      _inside_o.assign(L+1, V(_motif->S, zeroL));
-      inside_o(0, _motif->mm.n2s(0,0)) = oneL;
+      _inside_o.assign(_m.L+1, V(_m.S, zeroL));
+      inside_o(0, _m.mm.n2s(0,0)) = oneL;
     }
 
     void init_outside_tables() {
-      _outside.assign(L+1, VVV(_motif->W+1, VV(_motif->E-1, V(_motif->S, zeroL))));
-      _outside_o.assign(L+1, V(_motif->S, zeroL));
-      outside_o(L, _motif->mm.n2s(0,0)) = oneL;
-      outside_o(L, _motif->mm.n2s(0,_motif->M-1)) = oneL;
-      outside_o(L, _motif->mm.n2s(0,_motif->M-2)) = oneL;
+      _outside.assign(_m.L+1, VVV(_m.W+1, VV(_m.E-1, V(_m.S, zeroL))));
+      _outside_o.assign(_m.L+1, V(_m.S, zeroL));
+      outside_o(_m.L, _m.mm.n2s(0,0)) = oneL;
+      outside_o(_m.L, _m.mm.n2s(0,_m.M-1)) = oneL;
+      outside_o(_m.L, _m.mm.n2s(0,_m.M-2)) = oneL;
     }
 
     void init_cyk_tables(void) {
-      _cyk.assign(L+1, VVV(_motif->W+1, VV(_motif->E-1, V(_motif->S, zeroL))));
-      for (int i = 0; i < L+1; ++i) {
-        for (int k = 0; k < _motif->M; ++k) {
-          cyk(i, i, EM::ST_L, _motif->mm.n2s(k,k)) = oneL;
+      _cyk.assign(_m.L+1, VVV(_m.W+1, VV(_m.E-1, V(_m.S, zeroL))));
+      for (int i = 0; i < _m.L+1; ++i) {
+        for (int k = 0; k < _m.M; ++k) {
+          cyk(i, i, EM::ST_L, _m.mm.n2s(k,k)) = oneL;
         }
       }
-      _cyk_o.assign(L+1, V(_motif->S, zeroL));
-      cyk_o(0, _motif->mm.n2s(0,0)) = oneL;
+      _cyk_o.assign(_m.L+1, V(_m.S, zeroL));
+      cyk_o(0, _m.mm.n2s(0,0)) = oneL;
     }
 
     void init_trace_back_tables(void) {
-      _trace_back.assign(L+1, VVVT(_motif->W+1, VVT(_motif->E-1, VT(_motif->S, Trace({-1,-1,-1,-1,-1})))));
-      _trace_back_o.assign(L+1, VT(_motif->S, Trace({-1,-1,-1,-1,-1})));
-      cyk_structure_path.assign(L, ' ');
-      cyk_state_path.assign(L, ' ');
+      _trace_back.assign(_m.L+1, VVVT(_m.W+1, VVT(_m.E-1, VT(_m.S, Trace({-1,-1,-1,-1,-1})))));
+      _trace_back_o.assign(_m.L+1, VT(_m.S, Trace({-1,-1,-1,-1,-1})));
+      cyk_structure_path.assign(_m.L, ' ');
+      cyk_state_path.assign(_m.L, ' ');
     }
 
     double part_func() {
-      return sumL(inside_o(L, _motif->mm.n2s(0,0)),
-                  inside_o(L, _motif->mm.n2s(0,_motif->M-2)),
-                  inside_o(L, _motif->mm.n2s(0,_motif->M-1)));
+      return sumL(inside_o(_m.L, _m.mm.n2s(0,0)),
+                  inside_o(_m.L, _m.mm.n2s(0,_m.M-2)),
+                  inside_o(_m.L, _m.mm.n2s(0,_m.M-1)));
     }
 
     double part_func_outside() { /* for debug */
-      return outside_o(0, _motif->mm.n2s(0,0));
+      return outside_o(0, _m.mm.n2s(0,0));
     }
 
-    string _id;
-    VI _seq;
-    VI _qual;
-    string _rss;
-
-    int L; /* seq size */
-    int N;
-
-    int Ys;
-    int Ye;
-
-    VV lnPy;
-    V PysL;
-    V PyeL;
-    V PyiL;
-    double PyNL;
-
-    double ZL;
-    double ZeL;
-
-    V _wsL;
-    V _convo_kernel {1};
-    double _pseudo_cov;
 
     void calc_ws(VI const& q) {
       V& c = _convo_kernel;
@@ -174,135 +172,110 @@ namespace iyak {
       normalizeL(_wsL);
     }
 
-    void set_seq(VI& seq, string& rss) {
-      L = size(seq);
-
-      if (debug&DBG_FIX_RSS)
-        _motif->em.fix_rss(rss);
-      _motif->set_seq(seq);
-    }
-
-    void calc_viterbi_full_alignment() {
+    void calc_viterbi_full_alignment() { /* obsolete */
       init_cyk_tables();
       init_trace_back_tables();
 
-      _motif->compute_inside(CYKFun(this, -1, -1));
+      _m.compute_inside(CYKFun(this, -1, -1));
 
       IS const& s1 =
-      cyk_o(L, _motif->mm.n2s(0,_motif->M-2))<
-      cyk_o(L, _motif->mm.n2s(0,_motif->M-1))?
-      _motif->mm.n2s(0, _motif->M-1):
-      _motif->mm.n2s(0, _motif->M-2);
+      cyk_o(_m.L, _m.mm.n2s(0,_m.M-2))<
+      cyk_o(_m.L, _m.mm.n2s(0,_m.M-1))?
+      _m.mm.n2s(0, _m.M-1):
+      _m.mm.n2s(0, _m.M-2);
 
-      trace_back(0, _motif->L, EM::ST_O, s1);
-      dat(_out, "rss:", _motif->cyk_structure_path);
-      dat(_out, "mot:", _motif->cyk_state_path);
+      trace_back(0, _m.L, EM::ST_O, s1);
     }
 
     void calc_viterbi_alignment() {
       init_cyk_tables();
       init_trace_back_tables();
 
-      _motif->compute_inside(CYKFun(this, Ys, Ye));
+      _m.compute_inside(CYKFun(this, Ys, Ye));
       IS const& s =
-      cyk_o(L, _motif->mm.n2s(0,_motif->M-2))<
-      cyk_o(L, _motif->mm.n2s(0,_motif->M-1))?
-      _motif->mm.n2s(0, _motif->M-1):
-      _motif->mm.n2s(0, _motif->M-2);
+      cyk_o(_m.L, _m.mm.n2s(0,_m.M-2))<
+      cyk_o(_m.L, _m.mm.n2s(0,_m.M-1))?
+      _m.mm.n2s(0, _m.M-1):
+      _m.mm.n2s(0, _m.M-2);
 
-      trace_back(0, _motif->L, EM::ST_O, s);
-      say("len:", _seq.size());
-      dat(_out, "id:", _id);
-      dat(_out, "seq:", seq_itos(_seq));
-      dat(_out, "rss:", cyk_structure_path);
-      dat(_out, "mot:", cyk_state_path);
+      trace_back(0, _m.L, EM::ST_O, s);
     }
 
     void calc_motif_start_position() {
       init_inside_tables();
       init_outside_tables();
 
-      _motif->compute_inside(InsideFun(this));
+      _m.compute_inside(InsideFun(this));
       ZL = part_func();
-      _motif->compute_outside(OutsideFun(this, ZL, PysL, PyiL));
+      _m.compute_outside(OutsideFun(this, ZL, PysL, PyiL));
     }
 
     void calc_motif_end_position(int const s) {
       init_inside_tables();
       init_outside_tables();
 
-      _motif->compute_inside(InsideEndFun(this, s));
+      _m.compute_inside(InsideEndFun(this, s));
       ZeL = part_func();
-      _motif->compute_outside(OutsideEndFun(this, s, ZeL, PyeL));
+      _m.compute_outside(OutsideEndFun(this, s, ZeL, PyeL));
     }
 
     void calc_motif_positions() {
       calc_motif_start_position();
       Ys = max_index(PysL);
-      PyNL = divL(inside_o(L, _motif->mm.n2s(0,0)), ZL);
+      PyNL = divL(inside_o(_m.L, _m.mm.n2s(0,0)), ZL);
 
       calc_motif_end_position(Ys);
       Ye = max_index(PyeL);
-
-      dat(_out, "start:", apply(logNL, PysL));
-      dat(_out, "end:", apply(logNL, PyeL));
-      dat(_out, "inner:", apply(logNL, PyiL));
-      dat(_out, "w:", apply(logNL, _wsL));
-      dat(_out, "motif region:", Ys, "-", Ye);
-      dat(_out, "exist prob:", expL(sumL(PysL)));
 
       double s = sumL(sumL(PysL), PyNL);
       expect(double_eq(oneL, s), "log sum:", logNL(s));
     }
 
-  public:
-    RNAelemScanner(int t=1): _thread(t) {}
-    RNAelem* model() {return _motif;}
+    void operator() () {
+      while (1) {
 
-    /* setter */
-    void set_fq_name(string const& s) {
-      _fq_name = s;
-      _qr.set_fq_fname(_fq_name);
+        /* sync block */ {
+          lock l(_mx_input);
+          if (_qr.is_end()) break;
+          /* read one record */
+          _qr.read_seq(_id, _seq, _qual, _rss);
+          if (debug&DBG_FIX_RSS)
+              _m.em.fix_rss(_rss);
+          _m.set_seq(_seq);
+        }
 
-      N = _qr.N();
-    }
-    void set_out_id(int _id) {_out = _id;}
-    void set_preprocess(V const& convo_kernel, double pseudo_cov) {
-      _convo_kernel = convo_kernel;
-      _pseudo_cov = pseudo_cov;
-    }
-
-    void scan(RNAelem& model) {
-
-      say("scan start:");
-      lap(); 
-      _motif = &model;
-
-      _motif->em.set_min_BPP(0.);
-
-      _qr.clear();
-      while (not _qr.is_end()) {
-        /* read one record */
-        _qr.read_seq(_id, _seq, _qual, _rss);
-        set_seq(_seq, _rss);
         calc_ws(_qual);
-
-        PysL.assign(L+1, zeroL);
-        PyeL.assign(L+1, zeroL);
-        PyiL.assign(L+1, zeroL);
-        lnPy.assign(L+1, V(L+1, zeroL));
+        PysL.assign(_m.L+1, zeroL);
+        PyeL.assign(_m.L+1, zeroL);
+        PyiL.assign(_m.L+1, zeroL);
+        lnPy.assign(_m.L+1, V(_m.L+1, zeroL));
 
         calc_motif_positions();
         calc_viterbi_alignment();
-      }
 
-      say("scan end:", lap());
+        /* sync block */ {
+          lock l(_mx_output);
+
+          dat(_out, "start:", apply(logNL, PysL));
+          dat(_out, "end:", apply(logNL, PyeL));
+          dat(_out, "inner:", apply(logNL, PyiL));
+          dat(_out, "w:", apply(logNL, _wsL));
+          dat(_out, "motif region:", Ys, "-", Ye);
+          dat(_out, "exist prob:", expL(sumL(PysL)));
+
+          say("len:", _seq.size());
+          dat(_out, "id:", _id);
+          dat(_out, "seq:", seq_itos(_seq));
+          dat(_out, "rss:", cyk_structure_path);
+          dat(_out, "mot:", cyk_state_path);
+        }
+      }
     }
 
     void trace_back(int i, int j, int e, IS const& s) {
 
       Trace& t = (EM::ST_O==e? trace_o(j,s): trace(i,j,e,s));
-      IS const& s1 = _motif->mm.state()[t.s1_id];
+      IS const& s1 = _m.mm.state()[t.s1_id];
 
       switch (t.t) {
 
@@ -312,8 +285,8 @@ namespace iyak {
         case EM::TT_2_2:
 #endif
         {
-          if (0!=s.r and _motif->M-1!=s.r) {
-            cyk_state_path[t.l] = _motif->mm.node(s.r);
+          if (0!=s.r and _m.M-1!=s.r) {
+            cyk_state_path[t.l] = _m.mm.node(s.r);
           }
           cyk_structure_path[t.l] = '.';
           trace_back(t.k, t.l, t.e1, s1);
@@ -335,12 +308,12 @@ namespace iyak {
 
         case EM::TT_P_E:
         case EM::TT_P_P: {
-          if (0!=s1.l and _motif->M-1!=s1.l) {
-            cyk_state_path[i] = _motif->mm.node(s1.l);
+          if (0!=s1.l and _m.M-1!=s1.l) {
+            cyk_state_path[i] = _m.mm.node(s1.l);
           }
           cyk_structure_path[i] = '(';
-          if (0!=s.r and _motif->M-1!=s.r) {
-            cyk_state_path[t.l] = _motif->mm.node(s.r);
+          if (0!=s.r and _m.M-1!=s.r) {
+            cyk_state_path[t.l] = _m.mm.node(s.r);
           }
           cyk_structure_path[t.l] = ')';
           trace_back(t.k, t.l, t.e1, s1);
@@ -348,15 +321,15 @@ namespace iyak {
         }
 
         case EM::TT_O_OP: {
-          IS const& s2 = _motif->mm.n2s(s.l, s1.l);
+          IS const& s2 = _m.mm.n2s(s.l, s1.l);
           trace_back(s.l, t.k, EM::ST_O, s2);
           trace_back(t.k, t.l, t.e1, s1);
           break;
         }
 
         case EM::TT_E_P: {
-          IS const& s2 = _motif->mm.n2s(s.l, s1.l);
-          IS const& s3 = _motif->mm.n2s(s1.r, s.r);
+          IS const& s2 = _m.mm.n2s(s.l, s1.l);
+          IS const& s3 = _m.mm.n2s(s1.r, s.r);
           trace_back(t.k, t.l, t.e1, s1);
           trace_back(i, t.k, EM::ST_L, s2);
           trace_back(t.l, j, EM::ST_L, s3);
@@ -365,15 +338,15 @@ namespace iyak {
 
 #if !DBG_NO_MULTI
         case EM::TT_B_12: {
-          IS const& s2 = _motif->mm.n2s(s1.r, s.r);
+          IS const& s2 = _m.mm.n2s(s1.r, s.r);
           trace_back(t.k, t.l, t.e1, s1);
           trace_back(t.l, j, EM::ST_2, s2);
           break;
         }
 
         case EM::TT_M_M: {
-          if (0!=s1.l and _motif->M-1!=s1.l) {
-            cyk_state_path[i] = _motif->mm.node(s1.l);
+          if (0!=s1.l and _m.M-1!=s1.l) {
+            cyk_state_path[i] = _m.mm.node(s1.l);
           }
           cyk_structure_path[i] = '.';
           trace_back(t.k, t.l, EM::ST_M, s1);
@@ -384,13 +357,13 @@ namespace iyak {
     }
 
     class InsideFun {
-      RNAelemScanner* _s;
+      RNAelemScanDP* _s;
       double lam = _s->model()->lambda();
     public:
       RNAelem& model = *(_s->model());
       ProfileHMM& mm = _s->model()->mm;
       EnergyModel& em = _s->model()->em;
-      InsideFun(RNAelemScanner* s): _s(s) {}
+      InsideFun(RNAelemScanDP* s): _s(s) {}
       double part_func() const {return _s->part_func();}
       double part_func_outside() const {return _s->part_func_outside();}
       template<int e, int e1>
@@ -445,7 +418,7 @@ namespace iyak {
     };
 
     class OutsideFun {
-      RNAelemScanner* _s;
+      RNAelemScanDP* _s;
       double const _ZL;
       V& _PysL;
       V& _PyiL;
@@ -457,7 +430,7 @@ namespace iyak {
       EnergyModel& em = _s->model()->em;
       double part_func() const {return _s->part_func();}
       double part_func_outside() const {return _s->part_func_outside();}
-      OutsideFun(RNAelemScanner* s, double const ZL, V& PysL, V& PyiL):
+      OutsideFun(RNAelemScanDP* s, double const ZL, V& PysL, V& PyiL):
       _s(s), _ZL(ZL), _PysL(PysL), _PyiL(PyiL) {}
       template<int e, int e1>
       void on_outside_transition(int const i, int const j,
@@ -597,7 +570,7 @@ namespace iyak {
     };
 
     class InsideEndFun {
-      RNAelemScanner* _s;
+      RNAelemScanDP* _s;
       int _Ys;
       double lam = _s->model()->lambda();
     public:
@@ -606,7 +579,7 @@ namespace iyak {
       EnergyModel& em = _s->model()->em;
       double part_func() const {return _s->part_func();}
       double part_func_outisde() const {return _s->part_func_outside();}
-      InsideEndFun(RNAelemScanner* s, double Ys): _s(s), _Ys(Ys) {}
+      InsideEndFun(RNAelemScanDP* s, double Ys): _s(s), _Ys(Ys) {}
       template<int e, int e1>
       void on_inside_transition(int const i, int const j,
                                 int const k, int const l,
@@ -690,7 +663,7 @@ namespace iyak {
     };
 
     class OutsideEndFun {
-      RNAelemScanner* _s;
+      RNAelemScanDP* _s;
       int _Ys;
       double const _ZeL;
       V& _PyeL;
@@ -703,7 +676,7 @@ namespace iyak {
       EnergyModel& em = _s->model()->em;
       double part_func() const {return _s->part_func();}
       double part_func_outside() const {return _s->part_func_outside();}
-      OutsideEndFun(RNAelemScanner* s, int Ys, double const ZeL, V& PyeL):
+      OutsideEndFun(RNAelemScanDP* s, int Ys, double const ZeL, V& PyeL):
       _s(s), _Ys(Ys), _ZeL(ZeL), _PyeL(PyeL) {}
       template<int e, int e1>
       void on_outside_transition(int const i, int const j,
@@ -838,16 +811,16 @@ namespace iyak {
                     diff));
         }
 
-      else {
-        addL(_s->outside(i, j, e, s),
-             mulL(_s->outside(k, l, e1, s1),
-                  diff));
-      }
+        else {
+          addL(_s->outside(i, j, e, s),
+               mulL(_s->outside(k, l, e1, s1),
+                    diff));
+        }
       }
     };
 
     class CYKFun {
-      RNAelemScanner* _s;
+      RNAelemScanDP* _s;
       int _ys, _ye;
       double lam = _s->model()->lambda();
       int M = _s->model()->M;
@@ -858,7 +831,7 @@ namespace iyak {
       EnergyModel& em = _s->model()->em;
       double part_func() const {return _s->part_func();}
       double part_func_outisde() const {return _s->part_func_outside();}
-      CYKFun(RNAelemScanner* s, int ys, int ye):_s(s), _ys(ys), _ye(ye) {}
+      CYKFun(RNAelemScanDP* s, int ys, int ye):_s(s), _ys(ys), _ye(ye) {}
       template<int e, int e1>
       void compare(int const i, int const j,
                    int const k, int const l,
@@ -950,21 +923,67 @@ namespace iyak {
         }
 #endif
 
-      else if (EM::ST_O==e and EM::ST_O==e1) {
-        compare<e,e1>(i, j, k, l, s, s1,
-                      _s->cyk_o(j, s),
-                      mulL(_s->cyk_o(l, s1),
-                           diff));
-      }
+        else if (EM::ST_O==e and EM::ST_O==e1) {
+          compare<e,e1>(i, j, k, l, s, s1,
+                        _s->cyk_o(j, s),
+                        mulL(_s->cyk_o(l, s1),
+                             diff));
+        }
 
-      else {
-        compare<e,e1>(i, j, k, l, s, s1,
-                      _s->cyk(i, j, e, s),
-                      mulL(_s->cyk(k, l, e1, s1),
-                           diff));
-      }
+        else {
+          compare<e,e1>(i, j, k, l, s, s1,
+                        _s->cyk(i, j, e, s),
+                        mulL(_s->cyk(k, l, e1, s1),
+                             diff));
+        }
       }
     };
+  };
+
+  class RNAelemScanner {
+
+    string _fq_name;
+    FastqReader _qr;
+    int _out=1;
+    int _thread;
+
+    RNAelem *_motif;
+    V _convo_kernel {1};
+    double _pseudo_cov;
+
+    mutex _mx_input;
+    mutex _mx_output;
+
+  public:
+    RNAelemScanner(int t=1): _thread(t) {}
+    RNAelem* model() {return _motif;}
+
+    /* setter */
+    void set_fq_name(string const& s) {
+      _fq_name = s;
+      _qr.set_fq_fname(_fq_name);
+    }
+    void set_out_id(int _id) {_out = _id;}
+    void set_preprocess(V const& convo_kernel, double pseudo_cov) {
+      _convo_kernel = convo_kernel;
+      _pseudo_cov = pseudo_cov;
+    }
+
+    void scan(RNAelem& model) {
+
+      say("scan start:");
+      lap();
+      _motif = &model;
+
+      _motif->em.set_min_BPP(0.);
+
+      _qr.clear();
+      ClassThread<RNAelemScanDP> ct(_thread, *_motif, _mx_input, _mx_output,
+                                    _pseudo_cov, _convo_kernel, _qr, _out);
+      ct();
+      say("scan end:", lap());
+    }
+
   };
 }
 

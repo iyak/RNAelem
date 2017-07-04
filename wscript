@@ -47,41 +47,41 @@ def configure(cnf):
 
 def build(bld):
     bld.program(
-          features="cxx cxxprogram",
-          cxxflags="-std=c++14 -Wall -O3 -ipo -static",
-          source="RNAelem/main.cpp",
-          includes="RNAelem",
-          target="bin/RNAelem",
-          use="freetype",
-          lib="pthread")
+            features="cxx cxxprogram",
+            cxxflags="-std=c++14 -Wall -O3 -static",
+            source="RNAelem/main.cpp",
+            includes="RNAelem",
+            target="bin/RNAelem",
+            use="freetype",
+            lib="pthread")
 
     bld(
-          features="cxx",
-          cxxflags="-pthread -c",
-          source="RNAelem-test/gtest/src/gtest-all.cc",
-          includes="RNAelem-test/gtest"
-          " RNAelem-test/gtest/include",
-          target="gtest")
+            features="cxx",
+            cxxflags="-pthread -c",
+            source="RNAelem-test/gtest/src/gtest-all.cc",
+            includes="RNAelem-test/gtest"
+            " RNAelem-test/gtest/include",
+            target="gtest")
 
     bld.program(
-          features="test",
-          cxxflags="-std=c++14 -Wall -O3",
-          source="RNAelem-test/test.cpp",
-          includes="RNAelem RNAelem-test"
-          " RNAelem-test/gtest/include",
-          target="bin/RNAelem-test",
-          use="gtest freetype",
-          lib="pthread")
+            features="test",
+            cxxflags="-std=c++14 -Wall -O3",
+            source="RNAelem-test/test.cpp",
+            includes="RNAelem RNAelem-test"
+            " RNAelem-test/gtest/include",
+            target="bin/RNAelem-test",
+            use="gtest freetype",
+            lib="pthread")
 
     bld.program(
-          features="test",
-          cxxflags="-std=c++14 -Wall -O3",
-          source="RNAelem-test/test-exact.cpp",
-          includes="RNAelem RNAelem-test"
-          " RNAelem-test/gtest/include",
-          target="bin/RNAelem-test-exact",
-          use="gtest freetype",
-          lib="pthread")
+            features="test",
+            cxxflags="-std=c++14 -Wall -O3",
+            source="RNAelem-test/test-exact.cpp",
+            includes="RNAelem RNAelem-test"
+            " RNAelem-test/gtest/include",
+            target="bin/RNAelem-test-exact",
+            use="gtest freetype",
+            lib="pthread")
 
 def test(ctx):
     ctx.exec_command("build/bin/RNAelem-test --gtest_color=yes")
