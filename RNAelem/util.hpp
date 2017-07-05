@@ -36,6 +36,7 @@
 #include<sys/types.h>
 #include<unistd.h>
 #include"const_options.hpp"
+#define forceinline inline __attribute__((always_inline))
 
 namespace iyak {
 

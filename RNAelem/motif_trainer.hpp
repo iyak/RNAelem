@@ -217,6 +217,7 @@ namespace iyak {
       _t(t), _m(*(_t->model())), _lam(_m.lambda()) {}
 
       template<int e, int e1>
+      forceinline
       void on_inside_transition(int const i, int const j,
                                 int const k, int const l,
                                 IS const& s, IS const& s1,
@@ -274,6 +275,7 @@ namespace iyak {
       _seq(*(_m._seq)), _lam(_m.lambda()) {}
 
       template<int e, int e1>
+      forceinline
       void on_outside_transition(int const i, int const j,
                                  int const k, int const l,
                                  IS const&  s, IS const&  s1,
@@ -394,6 +396,7 @@ namespace iyak {
       _t(t), _wsL(ws), _m(*(_t->model())), _lam(_m.lambda()) {}
 
       template<int e, int e1>
+      forceinline
       void on_inside_transition(int const i, int const j,
                                 int const k, int const l,
                                 IS const&  s, IS const&  s1,
@@ -484,6 +487,7 @@ namespace iyak {
       _seq(*(_m._seq)), _lam(_m.lambda()) {}
 
       template<int e, int e1>
+      forceinline
       void on_outside_transition(int const i, int const j,
                                  int const k, int const l,
                                  IS const&  s, IS const&  s1,

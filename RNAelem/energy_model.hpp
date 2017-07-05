@@ -287,6 +287,7 @@ namespace iyak {
     void fix_rss(string const& s) {_fix_s = s;}
 
     template<int e>
+    forceinline
     bool is_parsable(int i, int j) const {
       switch (e) {
         case ST_P: {
@@ -559,6 +560,7 @@ namespace iyak {
     public:
       InsideFun(EM* em): EnergyModelAlgo(em) {}
       template<int t>
+      forceinline
       void on_transition(int i, int j, int k, int l, double tsc) {
         switch (t) {
           case EM::TT_O_OP: {
@@ -608,6 +610,7 @@ namespace iyak {
     public:
       OutsideFun(EM* em): EnergyModelAlgo(em) {}
       template<int t>
+      forceinline
       void on_transition(int i, int j, int k, int l, double tsc) {
         switch (t) {
           case EM::TT_O_OP: {

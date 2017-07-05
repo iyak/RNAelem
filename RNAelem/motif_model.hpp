@@ -244,6 +244,7 @@ namespace iyak {
       }
 
       template<int tt>
+      forceinline
       void on_transition(int i, int j, int k, int l, double tsc) {
         switch (tt) {
           case EM::TT_E_H: {
@@ -408,6 +409,7 @@ namespace iyak {
       }
 
       template<int tt>
+      forceinline
       void on_transition(int i, int j, int k, int l, double tsc) {
         switch (tt) {
           case EM::TT_E_H: {
