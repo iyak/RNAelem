@@ -151,7 +151,8 @@ namespace iyak {
           if (_qr.is_end())
             break;
           _qr.read_seq(_id, _seq, _qual, _rss);
-          check(size(_seq)+1 == size(_qual), "bad seq format.");
+          check(size(_seq)+1 == size(_qual),
+                "bad seq format.", _id, size(_seq), size(_qual));
           if (_mode & TR_ARRAYEVAL) {
             if (_qr.cnt() < _from+1)
               continue;
