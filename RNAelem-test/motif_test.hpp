@@ -19,7 +19,6 @@ namespace iyak {
     void dp() {
       init_inside_tables();
       init_outside_tables();
-
       _m.compute_inside(InsideFun(this));
       _ZL = part_func();
       _m.compute_outside(OutsideFun(this, oneL, _dEH, _dEN));
@@ -29,14 +28,11 @@ namespace iyak {
       /* inside-outside */
       init_inside_tables();
       init_outside_tables();
-
       _m.compute_inside(InsideFun(this));
       _ZL = part_func();
       _m.compute_outside(OutsideFun(this, _ZL, _dEH, _dEN));
-
       init_inside_tables();
       init_outside_tables();
-
       _m.compute_inside(InsideFeatFun(this, _wsL));
       _ZwL = part_func();
       _m.compute_outside(OutsideFeatFun(this, _ZwL, _dEH, _dEN, _wsL));
@@ -62,11 +58,9 @@ namespace iyak {
               ) {
       seq_stoi(seq, _seq);
       _rss = rss;
-
       if (debug&DBG_FIX_RSS) _m.em.fix_rss(_rss);
       _m.set_seq(_seq);
-
-      clear_emit_count(_dEN);
+      clear_emit_count(_m.mm, _dEN);
       dp();
     }
 
@@ -78,12 +72,10 @@ namespace iyak {
       seq_stoi(seq, _seq);
       FastqReader::qual_stoi(qual, _qual);
       _rss = rss;
-
       if (debug&DBG_FIX_RSS) _m.em.fix_rss(_rss);
       _m.set_seq(_seq);
       calc_ws(_qual);
-
-      clear_emit_count(_dEN);
+      clear_emit_count(_m.mm, _dEN);
       dp_fn();
     }
   };

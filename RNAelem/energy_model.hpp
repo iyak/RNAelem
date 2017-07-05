@@ -337,27 +337,22 @@ namespace iyak {
     }
 
     template <class F> void compute_inside(F f) {
-
       for (int j=0; j<=L; ++j) {
-
         int i0 = max(0, j-W);
         f.before_transition(i0, j);
-
         for (int i=j; i0<=i; --i) {
-
           double tsc;
-
           if (is_parsable<ST_P>(i, j)) {
             if (is_parsable<ST_E>(i+1, j-1)) {
               f.template on_transition<TT_P_E>(i, j, i+1, j-1, oneL);
             }
             if (is_parsable<ST_P>(i+1, j-1)) {
-              tsc = _ep.loop_energy(i, j-1, i+1, j-2, *_seq);
-              f.template on_transition<TT_P_P>(i, j, i+1, j-1,
-                                               _no_ene? oneL: tsc);
+              tsc = _no_ene? oneL
+              : _ep.loop_energy(i, j-1, i+1, j-2, *_seq);
+              if (zeroL != tsc) f.template on_transition<TT_P_P>
+                (i, j, i+1, j-1, tsc);
             }
           }
-
 #if !DBG_NO_MULTI
           if (is_parsable<ST_B>(i, j)) {
             for (int k = i; k <= j; ++ k) {
@@ -367,20 +362,18 @@ namespace iyak {
               }
             }
           }
-
           if (is_parsable<ST_2>(i, j)) {
             if (is_parsable<ST_2>(i, j-1)) {
-
               if (debug&DBG_FIX_RSS and '.'!=_fix_s[j-1]) {} else
                 f.template on_transition<TT_2_2>(i, j, i, j-1, oneL);
             }
             if (is_parsable<ST_P>(i, j)) {
-              tsc = mulL(_ep.sum_ext_m(i, j-1, false, *_seq),_ep.mlintern());
-              f.template on_transition<TT_2_P>(i, j, i, j,
-                                               _no_ene? oneL: tsc);
+              tsc = _no_ene? oneL
+              : mulL(_ep.sum_ext_m(i, j-1, false, *_seq),_ep.mlintern());
+              if (zeroL != tsc) f.template on_transition<TT_2_P>
+                (i, j, i, j, tsc);
             }
           }
-
           if (is_parsable<ST_1>(i, j)) {
             if (is_parsable<ST_2>(i, j)) {
               f.template on_transition<TT_1_2>(i, j, i, j, oneL);
@@ -389,10 +382,8 @@ namespace iyak {
               f.template on_transition<TT_1_B>(i, j, i, j, oneL);
             }
           }
-
           if (is_parsable<ST_M>(i, j)) {
             if (is_parsable<ST_M>(i+1, j)) {
-
               if (debug&DBG_FIX_RSS and '.'!=_fix_s[i]) {} else 
                 f.template on_transition<TT_M_M>(i, j, i+1, j, oneL);
             }
@@ -401,78 +392,67 @@ namespace iyak {
             }
           }
 #endif
-
           if (is_parsable<ST_E>(i, j)) {
 #if !DBG_NO_MULTI
             if (is_parsable<ST_M>(i, j)) {
-              tsc = mulL(_ep.sum_ext_m(j, i-1, false, *_seq),
-                         _ep.mlclosing(),
-                         _ep.mlintern());
-              f.template on_transition<TT_E_M>(i, j, i, j,
-                                               _no_ene? oneL: tsc);
+              tsc = _no_ene? oneL
+              : mulL(_ep.sum_ext_m(j, i-1, false, *_seq),
+                     _ep.mlclosing(),
+                     _ep.mlintern());
+              if (zeroL != tsc) f.template on_transition<TT_E_M>
+                (i, j, i, j, tsc);
             }
 #endif
-            tsc = _ep.hairpin_energy(i-1, j, *_seq);
-
+            tsc = _no_ene? oneL
+            : _ep.hairpin_energy(i-1, j, *_seq);
             if (debug&DBG_FIX_RSS and
                 string(j-i,'.') != _fix_s.substr(i,j-i)) {} else
-                  f.template on_transition<TT_E_H>(i, j, i, j,
-                                                   _no_ene? oneL: tsc);
-
+                  if (zeroL != tsc) f.template on_transition<TT_E_H>
+                    (i, j, i, j, tsc);
             for (int volatile l=j; l>=max(i,j-C); -- l) {
               for (int volatile k=i; k<=min(l,i+C-(j-l)); ++ k) {
                 if (i==k and l==j) continue;
                 if (is_parsable<ST_P>(k, l)) {
-                  tsc = _ep.loop_energy(i-1, j, k, l-1, *_seq);
-
+                  tsc = _no_ene? oneL
+                  : _ep.loop_energy(i-1, j, k, l-1, *_seq);
                   if (debug&DBG_FIX_RSS and
                       (string(k-i,'.') != _fix_s.substr(i,k-i) or
                        string(j-l,'.') != _fix_s.substr(l,j-l))) {} else
-                         f.template on_transition<TT_E_P>(i, j, k, l,
-                                                          _no_ene? oneL: tsc);
+                         if (zeroL != tsc) f.template on_transition<TT_E_P>
+                           (i, j, k, l, tsc);
                 }
               }
             }
-
           }
-
           if (is_parsable<ST_P>(i, j)) {
-            tsc = _ep.sum_ext_m(i, j-1, true, *_seq);
-            f.template on_transition<TT_O_OP>(0, j, 0, i,
-                                              _no_ene? oneL: tsc);
+            tsc = _no_ene? oneL
+            : _ep.sum_ext_m(i, j-1, true, *_seq);
+            if (zeroL != tsc) f.template on_transition<TT_O_OP>
+              (0, j, 0, i, tsc);
           }
-
           if (i0==i and 0 < j) {
             if (debug&DBG_FIX_RSS and '.'!=_fix_s[j-1]) {} else
               f.template on_transition<TT_O_O>(0, j, 0, j-1, oneL);
           }
-
         }
         f.after_transition(i0, j);
       }
     }
 
     template <class F> void compute_outside(F f) {
-
       for (int j=L; 0<=j; --j) {
-
         int i0 = max(0, j-W);
         if (1<=j)
           f.before_transition(i0, j-1);
-
         for (int i=i0; i<=j; ++i) {
-
           double tsc;
-
           if (i0==i and j<L) {
             if (debug&DBG_FIX_RSS and '.'!=_fix_s[j]) {} else
               f.template on_transition<TT_O_O>(0, j, 0, j+1, oneL);
           }
-
 #if !DBG_NO_MULTI
           if (is_parsable<ST_2>(i, j)) {
             if (is_parsable<ST_2>(i, j+1)) {
-
               if (debug&DBG_FIX_RSS and '.'!=_fix_s[j]) {} else
                 f.template on_transition<TT_2_2>(i, j, i, j+1, oneL);
             }
@@ -481,55 +461,53 @@ namespace iyak {
             }
           }
 #endif
-
           if (is_parsable<ST_P>(i, j)) {
-            tsc = _ep.sum_ext_m(i, j-1, true, *_seq);
-            f.template on_transition<TT_O_OP>(0, i, 0, j,
-                                              _no_ene? oneL: tsc);
+            tsc = _no_ene? oneL
+            : _ep.sum_ext_m(i, j-1, true, *_seq);
+            if (zeroL != tsc) f.template on_transition<TT_O_OP>
+              (0, i, 0, j, tsc);
             if (is_parsable<ST_P>(i-1, j+1)) {
-              tsc = _ep.loop_energy(i-1, j, i, j-1, *_seq);
-              f.template on_transition<TT_P_P>(i, j, i-1, j+1,
-                                               _no_ene? oneL: tsc);
+              tsc = _no_ene? oneL
+              : _ep.loop_energy(i-1, j, i, j-1, *_seq);
+              if (zeroL != tsc) f.template on_transition<TT_P_P>
+                (i, j, i-1, j+1, tsc);
             }
 #if !DBG_NO_MULTI
             if (is_parsable<ST_2>(i, j)) {
-              tsc = mulL(_ep.sum_ext_m(i, j-1, false, *_seq), _ep.mlintern());
-              f.template on_transition<TT_2_P>(i, j, i, j,
-                                               _no_ene? oneL: tsc);
+              tsc = _no_ene? oneL
+              : mulL(_ep.sum_ext_m(i, j-1, false, *_seq), _ep.mlintern());
+              if (zeroL != tsc) f.template on_transition<TT_2_P>
+                (i, j, i, j, tsc);
             }
 #endif
           }
-
           if (is_parsable<ST_E>(i, j)) {
             if (is_parsable<ST_P>(i-1, j+1)) {
               f.template on_transition<TT_P_E>(i, j, i-1, j+1, oneL);
             }
-            tsc = _ep.hairpin_energy(i-1, j, *_seq);
-
+            tsc = _no_ene? oneL
+            : _ep.hairpin_energy(i-1, j, *_seq);
             if (debug&DBG_FIX_RSS and
                 string(j-i,'.') != _fix_s.substr(i,j-i)) {} else
-                  f.template on_transition<TT_E_H>(i, j, i, j,
-                                                   _no_ene? oneL: tsc);
-
+                  if (zeroL != tsc) f.template on_transition<TT_E_H>
+                    (i, j, i, j, tsc);
 #if !DBG_NO_MULTI
             if (is_parsable<ST_M>(i, j)) {
-              tsc = mulL(_ep.sum_ext_m(j, i-1, false, *_seq),
-                         _ep.mlclosing(),
-                         _ep.mlintern());
-              f.template on_transition<TT_E_M>(i, j, i, j,
-                                               _no_ene? oneL: tsc);
+              tsc = _no_ene? oneL
+              : mulL(_ep.sum_ext_m(j, i-1, false, *_seq),
+                     _ep.mlclosing(),
+                     _ep.mlintern());
+              if (zeroL != tsc) f.template on_transition<TT_E_M>
+                (i, j, i, j, tsc);
             }
 #endif
           }
-
 #if !DBG_NO_MULTI
           if (is_parsable<ST_M>(i, j) and
               is_parsable<ST_M>(i-1, j)) {
-
             if (debug&DBG_FIX_RSS and '.'!=_fix_s[i-1]) {} else
               f.template on_transition<TT_M_M>(i, j, i-1, j, oneL);
           }
-
           if (is_parsable<ST_B>(i, j)) {
             if (is_parsable<ST_1>(i, j)) {
               f.template on_transition<TT_1_B>(i, j, i, j, oneL);
@@ -545,19 +523,18 @@ namespace iyak {
             }
           }
 #endif
-
           if (is_parsable<ST_E>(i, j)) {
             for (int k=i; k<=min(j-2,i+C); ++k) {
               for (int l=j; l>=max(k+2,l-(C-(k-i))); --l) {
                 if (i==k and l==j) continue;
                 if (is_parsable<ST_P>(k, l)) {
-                  tsc = _ep.loop_energy(i-1, j, k, l-1, *_seq);
-
+                  tsc = _no_ene? oneL
+                  : _ep.loop_energy(i-1, j, k, l-1, *_seq);
                   if (debug&DBG_FIX_RSS and
                       (string(k-i,'.') != _fix_s.substr(i,k-i) or
                        string(j-l,'.') != _fix_s.substr(l,j-l))) {} else
-                         f.template on_transition<TT_E_P>(k, l, i, j,
-                                                          _no_ene? oneL: tsc);
+                         if (zeroL != tsc) f.template on_transition<TT_E_P>
+                           (k, l, i, j, tsc);
                 }
               }
             }

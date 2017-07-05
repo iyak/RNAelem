@@ -65,7 +65,6 @@ namespace iyak {
     double _ZwL;
     double _dEH;
     VV _dEN;
-    VV _dENn;
     double _fn;
 
     double& inside(int const i,int const j,int const e,IS const& s) {
@@ -119,17 +118,16 @@ namespace iyak {
       return outside_o(0, _m.mm.n2s(0,0));
     }
 
-    void clear_emit_count(VV& e) {
-      e.resize(_m.mm.weightL().size(), V{});
-      for (int i=0; i<size(_m.mm.weightL()); ++i) {
-        e[i].resize(_m.mm.weightL()[i].size(), 0);
+    void clear_emit_count(ProfileHMM& m,  VV& e) {
+      e.resize(m.weightL().size(), V{});
+      for (int i=0; i<size(m.weightL()); ++i) {
+        e[i].resize(m.weightL()[i].size(), 0);
         for (auto& eij: e[i]) eij = 0;
       }
     }
 
     void calc_ws(VI const& q) {
       V const& c = _convo_kernel;
-
       _wsL.assign(size(q), logL(_pseudo_cov));
       for (int i=0; i<size(q)-1; ++i)
         for (int j=0; j<size(c); ++ j)
@@ -141,10 +139,12 @@ namespace iyak {
     void operator() (double& fn, V& gr) {
       double sum_eff = 0.;
       _fn = 0;
-      clear_emit_count(_dEN);
+      clear_emit_count(_m.mm, _dEN);
       _dEH = 0.;
       while (1) {
-        clear_emit_count(_dENn);
+        VV dENn {};
+        clear_emit_count(_m.mm, dENn);
+        double dEHn=0.;
 
         /* sync block */ {
           lock l(_mx_input);
@@ -159,51 +159,38 @@ namespace iyak {
               break;
           }
         }
-
         if (debug&DBG_FIX_RSS) _m.em.fix_rss(_rss);
         _m.set_seq(_seq);
-        sum_eff += _m.em.bpp_eff();
         calc_ws(_qual);
 
-        /* inside-outside */
         init_inside_tables();
         init_outside_tables();
-
         _m.compute_inside(InsideFun(this));
-        _ZL = part_func();
-
-        if (std::isfinite(_ZL)) {
-          _m.compute_outside(OutsideFun(this, _ZL, _dEH, _dENn));
-
-          init_inside_tables();
-          init_outside_tables();
-
-          _m.compute_inside(InsideFeatFun(this, _wsL));
-          _ZwL = part_func();
-
-          if (std::isfinite(_ZwL)) {
-            _m.compute_outside(OutsideFeatFun(this, _ZwL, _dEH, _dENn, _wsL));
-
-            _fn += logNL(divL(_ZL,_ZwL));
-            for (int i=0; i<size(_dEN); ++i)
-              for (int j=0; j<size(_dEN[i]); ++j)
-                _dEN[i][j] += _dENn[i][j];
-          }
+        if (not std::isfinite(_ZL = part_func())) {
+          if (0==_opt.fdfcount()) cry("skipped:", _id);
+          continue;
         }
-        /*
-         * fn is not updated, nor is _dEN for the n-th sequence.
-         * without this filtering, the probability of entire dataset
-         * becomes zero due to a very few strange sequences,
-         * which is an undesirable behavior for the real data analyses.
-         */
-        else {
-          if (0 == _opt.fdfcount()) cry("skipped:", _id);
-          _ZL = _ZwL = zeroL;
+        _m.compute_outside(OutsideFun(this, _ZL, dEHn, dENn));
+        init_inside_tables();
+        init_outside_tables();
+        _m.compute_inside(InsideFeatFun(this, _wsL));
+        if (not std::isfinite(_ZwL = part_func())) {
+          if (0==_opt.fdfcount()) cry("skipped:", _id);
+          continue;
         }
+        _m.compute_outside(OutsideFeatFun(this, _ZwL, dEHn, dENn, _wsL));
+        /* local update */
+        _fn += logNL(divL(_ZL,_ZwL));
+        for (int i=0; i<size(_dEN); ++i)
+          for (int j=0; j<size(_dEN[i]); ++j)
+            _dEN[i][j] += dENn[i][j];
+        _dEH += dEHn;
+        sum_eff += _m.em.bpp_eff();
       }
 
       /* sync block */ {
         lock l(_mx_update);
+        /* global update */
         fn += _fn;
         int k = 0;
         for (int i=0; i<size(_dEN); ++i) {
@@ -219,27 +206,23 @@ namespace iyak {
     }
 
     class InsideFun {
-      RNAelemTrainDP* _t;
-      double lam;
     public:
-      RNAelem& model = *(_t->model());
-      ProfileHMM& mm = _t->model()->mm;
-      EnergyModel& em = _t->model()->em;
-      InsideFun(RNAelemTrainDP* t): _t(t), lam(_t->model()->lambda()) {}
+      RNAelemTrainDP* _t;
+      RNAelem& _m;
+      double _lam;
       double part_func() const {return _t->part_func();}
       double part_func_outside() const {return _t->part_func_outside();}
+      InsideFun(RNAelemTrainDP* t):
+      _t(t), _m(*(_t->model())), _lam(_m.lambda()) {}
+
       template<int e, int e1>
       void on_inside_transition(int const i, int const j,
                                 int const k, int const l,
                                 IS const& s, IS const& s1,
                                 IS const& s2, IS const& s3,
                                 double const tsc,
-                                double const wt,
-                                double const etc) const {
-        if (zeroL == tsc) return;
-        double diff = mulL(wt, (debug&DBG_NO_LOGSUM)?
-                           pow(tsc, lam): lam*tsc,
-                           etc);
+                                double const wt) const {
+        double diff = mulL(wt, (debug&DBG_NO_LOGSUM)? pow(tsc, _lam): _lam*tsc);
         if (EM::ST_E==e and EM::ST_P==e1) {
           addL(_t->inside(i, j, e, s),
                mulL(_t->inside(k, l, e1, s1),
@@ -275,62 +258,56 @@ namespace iyak {
     };
 
     class OutsideFun {
+    public:
       RNAelemTrainDP* _t;
       double const _ZL;
       double& _dEH;
       VV& _dEN;
+      RNAelem& _m;
       VI& _seq;
-      double lam;
-    public:
-      RNAelem& model = *(_t->model());
-      ProfileHMM& mm = _t->model()->mm;
-      EnergyModel& em = _t->model()->em;
+      double _lam;
       double part_func() const {return _t->part_func();}
       double part_func_outside() const {return _t->part_func_outside();}
       OutsideFun(RNAelemTrainDP* t, double ZL, double& dEH, VV& dEN):
-      _t(t), _ZL(ZL), _dEH(dEH), _dEN(dEN), _seq(*(_t->model()->_seq)),
-      lam(_t->model()->lambda()) {}
+      _t(t), _ZL(ZL), _dEH(dEH), _dEN(dEN), _m(*(_t->model())),
+      _seq(*(_m._seq)), _lam(_m.lambda()) {}
+
       template<int e, int e1>
       void on_outside_transition(int const i, int const j,
                                  int const k, int const l,
                                  IS const&  s, IS const&  s1,
                                  IS const&  s2, IS const&  s3,
                                  double const tsc,
-                                 double const wt,
-                                 double etc) const {
-        if (zeroL == tsc) return;
-        double z = divL(mulL((EM::ST_O==e?
-                              _t->inside_o(j,s):
-                              _t->inside(i,j,e,s))
-                             ,
-                             ((EM::ST_E==e1 and EM::ST_P==e)?
-                              mulL(_t->outside(k,l,e1,s1),
-                                   _t->inside(k,i,EM::ST_L,s2),
-                                   _t->inside(j,l,EM::ST_L,s3)):
-
-                              (EM::ST_O==e1 and EM::ST_P==e)?
-                              mulL(_t->outside_o(l,s1),
-                                   _t->inside_o(i,s2)):
+                                 double const wt) const {
+        double diff = mulL(wt, (debug&DBG_NO_LOGSUM)? pow(tsc,_lam): _lam*tsc);
+        double z
+        = divL(mulL(diff,
+                    (EM::ST_O==e?
+                     _t->inside_o(j,s):
+                     _t->inside(i,j,e,s)),
+                    ((EM::ST_E==e1 and EM::ST_P==e)?
+                     mulL(_t->outside(k,l,e1,s1),
+                          _t->inside(k,i,EM::ST_L,s2),
+                          _t->inside(j,l,EM::ST_L,s3)):
+                     (EM::ST_O==e1 and EM::ST_P==e)?
+                     mulL(_t->outside_o(l,s1),
+                          _t->inside_o(i,s2)):
 #if !DBG_NO_MULTI
-                              (EM::ST_B==e1 and EM::ST_1==e)?
-                              mulL(_t->outside(k,l,e1,s1),
-                                   _t->inside(j,l,EM::ST_2,s2)):
+                     (EM::ST_B==e1 and EM::ST_1==e)?
+                     mulL(_t->outside(k,l,e1,s1),
+                          _t->inside(j,l,EM::ST_2,s2)):
 #endif
-                              (EM::ST_O==e1 and EM::ST_O==e)?
-                              _t->outside_o(l,s1):
-
-                              _t->outside(k,l,e1,s1))
-                             ,
-                             mulL(wt, (debug&DBG_NO_LOGSUM)?
-                                  pow(tsc, lam): lam*tsc, etc)),
-                        _ZL);
+                     (EM::ST_O==e1 and EM::ST_O==e)?
+                     _t->outside_o(l,s1):
+                     _t->outside(k,l,e1,s1))),
+               _ZL);
         if (zeroL == z) return;
         _dEH += logNL(tsc) * expL(z);
+
         switch (e1) {
           case EM::ST_P: {
-            if (k==i-1 and j==l-1 and not _t->model()->no_prf())
-              _t->model()->mm.add_emit_count(_dEN, s.l, s1.r,
-                                             _seq[k], _seq[j], +expL(z));
+            if (k==i-1 and j==l-1 and not _m.no_prf())
+              _m.mm.add_emit_count(_dEN, s.l, s1.r, _seq[k], _seq[j], +expL(z));
             break;
           }
 #if !DBG_NO_MULTI
@@ -338,23 +315,20 @@ namespace iyak {
 #endif
           case EM::ST_O:
           case EM::ST_L: {
-            if (k==i and j==l-1 and not _t->model()->no_prf())
-              _t->model()->mm.add_emit_count(_dEN, s1.r, _seq[j], +expL(z));
+            if (k==i and j==l-1 and not _m.no_prf())
+              _m.mm.add_emit_count(_dEN, s1.r, _seq[j], +expL(z));
             break;
           }
 #if !DBG_NO_MULTI
           case EM::ST_M: {
-            if (k==i-1 and j==l and not _t->model()->no_prf())
-              _t->model()->mm.add_emit_count(_dEN, s.l, _seq[k], +expL(z));
+            if (k==i-1 and j==l and not _m.no_prf())
+              _m.mm.add_emit_count(_dEN, s.l, _seq[k], +expL(z));
             break;
           }
 #endif
-          default:{break;}
+          default: {break;}
         }
 
-        double diff = mulL(wt, (debug&DBG_NO_LOGSUM)?
-                           pow(tsc,lam): lam*tsc,
-                           etc);
         if (EM::ST_E==e1 and EM::ST_P==e) {
           addL(_t->outside(i, j, e, s),
                mulL(_t->outside(k, l, e1, s1),
@@ -408,30 +382,25 @@ namespace iyak {
     };
 
     class InsideFeatFun {
+    public:
       RNAelemTrainDP* _t;
       V const& _wsL;
-      int L = _t->model()->L;
-      double lam;
-    public:
-      RNAelem& model = *(_t->model());
-      ProfileHMM& mm = _t->model()->mm;
-      EnergyModel& em = _t->model()->em;
+      RNAelem& _m;
+      double _lam;
       double part_func() const {return _t->part_func();}
       double part_func_outside() const {return _t->part_func_outside();}
       InsideFeatFun(RNAelemTrainDP* t, V const& ws):
-      _t(t), _wsL(ws), lam(_t->model()->lambda()) {}
+      _t(t), _wsL(ws), _m(*(_t->model())), _lam(_m.lambda()) {}
+
       template<int e, int e1>
       void on_inside_transition(int const i, int const j,
                                 int const k, int const l,
                                 IS const&  s, IS const&  s1,
                                 IS const&  s2, IS const&  s3,
                                 double const tsc,
-                                double const wt,
-                                double etc) const {
+                                double const wt) const {
 
         double extra = oneL;
-        if (0==s.r and L==j) extra = mulL(extra, _wsL[L]);
-
         switch(e) {
           case EM::ST_P: {
             if (i==k-1 and l==j-1) {
@@ -440,7 +409,6 @@ namespace iyak {
             }
             break;
           }
-
           case EM::ST_O:
 #if !DBG_NO_MULTI
           case EM::ST_2:
@@ -451,7 +419,6 @@ namespace iyak {
             }
             break;
           }
-
 #if !DBG_NO_MULTI
           case EM::ST_M: {
             if (i==k-1 and l==j) {
@@ -462,11 +429,9 @@ namespace iyak {
 #endif
           default:{break;}
         }
+        if (0==s.r and _m.L==j) extra = mulL(extra, _wsL[_m.L]);
 
-        if (zeroL == tsc) return;
-        double diff = mulL(wt, (debug&DBG_NO_LOGSUM)?
-                           pow(tsc, lam): lam*tsc,
-                           mulL(etc, extra));
+        double diff = mulL(wt, (debug&DBG_NO_LOGSUM)? pow(tsc,_lam): _lam*tsc, extra);
         if (EM::ST_E==e and EM::ST_P==e1) {
           addL(_t->inside(i, j, e, s),
                mulL(_t->inside(k, l, e1, s1),
@@ -474,14 +439,12 @@ namespace iyak {
                     _t->inside(l, j, EM::ST_L, s3),
                     diff));
         }
-
         else if (EM::ST_O==e and EM::ST_P==e1) {
           addL(_t->inside_o(j, s),
                mulL(_t->inside_o(k, s2),
                     _t->inside(k, l, e1, s1),
                     diff));
         }
-
 #if !DBG_NO_MULTI
         else if (EM::ST_B==e and EM::ST_1==e1) {
           addL(_t->inside(i, j, e, s),
@@ -490,13 +453,11 @@ namespace iyak {
                     diff));
         }
 #endif
-
         else if (EM::ST_O==e and EM::ST_O==e1) {
           addL(_t->inside_o(j, s),
                mulL(_t->inside_o(l, s1),
                     diff));
         }
-
         else {
           addL(_t->inside(i, j, e, s),
                mulL(_t->inside(k, l, e1, s1),
@@ -506,103 +467,85 @@ namespace iyak {
     };
 
     class OutsideFeatFun {
+    public:
       RNAelemTrainDP* _t;
       double const _ZwL;
       double& _dEH;
       VV& _dEN;
       V const& _wsL;
-      int L = _t->model()->L;
+      RNAelem& _m;
       VI& _seq;
-      double lam;
-    public:
-      RNAelem& model = *(_t->model());
-      ProfileHMM& mm = _t->model()->mm;
-      EnergyModel& em = _t->model()->em;
+      double _lam;
       double part_func() const {return _t->part_func();}
       double part_func_outside() const {return _t->part_func_outside();}
       OutsideFeatFun(RNAelemTrainDP* t, double ZwL, double& dEH, VV& dEN, V const& ws):
-      _t(t), _ZwL(ZwL), _dEH(dEH), _dEN(dEN), _wsL(ws),
-      _seq(*(_t->model()->_seq)), lam(_t->model()->lambda()) {}
+      _t(t), _ZwL(ZwL), _dEH(dEH), _dEN(dEN), _wsL(ws), _m(*(_t->model())),
+      _seq(*(_m._seq)), _lam(_m.lambda()) {}
+
       template<int e, int e1>
       void on_outside_transition(int const i, int const j,
                                  int const k, int const l,
                                  IS const&  s, IS const&  s1,
                                  IS const&  s2, IS const&  s3,
                                  double const tsc,
-                                 double const wt,
-                                 double etc) const {
-
-        if (zeroL == tsc) return;
-        double z = divL(mulL((EM::ST_O==e?
-                              _t->inside_o(j,s):
-                              _t->inside(i,j,e,s))
-                             ,
-                             ((EM::ST_E==e1 and EM::ST_P==e)?
-                              mulL(_t->outside(k,l,e1,s1),
-                                   _t->inside(k,i,EM::ST_L,s2),
-                                   _t->inside(j,l,EM::ST_L,s3)):
-
-                              (EM::ST_O==e1 and EM::ST_P==e)?
-                              mulL(_t->outside_o(l,s1),
-                                   _t->inside_o(i,s2)):
+                                 double const wt) const {
+        double z
+        = divL(mulL(wt,
+                    (debug&DBG_NO_LOGSUM)? pow(tsc,_lam): _lam*tsc,
+                    (EM::ST_O==e?
+                     _t->inside_o(j,s):
+                     _t->inside(i,j,e,s)),
+                    ((EM::ST_E==e1 and EM::ST_P==e)?
+                     mulL(_t->outside(k,l,e1,s1),
+                          _t->inside(k,i,EM::ST_L,s2),
+                          _t->inside(j,l,EM::ST_L,s3)):
+                     (EM::ST_O==e1 and EM::ST_P==e)?
+                     mulL(_t->outside_o(l,s1),
+                          _t->inside_o(i,s2)):
 #if !DBG_NO_MULTI
-                              (EM::ST_B==e1 and EM::ST_1==e)?
-                              mulL(_t->outside(k,l,e1,s1),
-                                   _t->inside(j,l,EM::ST_2,s2)):
+                     (EM::ST_B==e1 and EM::ST_1==e)?
+                     mulL(_t->outside(k,l,e1,s1),
+                          _t->inside(j,l,EM::ST_2,s2)):
 #endif
-                              (EM::ST_O==e1 and EM::ST_O==e)?
-                              _t->outside_o(l,s1):
-
-                              _t->outside(k,l,e1,s1))
-
-                             ,
-                             mulL(wt,
-                                  (debug&DBG_NO_LOGSUM)?
-                                  pow(tsc, lam): lam*tsc,
-                                  etc)
-                             ),
-                        _ZwL);
+                     (EM::ST_O==e1 and EM::ST_O==e)?
+                     _t->outside_o(l,s1):
+                     _t->outside(k,l,e1,s1))),
+               _ZwL);
         if (zeroL == z) return;
 
         double extra = oneL;
-        if (0==s1.r and L==j) extra = mulL(extra,_wsL[L]);
-
+        if (0==s1.r and _m.L==j) extra = mulL(extra,_wsL[_m.L]);
         switch(e1) {
           case EM::ST_P: {
             if (k==i-1 and j==l-1) {
               if (0==s1.l and 1==s.l) extra = mulL(extra,_wsL[k]);
               if (0==s.r and 1==s1.r) extra = mulL(extra,_wsL[j]);
-              if (0==s1.r and L==l) extra = mulL(extra,_wsL[L]);
-              if (not _t->model()->no_prf())
-                _t->model()->mm.add_emit_count(_dEN, s.l, s1.r,
-                                               _seq[k], _seq[j],
-                                               -expL(mulL(z,extra)));
+              if (0==s1.r and _m.L==l) extra = mulL(extra,_wsL[_m.L]);
+              if (not _m.no_prf())
+                _m.mm.add_emit_count(_dEN, s.l, s1.r, _seq[k], _seq[j],
+                                     -expL(mulL(z,extra)));
             }
             break;
           }
-
-          case EM::ST_O:
 #if !DBG_NO_MULTI
           case EM::ST_2:
 #endif
+          case EM::ST_O:
           case EM::ST_L: {
             if (i==k and j==l-1) {
               if (0==s.r and 1==s1.r) extra = mulL(extra,_wsL[j]);
-              if (0==s1.r and L==l) extra = mulL(extra,_wsL[L]);
-              if (not _t->model()->no_prf())
-                _t->model()->mm.add_emit_count(_dEN, s1.r,
-                                               _seq[j], -expL(mulL(z,extra)));
+              if (0==s1.r and _m.L==l) extra = mulL(extra,_wsL[_m.L]);
+              if (not _m.no_prf())
+                _m.mm.add_emit_count(_dEN, s1.r, _seq[j], -expL(mulL(z,extra)));
             }
             break;
           }
-
 #if !DBG_NO_MULTI
           case EM::ST_M: {
             if (k==i-1 and j==l) {
               if (0==s1.l and 1==s.l) extra = mulL(extra,_wsL[k]);
-              if (not _t->model()->no_prf())
-                _t->model()->mm.add_emit_count(_dEN, s.l,
-                                               _seq[k], -expL(mulL(z,extra)));
+              if (not _m.no_prf())
+                _m.mm.add_emit_count(_dEN, s.l, _seq[k], -expL(mulL(z,extra)));
             }
             break;
           }
@@ -611,10 +554,7 @@ namespace iyak {
         }
         _dEH -= logNL(tsc) * expL(mulL(z,extra));
 
-        if (zeroL == tsc) return;
-        double diff = mulL(wt, (debug&DBG_NO_LOGSUM)?
-                           pow(tsc,lam): lam*tsc,
-                           mulL(etc, extra));
+        double diff = mulL(wt, (debug&DBG_NO_LOGSUM)? pow(tsc,_lam): _lam*tsc, extra);
         if (EM::ST_E==e1 and EM::ST_P==e) {
           addL(_t->outside(i, j, e, s),
                mulL(_t->outside(k, l, e1, s1),
@@ -632,7 +572,6 @@ namespace iyak {
                     _t->inside(k, i, EM::ST_L, s2),
                     diff));
         }
-
         else if (EM::ST_O==e1 and EM::ST_P==e) {
           addL(_t->outside(i, j, e, s),
                mulL(_t->outside_o(l, s1),
@@ -643,7 +582,6 @@ namespace iyak {
                     _t->inside(i, j, e, s),
                     diff));
         }
-
 #if !DBG_NO_MULTI
         else if (EM::ST_B==e1 and EM::ST_1==e) {
           addL(_t->outside(i, j, e, s),
@@ -656,13 +594,11 @@ namespace iyak {
                     diff));
         }
 #endif
-
         else if (EM::ST_O==e1 and EM::ST_O==e) {
           addL(_t->outside_o(j, s),
                mulL(_t->outside_o(l, s1),
                     diff));
         }
-
         else {
           addL(_t->outside(i, j, e, s),
                mulL(_t->outside(k, l, e1, s1),
@@ -694,6 +630,8 @@ namespace iyak {
     double _lambda_init=0.;
     mutex _mx_input;
     mutex _mx_update;
+    RNAelemTrainer(unsigned m=TR_NORMAL, int t=1): _mode(m), _thread(t) {}
+    RNAelem* model() {return _motif;}
 
     /* eval */
     double _fn;
@@ -723,33 +661,22 @@ namespace iyak {
       V lower {};
       V upper {};
       VI type {};
-
       int s = 0;
       for (auto const& wi: motif.mm.weightL())
         s += size(wi);
-
       lower.assign(s, zeroL);
       upper.assign(s, inf);
       type.assign(s, 1); // lower bound
-
       lower.push_back(0);
       upper.push_back(inf);
       type.push_back(1); // lower bound
-
       _opt.set_bounds(lower, upper, type);
     }
-
-    /* constructor */
-    RNAelemTrainer(unsigned m=TR_NORMAL, int t=1): _mode(m), _thread(t) {}
-
-    /* getters */
-    RNAelem* model() {return _motif;}
 
     /* setter */
     void set_fq_name(string const& s) {
       _fq_name = s;
       _qr.set_fq_fname(_fq_name);
-
       N = _qr.N();
     }
 
@@ -771,27 +698,22 @@ namespace iyak {
       _motif = &model;
       _motif->lambda() = _lambda_init;
       _motif->pack_params(_params);
-
       if (_mode & TR_MASK) {
         set_mask_boundary(model);
         cry("format: 'index:x:gr, ..., fn:fn'");
       } else {
         set_boundary(model);
       }
-
       lap();
       _cnt = 0;
-
       _opt.minimize(_params, *this);
       _motif->unpack_params(_opt.best_x());
-
       double time = lap();
       cry("wall clock time per eval:", time / _cnt);
     }
 
     int operator() (V const& x, double& fn, V& gr) {
       _motif->unpack_params(x);
-
       if (_mode & TR_ARRAYEVAL) {
         fn = 0.;
         gr.assign(size(x), 0.);
@@ -800,28 +722,25 @@ namespace iyak {
         gr = _motif->regul_gr();
       }
       _sum_eff = 0.;
-
       if (_mode & TR_ARRAY) {
         fclear(4);
         _writer.set_out_id(4, -1);
         _writer.write(*_motif);
-
         submit_array_job(paste1("RNAelem","array-eval",_slave_opt),
                          _n, 0==_opt.fdfcount());
         collect_fn_gr_eff(fn, gr, _sum_eff);
       } else {
         _qr.clear();
-        ClassThread<RNAelemTrainDP> ct(_thread,
-                                       *_motif, _from,  _to, _sum_eff, _mx_input,
-                                       _mx_update, _qr, _opt, _pseudo_cov,
-                                       _convo_kernel, _mode);
+        ClassThread<RNAelemTrainDP>
+        ct(_thread,
+           *_motif, _from,  _to, _sum_eff, _mx_input,
+           _mx_update, _qr, _opt, _pseudo_cov,
+           _convo_kernel, _mode);
         ct(fn, gr);
       }
-
       if (_mode & TR_MASK) dat(3, flatten(x,gr)+"fn:"+to_str(fn));
       if (0==_opt.fdfcount()) cry("considered BP:", _sum_eff / N);
       ++ _cnt;
-
       return 0;
     }
   };

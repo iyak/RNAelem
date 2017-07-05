@@ -174,7 +174,7 @@ namespace iyak {
               double t = (s.r == s1.r and
                           '.' == mm.node(s.r))? tauL(): oneL;
               f.template on_inside_transition<EM::ST_O,EM::ST_O>
-              (0, i, 0, i-1, s, s1, _s, _s, oneL, mulL(w,t), oneL);
+              (0, i, 0, i-1, s, s1, _s, _s, oneL, mulL(w,t));
             }
           }
         }
@@ -194,7 +194,7 @@ namespace iyak {
               double t = (s.r == s1.r and
                           '.' == mm.node(s.r))? tauL(): oneL;
               f.template on_outside_transition<EM::ST_O,EM::ST_O>
-              (0, i-1, 0, i, s1, s, _s, _s, oneL, mulL(w,t), oneL);
+              (0, i-1, 0, i, s1, s, _s, _s, oneL, mulL(w,t));
             }
           }
         }
@@ -225,175 +225,159 @@ namespace iyak {
       F const& _f;
       IS const _s = IS{-1, -1, -1};
       VI& _seq;
-
     public:
-      InsideFun(F const& f): _f(f), _seq(*(_f.model._seq)) {}
+      InsideFun(F const& f): _f(f), _seq(*(_f._m._seq)) {}
 
+      void after_transition(int const, int const) {}
       void before_transition(int const i0, int const j) {
         for (int i=j-1; i0<=i; --i) {
-          for (auto const& s: _f.mm.loop_state()) {
-            for (auto const& s1: _f.mm.loop_right_trans(s.id)) {
-              double w = _f.model.no_prf()? oneL: _f.mm.weightL(s.r, _seq[j-1]);
+          for (auto const& s: _f._m.mm.loop_state()) {
+            for (auto const& s1: _f._m.mm.loop_right_trans(s.id)) {
+              double w = _f._m.no_prf()? oneL: _f._m.mm.weightL(s.r, _seq[j-1]);
               double t = (s.r == s1.r and
-                          '.' == _f.mm.node(s.r))? _f.model.tauL(): oneL;
+                          '.' == _f._m.mm.node(s.r))? _f._m.tauL(): oneL;
               _f.template on_inside_transition<EM::ST_L,EM::ST_L>
-              (i, j, i, j-1, s, s1, _s, _s, oneL, mulL(w,t), oneL);
+              (i, j, i, j-1, s, s1, _s, _s, oneL, mulL(w,t));
             }
           }
         }
-      }
-
-      void after_transition(int const, int const) {
       }
 
       template<int tt>
       void on_transition(int i, int j, int k, int l, double tsc) {
         switch (tt) {
           case EM::TT_E_H: {
-            for (auto const& s: _f.mm.loop_state())
+            for (auto const& s: _f._m.mm.loop_state())
               _f.template on_inside_transition<EM::ST_E,EM::ST_L>
-              (i, j, k, l, s, s, _s, _s, tsc, oneL, oneL);
+              (i, j, k, l, s, s, _s, _s, tsc, oneL);
             break;
           }
-
           case EM::TT_P_E: {
-            for (auto const& s: _f.mm.state()) {
-              for (auto const& s1: _f.mm.pair_trans(s.id)) {
-                double w = _f.model.no_prf()? oneL:
-                _f.mm.weightL(s1.l, s.r, _seq[i], _seq[j-1]);
+            for (auto const& s: _f._m.mm.state()) {
+              for (auto const& s1: _f._m.mm.pair_trans(s.id)) {
+                double w = _f._m.no_prf()? oneL:
+                _f._m.mm.weightL(s1.l, s.r, _seq[i], _seq[j-1]);
                 double t = (s.r == s1.r and
-                            ')' == _f.mm.node(s1.r))? _f.model.tauL(): oneL;
+                            ')' == _f._m.mm.node(s1.r))? _f._m.tauL(): oneL;
                 _f.template on_inside_transition<EM::ST_P,EM::ST_E>
-                (i, j, k, l, s, s1, _s, _s, tsc, mulL(w,t), oneL);
+                (i, j, k, l, s, s1, _s, _s, tsc, mulL(w,t));
               }
             }
             break;
           }
-
           case EM::TT_P_P: {
-            for (auto const& s: _f.mm.state()) {
-              for (auto const& s1: _f.mm.pair_trans(s.id)) {
-                double w = _f.model.no_prf()? oneL:
-                _f.mm.weightL(s1.l, s.r, _seq[i], _seq[l]);
+            for (auto const& s: _f._m.mm.state()) {
+              for (auto const& s1: _f._m.mm.pair_trans(s.id)) {
+                double w = _f._m.no_prf()? oneL:
+                _f._m.mm.weightL(s1.l, s.r, _seq[i], _seq[l]);
                 double t = (s.r == s1.r and
-                            ')' == _f.mm.node(s1.r))? _f.model.tauL(): oneL;
+                            ')' == _f._m.mm.node(s1.r))? _f._m.tauL(): oneL;
                 _f.template on_inside_transition<EM::ST_P,EM::ST_P>
-                (i, j, k, l, s, s1, _s, _s, tsc, mulL(w,t), oneL);
+                (i, j, k, l, s, s1, _s, _s, tsc, mulL(w,t));
               }
             }
             break;
           }
-
           case EM::TT_O_O: {
-            for (auto const& s: _f.mm.state()) {
-              for (auto const& s1: _f.mm.loop_right_trans(s.id)) {
-                double w = _f.model.no_prf()? oneL: _f.mm.weightL(s.r, _seq[l]);
+            for (auto const& s: _f._m.mm.state()) {
+              for (auto const& s1: _f._m.mm.loop_right_trans(s.id)) {
+                double w = _f._m.no_prf()? oneL: _f._m.mm.weightL(s.r, _seq[l]);
                 double t = (s.r == s1.r and
-                            '.' == _f.mm.node(s.r))? _f.model.tauL(): oneL;
+                            '.' == _f._m.mm.node(s.r))? _f._m.tauL(): oneL;
                 _f.template on_inside_transition<EM::ST_O,EM::ST_O>
-                (i, j, k, l, s, s1, _s, _s, tsc, mulL(w,t), oneL);
+                (i, j, k, l, s, s1, _s, _s, tsc, mulL(w,t));
               }
             }
             break;
           }
-
           case EM::TT_O_OP: {
-            for (auto const& s: _f.mm.state()) {
+            for (auto const& s: _f._m.mm.state()) {
               for (int h=s.l; h<=s.r; ++h) {
-                if (_f.mm.reachable(s.l, h) and _f.mm.reachable(h, s.r)) {
-                  IS const& s1 = _f.mm.n2s(h, s.r);
-                  IS const& s2 = _f.mm.n2s(s.l, h);
+                if (_f._m.mm.reachable(s.l, h) and _f._m.mm.reachable(h, s.r)) {
+                  IS const& s1 = _f._m.mm.n2s(h, s.r);
+                  IS const& s2 = _f._m.mm.n2s(s.l, h);
                   _f.template on_inside_transition<EM::ST_O,EM::ST_P>
-                  (i, j, l, j, s, s1, s2, _s, tsc, oneL, oneL);
+                  (i, j, l, j, s, s1, s2, _s, tsc, oneL);
                 }
               }
             }
             break;
           }
-
           case EM::TT_E_P: {
-            for (auto const& ss: _f.mm.loop_loop_states()) {
+            for (auto const& ss: _f._m.mm.loop_loop_states()) {
               _f.template on_inside_transition<EM::ST_E,EM::ST_P>
-              (i, j, k, l, ss[0], ss[1], ss[2], ss[3], tsc, oneL, oneL);
+              (i, j, k, l, ss[0], ss[1], ss[2], ss[3], tsc, oneL);
             }
             break;
           }
-
 #if !DBG_NO_MULTI
           case EM::TT_E_M: {
-            for (auto const& s: _f.mm.state()) {
+            for (auto const& s: _f._m.mm.state()) {
               _f.template on_inside_transition<EM::ST_E,EM::ST_M>
-              (i, j, k, l, s, s, _s, _s, tsc, oneL, oneL);
+              (i, j, k, l, s, s, _s, _s, tsc, oneL);
             }
             break;
           }
-
           case EM::TT_M_M: {
-            for (auto const& s: _f.mm.state()) {
-              for (auto const& s1: _f.mm.loop_left_trans(s.id)) {
-                double w = _f.model.no_prf()? oneL: _f.mm.weightL(s1.l, _seq[i]);
+            for (auto const& s: _f._m.mm.state()) {
+              for (auto const& s1: _f._m.mm.loop_left_trans(s.id)) {
+                double w = _f._m.no_prf()? oneL: _f._m.mm.weightL(s1.l, _seq[i]);
                 double t = (s.l == s1.l and
-                            '.' == _f.mm.node(s.l))? _f.model.tauL(): oneL;
+                            '.' == _f._m.mm.node(s.l))? _f._m.tauL(): oneL;
                 _f.template on_inside_transition<EM::ST_M,EM::ST_M>
-                (i, j, k, l, s, s1, _s, _s, tsc, mulL(w,t), oneL);
+                (i, j, k, l, s, s1, _s, _s, tsc, mulL(w,t));
               }
             }
             break;
           }
-
           case EM::TT_M_B: {
-            for (auto const& s: _f.mm.state()) {
+            for (auto const& s: _f._m.mm.state()) {
               _f.template on_inside_transition<EM::ST_M,EM::ST_B>
-              (i, j, k, l, s, s, _s, _s, tsc, oneL, oneL);
+              (i, j, k, l, s, s, _s, _s, tsc, oneL);
             }
             break;
           }
-
           case EM::TT_B_12: {
-            for (auto const& s: _f.mm.state()) {
+            for (auto const& s: _f._m.mm.state()) {
               for (int h = s.l; h <= s.r; ++ h) {
-                if (!_f.mm.reachable(s.l, h) or
-                    !_f.mm.reachable(h, s.r)) continue;
-                IS const& s1 = _f.mm.n2s(s.l, h);
-                IS const& s2 = _f.mm.n2s(h, s.r);
+                if (!_f._m.mm.reachable(s.l, h) or
+                    !_f._m.mm.reachable(h, s.r)) continue;
+                IS const& s1 = _f._m.mm.n2s(s.l, h);
+                IS const& s2 = _f._m.mm.n2s(h, s.r);
                 _f.template on_inside_transition<EM::ST_B,EM::ST_1>
-                (i, j, k, l, s, s1, s2, _s, tsc, oneL, oneL);
+                (i, j, k, l, s, s1, s2, _s, tsc, oneL);
               }
             }
             break;
           }
-
           case EM::TT_2_2: {
-            for (auto const& s: _f.mm.state()) {
-              for (auto const& s1: _f.mm.loop_right_trans(s.id)) {
-                double w = _f.model.no_prf()? oneL: _f.mm.weightL(s.r, _seq[l]);
+            for (auto const& s: _f._m.mm.state()) {
+              for (auto const& s1: _f._m.mm.loop_right_trans(s.id)) {
+                double w = _f._m.no_prf()? oneL: _f._m.mm.weightL(s.r, _seq[l]);
                 double t = (s.r == s1.r and
-                            '.' == _f.mm.node(s.r))? _f.model.tauL(): oneL;
+                            '.' == _f._m.mm.node(s.r))? _f._m.tauL(): oneL;
                 _f.template on_inside_transition<EM::ST_2,EM::ST_2>
-                (i, j, k, l, s, s1, _s, _s, tsc, mulL(w,t), oneL);
+                (i, j, k, l, s, s1, _s, _s, tsc, mulL(w,t));
               }
             }
             break;
           }
-
           case EM::TT_2_P: {
-            for (auto const& s: _f.mm.state())
+            for (auto const& s: _f._m.mm.state())
               _f.template on_inside_transition<EM::ST_2,EM::ST_P>
-              (i, j, k, l, s, s, _s, _s, tsc, oneL, oneL);
+              (i, j, k, l, s, s, _s, _s, tsc, oneL);
             break;
           }
-
           case EM::TT_1_2: {
-            for (auto const& s: _f.mm.state())
+            for (auto const& s: _f._m.mm.state())
               _f.template on_inside_transition<EM::ST_1,EM::ST_2>
-              (i, j, k, l, s, s, _s, _s, tsc, oneL, oneL);
+              (i, j, k, l, s, s, _s, _s, tsc, oneL);
             break;
           }
-
           case EM::TT_1_B: {
-            for (auto const& s: _f.mm.state())
+            for (auto const& s: _f._m.mm.state())
               _f.template on_inside_transition<EM::ST_1,EM::ST_B>
-              (i, j, k, l, s, s, _s, _s, tsc, oneL, oneL);
+              (i, j, k, l, s, s, _s, _s, tsc, oneL);
             break;
           }
 #endif
@@ -402,26 +386,22 @@ namespace iyak {
     };
 
     template<class F> class OutsideFun {
-
       F const& _f;
       IS const _s = {-1, -1, -1};
       VI& _seq;
-
     public:
-      OutsideFun(F const& f): _f(f), _seq(*(_f.model._seq)) {}
+      OutsideFun(F const& f): _f(f), _seq(*(_f._m._seq)) {}
 
-      void before_transition(int const, int const) {
-      }
-
+      void before_transition(int const, int const) { }
       void after_transition(int const j0, int const j) {
         for (int i=j0; i<=j; ++i) {
-          for (auto const& s1: _f.mm.loop_state()) {
-            for (auto const& s: _f.mm.loop_right_trans(s1.id)) {
-              double w = _f.model.no_prf()? oneL: _f.mm.weightL(s1.r, _seq[j]);
+          for (auto const& s1: _f._m.mm.loop_state()) {
+            for (auto const& s: _f._m.mm.loop_right_trans(s1.id)) {
+              double w = _f._m.no_prf()? oneL: _f._m.mm.weightL(s1.r, _seq[j]);
               double t = (s.r == s1.r and
-                          '.' == _f.mm.node(s1.r))? _f.model.tauL(): oneL;
+                          '.' == _f._m.mm.node(s1.r))? _f._m.tauL(): oneL;
               _f.template on_outside_transition<EM::ST_L,EM::ST_L>
-              (i, j, i, j+1, s, s1, _s, _s, oneL, mulL(w,t), oneL);
+              (i, j, i, j+1, s, s1, _s, _s, oneL, mulL(w,t));
             }
           }
         }
@@ -431,152 +411,139 @@ namespace iyak {
       void on_transition(int i, int j, int k, int l, double tsc) {
         switch (tt) {
           case EM::TT_E_H: {
-            for (auto const& s: _f.mm.loop_state()) {
+            for (auto const& s: _f._m.mm.loop_state()) {
               _f.template on_outside_transition<EM::ST_L,EM::ST_E>
-              (i, j, k, l, s, s, _s, _s, tsc, oneL, oneL);
+              (i, j, k, l, s, s, _s, _s, tsc, oneL);
             }
             break;
           }
-
           case EM::TT_P_E: {
-            for (auto const& s1: _f.mm.state()) {
-              for (auto const& s: _f.mm.pair_trans(s1.id)) {
-                double w = _f.model.no_prf()? oneL:
-                _f.mm.weightL(s.l, s1.r, _seq[k], _seq[j]);
+            for (auto const& s1: _f._m.mm.state()) {
+              for (auto const& s: _f._m.mm.pair_trans(s1.id)) {
+                double w = _f._m.no_prf()? oneL:
+                _f._m.mm.weightL(s.l, s1.r, _seq[k], _seq[j]);
                 double t = (s.r == s1.r and
-                            ')' == _f.mm.node(s1.r))? _f.model.tauL(): oneL;
+                            ')' == _f._m.mm.node(s1.r))? _f._m.tauL(): oneL;
                 _f.template on_outside_transition<EM::ST_E,EM::ST_P>
-                (i, j, k, l, s, s1, _s, _s, tsc, mulL(w,t), oneL);
+                (i, j, k, l, s, s1, _s, _s, tsc, mulL(w,t));
               }
             }
             break;
           }
-
           case EM::TT_P_P: {
-            for (auto const& s1: _f.mm.state()) {
-              for (auto const& s: _f.mm.pair_trans(s1.id)) {
-                double w = _f.model.no_prf()? oneL:
-                _f.mm.weightL(s.l, s1.r, _seq[k], _seq[j]);
+            for (auto const& s1: _f._m.mm.state()) {
+              for (auto const& s: _f._m.mm.pair_trans(s1.id)) {
+                double w = _f._m.no_prf()? oneL:
+                _f._m.mm.weightL(s.l, s1.r, _seq[k], _seq[j]);
                 double t = (s.r == s1.r and
-                            ')' == _f.mm.node(s1.r))? _f.model.tauL(): oneL;
+                            ')' == _f._m.mm.node(s1.r))? _f._m.tauL(): oneL;
                 _f.template on_outside_transition<EM::ST_P,EM::ST_P>
-                (i, j, k, l, s, s1, _s, _s, tsc, mulL(w,t), oneL);
+                (i, j, k, l, s, s1, _s, _s, tsc, mulL(w,t));
               }
             }
             break;
           }
-
           case EM::TT_O_O: {
-            for (auto const& s1: _f.mm.state()) {
-              for (auto const& s: _f.mm.loop_right_trans(s1.id)) {
-                double w = _f.model.no_prf()? oneL: _f.mm.weightL(s1.r, _seq[j]);
+            for (auto const& s1: _f._m.mm.state()) {
+              for (auto const& s: _f._m.mm.loop_right_trans(s1.id)) {
+                double w = _f._m.no_prf()? oneL: _f._m.mm.weightL(s1.r, _seq[j]);
                 double t = (s.r == s1.r and
-                            '.' == _f.mm.node(s1.r))? _f.model.tauL(): oneL;
+                            '.' == _f._m.mm.node(s1.r))? _f._m.tauL(): oneL;
                 _f.template on_outside_transition<EM::ST_O,EM::ST_O>
-                (i, j, k, l, s, s1, _s, _s, tsc, mulL(w,t), oneL);
+                (i, j, k, l, s, s1, _s, _s, tsc, mulL(w,t));
               }
             }
             break;
           }
-
           case EM::TT_O_OP: {
-            for (auto const& s1: _f.mm.state()) {
+            for (auto const& s1: _f._m.mm.state()) {
               for (int h=s1.l; h<=s1.r; ++h) {
-                if (_f.mm.reachable(s1.l, h) and _f.mm.reachable(h, s1.r)) {
-                  IS const& s = _f.mm.n2s(h, s1.r);
-                  IS const& s2 = _f.mm.n2s(s1.l, h);
+                if (_f._m.mm.reachable(s1.l, h) and _f._m.mm.reachable(h, s1.r)) {
+                  IS const& s = _f._m.mm.n2s(h, s1.r);
+                  IS const& s2 = _f._m.mm.n2s(s1.l, h);
                   _f.template on_outside_transition<EM::ST_P,EM::ST_O>
-                  (j, l, i, l, s, s1, s2, _s, tsc, oneL, oneL);
+                  (j, l, i, l, s, s1, s2, _s, tsc, oneL);
                 }
               }
             }
             break;
           }
-
           case EM::TT_E_P: {
-            for (auto const& ss: _f.mm.loop_loop_states()) {
+            for (auto const& ss: _f._m.mm.loop_loop_states()) {
               _f.template on_outside_transition<EM::ST_P,EM::ST_E>
-              (i, j, k, l, ss[1], ss[0], ss[2], ss[3], tsc, oneL, oneL);
+              (i, j, k, l, ss[1], ss[0], ss[2], ss[3], tsc, oneL);
             }
             break;
           }
-
 #if !DBG_NO_MULTI
           case EM::TT_E_M: {
-            for (auto const& s: _f.mm.state()) {
+            for (auto const& s: _f._m.mm.state()) {
               _f.template on_outside_transition<EM::ST_M,EM::ST_E>
-              (i, j, k, l, s, s, _s, _s, tsc, oneL, oneL);
+              (i, j, k, l, s, s, _s, _s, tsc, oneL);
             }
             break;
           }
-
           case EM::TT_M_M: {
-            for (auto const& s1: _f.mm.state()) {
-              for (auto const& s: _f.mm.loop_left_trans(s1.id)) {
-                double w = _f.model.no_prf()? oneL: _f.mm.weightL(s.l, _seq[k]);
+            for (auto const& s1: _f._m.mm.state()) {
+              for (auto const& s: _f._m.mm.loop_left_trans(s1.id)) {
+                double w = _f._m.no_prf()? oneL: _f._m.mm.weightL(s.l, _seq[k]);
                 double t = (s.l == s1.l and
-                            '.' == _f.mm.node(s1.l))? _f.model.tauL(): oneL;
+                            '.' == _f._m.mm.node(s1.l))? _f._m.tauL(): oneL;
                 _f.template on_outside_transition<EM::ST_M,EM::ST_M>
-                (i, j, k, l, s, s1, _s, _s, tsc, mulL(w,t), oneL);
+                (i, j, k, l, s, s1, _s, _s, tsc, mulL(w,t));
               }
             }
             break;
           }
-
           case EM::TT_2_2: {
-            for (auto const& s1: _f.mm.state()) {
-              for (auto const& s: _f.mm.loop_right_trans(s1.id)) {
-                double w = _f.model.no_prf()? oneL: _f.mm.weightL(s1.r, _seq[j]);
+            for (auto const& s1: _f._m.mm.state()) {
+              for (auto const& s: _f._m.mm.loop_right_trans(s1.id)) {
+                double w = _f._m.no_prf()? oneL: _f._m.mm.weightL(s1.r, _seq[j]);
                 double t = (s.r == s1.r and
-                            '.' == _f.mm.node(s1.r))? _f.model.tauL(): oneL;
+                            '.' == _f._m.mm.node(s1.r))? _f._m.tauL(): oneL;
                 _f.template on_outside_transition<EM::ST_2,EM::ST_2>
-                (i, j, k, l, s, s1, _s, _s, tsc, mulL(w,t), oneL);
+                (i, j, k, l, s, s1, _s, _s, tsc, mulL(w,t));
               }
             }
             break;
           }
-
           case EM::TT_2_P: {
-            for (auto const& s: _f.mm.state()) {
+            for (auto const& s: _f._m.mm.state()) {
               _f.template on_outside_transition<EM::ST_P,EM::ST_2>
-              (i, j, k, l, s, s, _s, _s, tsc, oneL, oneL);
+              (i, j, k, l, s, s, _s, _s, tsc, oneL);
             }
             break;
           }
-
           case EM::TT_1_2: {
-            for (auto const& s: _f.mm.state()) {
+            for (auto const& s: _f._m.mm.state()) {
               _f.template on_outside_transition<EM::ST_2,EM::ST_1>
-              (i, j, k, l, s, s, _s, _s, tsc, oneL, oneL);
+              (i, j, k, l, s, s, _s, _s, tsc, oneL);
             }
             break;
           }
-
           case EM::TT_1_B: {
-            for (auto const& s: _f.mm.state()) {
+            for (auto const& s: _f._m.mm.state()) {
               _f.template on_outside_transition<EM::ST_B,EM::ST_1>
-              (i, j, k, l, s, s, _s, _s, tsc, oneL, oneL);
+              (i, j, k, l, s, s, _s, _s, tsc, oneL);
             }
             break;
           }
-
           case EM::TT_M_B: {
-            for (auto const& s: _f.mm.state()) {
+            for (auto const& s: _f._m.mm.state()) {
               _f.template on_outside_transition<EM::ST_B,EM::ST_M>
-              (i, j, k, l, s, s, _s, _s, tsc, oneL, oneL);
+              (i, j, k, l, s, s, _s, _s, tsc, oneL);
             }
             break;
           }
-
           case EM::TT_B_12: {
-            for (auto const& s1: _f.mm.state()) {
+            for (auto const& s1: _f._m.mm.state()) {
               for (int h = s1.l; h <= s1.r; ++ h) {
-                if (!_f.mm.reachable(s1.l, h) or
-                    !_f.mm.reachable(h, s1.r)) continue;
-                auto const& s = _f.mm.n2s(s1.l, h);
-                auto const& s2 = _f.mm.n2s(h, s1.r);
+                if (!_f._m.mm.reachable(s1.l, h) or
+                    !_f._m.mm.reachable(h, s1.r)) continue;
+                auto const& s = _f._m.mm.n2s(s1.l, h);
+                auto const& s2 = _f._m.mm.n2s(h, s1.r);
                 _f.template on_outside_transition<EM::ST_1,EM::ST_B>
-                (i, j, k, l, s, s1, s2, _s, tsc, oneL, oneL);
+                (i, j, k, l, s, s1, s2, _s, tsc, oneL);
               }
             }
             break;
