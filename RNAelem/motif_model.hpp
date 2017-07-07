@@ -180,6 +180,7 @@ namespace iyak {
         }
       }
       else {
+#pragma inline recursive
         em.compute_inside(InsideFun<F>(f));
       }
     }
@@ -199,6 +200,7 @@ namespace iyak {
           }
         }
       } else {
+#pragma inline recursive
         em.compute_outside(OutsideFun<F>(f));
       }
       double const in_ZL = f.part_func();
