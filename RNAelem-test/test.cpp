@@ -77,10 +77,6 @@ namespace iyak {
       t.set_preprocess({1}, 0);
       t.set_conditions(-1, 1e-4, 0);
     }
-
-    virtual void SetUp() {
-
-    }
   };
 
   TEST_F(RNAelemDPTest, PATH_COUNT_CASES) {
@@ -215,6 +211,10 @@ namespace iyak {
     f.eval_fn("A", ".", "#!");
     EXPECT_NEAR(log(2./2.), f.fn(), 1e-15);
     EXPECT_EQ(to_str(V{0,0.5,0,0,0, 0,-0.5,0,0,0, 0}), to_str(f.gr()));
+
+    f.eval_fn("C", ".", "#\"");
+    EXPECT_NEAR(log(2./3.), f.fn(), 1e-15);
+    EXPECT_EQ(to_str(V{0,0,1./6.,0,0, 0,0,-1./6.,0,0, 0}), to_str(f.gr()));
 
     f.eval_fn("CAG", "(.)", "!$#!");
     EXPECT_NEAR(log(2./3.), f.fn(), 1e-15);

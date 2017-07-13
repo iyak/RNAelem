@@ -408,8 +408,12 @@ namespace iyak {
         switch(e) {
           case EM::ST_P: {
             if (i==k-1 and l==j-1) {
-              if (0==s.l and 1==s1.l) extra = mulL(extra, _wsL[i]);
-              if (0==s1.r and 1==s.l) extra = mulL(extra, _wsL[l]);
+              if (0==s.l and 1==s1.l)
+                extra = mulL(extra, _wsL[i]);
+              else if (0==s1.r and 1==s.l)
+                extra = mulL(extra, _wsL[l]);
+              else if (0==s.r and _m.L==j)
+                extra = mulL(extra, _wsL[_m.L]);
             }
             break;
           }
@@ -419,21 +423,24 @@ namespace iyak {
 #endif
           case EM::ST_L: {
             if (i==k and l==j-1) {
-              if (0==s1.r and 1==s.r) extra = mulL(extra, _wsL[l]);
+              if (0==s1.r and 1==s.r)
+                extra = mulL(extra, _wsL[l]);
+              else if (0==s.r and _m.L==j)
+                extra = mulL(extra, _wsL[_m.L]);
             }
             break;
           }
 #if !DBG_NO_MULTI
           case EM::ST_M: {
             if (i==k-1 and l==j) {
-              if (0==s.l and 1==s1.l) extra = mulL(extra, _wsL[i]);
+              if (0==s.l and 1==s1.l)
+                extra = mulL(extra, _wsL[i]);
             }
             break;
           }
 #endif
           default:{break;}
         }
-        if (0==s.r and _m.L==j) extra = mulL(extra, _wsL[_m.L]);
 
         double diff = mulL(wt, (debug&DBG_NO_LOGSUM)? pow(tsc,_lam): _lam*tsc, extra);
         if (EM::ST_E==e and EM::ST_P==e1) {
@@ -519,13 +526,15 @@ namespace iyak {
         if (zeroL == z) return;
 
         double extra = oneL;
-        if (0==s1.r and _m.L==j) extra = mulL(extra,_wsL[_m.L]);
         switch(e1) {
           case EM::ST_P: {
             if (k==i-1 and j==l-1) {
-              if (0==s1.l and 1==s.l) extra = mulL(extra,_wsL[k]);
-              if (0==s.r and 1==s1.r) extra = mulL(extra,_wsL[j]);
-              if (0==s1.r and _m.L==l) extra = mulL(extra,_wsL[_m.L]);
+              if (0==s1.l and 1==s.l)
+                extra = mulL(extra,_wsL[k]);
+              else if (0==s.r and 1==s1.r)
+                extra = mulL(extra,_wsL[j]);
+              else if (0==s1.r and _m.L==l)
+                extra = mulL(extra,_wsL[_m.L]);
               if (not _m.no_prf())
                 _m.mm.add_emit_count(_dEN, s.l, s1.r, _seq[k], _seq[j],
                                      -expL(mulL(z,extra)));
@@ -538,8 +547,10 @@ namespace iyak {
           case EM::ST_O:
           case EM::ST_L: {
             if (i==k and j==l-1) {
-              if (0==s.r and 1==s1.r) extra = mulL(extra,_wsL[j]);
-              if (0==s1.r and _m.L==l) extra = mulL(extra,_wsL[_m.L]);
+              if (0==s.r and 1==s1.r)
+                extra = mulL(extra,_wsL[j]);
+              else if (0==s1.r and _m.L==l)
+                extra = mulL(extra,_wsL[_m.L]);
               if (not _m.no_prf())
                 _m.mm.add_emit_count(_dEN, s1.r, _seq[j], -expL(mulL(z,extra)));
             }
@@ -548,7 +559,8 @@ namespace iyak {
 #if !DBG_NO_MULTI
           case EM::ST_M: {
             if (k==i-1 and j==l) {
-              if (0==s1.l and 1==s.l) extra = mulL(extra,_wsL[k]);
+              if (0==s1.l and 1==s.l)
+                extra = mulL(extra,_wsL[k]);
               if (not _m.no_prf())
                 _m.mm.add_emit_count(_dEN, s.l, _seq[k], -expL(mulL(z,extra)));
             }

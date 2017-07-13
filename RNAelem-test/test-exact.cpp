@@ -52,7 +52,7 @@ namespace iyak {
       _gr.pop_back();
 
       /* _params.back() is lambda */
-      for (int i=size(_params)-1; 0<=i; i-=6) {
+      for (int i=size(_params)-1; 0<=i; i-=4) {
         V p(_params);
         p[i] += d/2.;
         _model.unpack_params(p);
@@ -77,8 +77,8 @@ namespace iyak {
      * RNAfold v2.3.1 was used to generate the test case here.
      */
 
-    int W=50;
-    _model.set_energy_params("~T2004~", W, large, 0., false);
+    int W=50, C=30;
+    _model.set_energy_params("~T2004~", W, C, 0., false);
     _model.set_hyper_param(0.1, 0.1, 0.1, -1);
 
     _qr.set_fq_fname(_dir+"/1.fq");

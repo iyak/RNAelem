@@ -48,7 +48,8 @@ def configure(cnf):
 def build(bld):
     bld.program(
             features="cxx cxxprogram",
-            cxxflags="-std=c++14 -Wall -O3 -static",
+            cxxflags="-std=c++14 -Wall -O3 -static"
+            " -Wno-unknown-pragmas",
             source="RNAelem/main.cpp",
             includes="RNAelem",
             target="bin/RNAelem",
@@ -65,7 +66,8 @@ def build(bld):
 
     bld.program(
             features="test",
-            cxxflags="-std=c++14 -Wall -O3",
+            cxxflags="-std=c++14 -Wall -O3"
+            " -Wno-unknown-pragmas",
             source="RNAelem-test/test.cpp",
             includes="RNAelem RNAelem-test"
             " RNAelem-test/gtest/include",
@@ -75,7 +77,8 @@ def build(bld):
 
     bld.program(
             features="test",
-            cxxflags="-std=c++14 -Wall -O3",
+            cxxflags="-std=c++14 -Wall -O3"
+            " -Wno-unknown-pragmas",
             source="RNAelem-test/test-exact.cpp",
             includes="RNAelem RNAelem-test"
             " RNAelem-test/gtest/include",
