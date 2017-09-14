@@ -889,8 +889,6 @@ namespace iyak {
       lap();
       _motif = &model;
 
-      _motif->em.set_min_BPP(0.);
-
       _qr.clear();
       ClassThread<RNAelemScanDP> ct(_thread, *_motif, _mx_input, _mx_output,
                                     _pseudo_cov, _convo_kernel, _qr, _out);

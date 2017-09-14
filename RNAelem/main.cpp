@@ -77,7 +77,7 @@ int main(int const argc, char const* argv[]) {
         writer.set_out_id(1,2);
         writer.write(model);
 
-        RNAelemScanner scan;
+        RNAelemScanner scan(app.thread);
         scan.set_preprocess(app.convo_kernel, app.pseudo_cov);
         scan.set_out_id(3);
         scan.set_fq_name(app.seq_fname);
