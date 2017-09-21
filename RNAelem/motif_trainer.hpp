@@ -755,7 +755,7 @@ namespace iyak {
            _convo_kernel, _mode);
         ct(fn, gr);
       }
-      if (_mode & TR_MASK) dat(3, flatten(x,gr)+"fn:"+to_str(fn));
+      if (_mode & TR_MASK) cry(flatten(x,gr)+"fn:"+to_str(fn));
       if (0==_opt.fdfcount()) cry("considered BP:", _sum_eff / N);
       ++ _cnt;
       return 0;
