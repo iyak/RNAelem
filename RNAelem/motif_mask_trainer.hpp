@@ -55,17 +55,18 @@ namespace iyak {
         ++ i;
       }
     }
-
-    if (any(_vary_x, i)) {
-      lower.push_back(0);
-      upper.push_back(inf);
-      type.push_back(1); // lower bound
-    } else {
-      lower.push_back(_motif->lambda());
-      upper.push_back(_motif->lambda());
-      type.push_back(2); //  fix
+    for (auto const& li: motif._lambda) {
+      if (any(_vary_x, i)) {
+        lower.push_back(0);
+        upper.push_back(inf);
+        type.push_back(1); // lower bound
+      } else {
+        lower.push_back(li);
+        upper.push_back(li);
+        type.push_back(2); //  fix
+      }
+      ++ i;
     }
-    ++ i;
 
     _opt.set_bounds(lower, upper, type);
   }

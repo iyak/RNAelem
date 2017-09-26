@@ -63,7 +63,7 @@ namespace iyak {
     VV _outside_o;
     double _ZL;
     double _ZwL;
-    double _dEH;
+    V _dEH;
     VV _dEN;
     double _fn;
 
@@ -140,11 +140,11 @@ namespace iyak {
       double sum_eff = 0.;
       _fn = 0;
       clear_emit_count(_m.mm, _dEN);
-      _dEH = 0.;
+      _dEH = {0.,0.};
       while (1) {
         VV dENn {};
         clear_emit_count(_m.mm, dENn);
-        double dEHn=0.;
+        V dEHn={0.,0.};
 
         /* sync block */ {
           lock l(_mx_input);
@@ -185,7 +185,8 @@ namespace iyak {
         for (int i=0; i<size(_dEN); ++i)
           for (int j=0; j<size(_dEN[i]); ++j)
             _dEN[i][j] += dENn[i][j];
-        _dEH += dEHn;
+        for (int i=0; i<size(_dEH); ++i)
+          _dEH[i]+=dEHn[i];
         sum_eff += _m.em.bpp_eff();
       }
 
@@ -201,7 +202,8 @@ namespace iyak {
             _dEN[i][j];
           }
         }
-        gr[k++] += _dEH;
+        for (int i=0; i<size(_dEH); ++i)
+          gr[k++] += _dEH[i];
         _sum_eff += sum_eff;
       }
     }
@@ -210,11 +212,10 @@ namespace iyak {
     public:
       RNAelemTrainDP* _t;
       RNAelem& _m;
-      double _lam;
       double part_func() const {return _t->part_func();}
       double part_func_outside() const {return _t->part_func_outside();}
       InsideFun(RNAelemTrainDP* t):
-      _t(t), _m(*(_t->model())), _lam(_m.lambda()) {}
+      _t(t), _m(*(_t->model())) {}
 
       template<int e, int e1>
       forceinline
@@ -223,8 +224,9 @@ namespace iyak {
                                 IS const& s, IS const& s1,
                                 IS const& s2, IS const& s3,
                                 double const tsc,
-                                double const wt) const {
-        double diff = mulL(wt, (debug&DBG_NO_LOGSUM)? pow(tsc, _lam): _lam*tsc);
+                                double const wt,
+                                double const lam) const {
+        double diff = mulL(wt, (debug&DBG_NO_LOGSUM)? pow(tsc, lam): lam*tsc);
         if (EM::ST_E==e and EM::ST_P==e1) {
           addL(_t->inside(i, j, e, s),
                mulL(_t->inside(k, l, e1, s1),
@@ -263,16 +265,15 @@ namespace iyak {
     public:
       RNAelemTrainDP* _t;
       double const _ZL;
-      double& _dEH;
+      V& _dEH;
       VV& _dEN;
       RNAelem& _m;
       VI& _seq;
-      double _lam;
       double part_func() const {return _t->part_func();}
       double part_func_outside() const {return _t->part_func_outside();}
-      OutsideFun(RNAelemTrainDP* t, double ZL, double& dEH, VV& dEN):
+      OutsideFun(RNAelemTrainDP* t, double ZL, V& dEH, VV& dEN):
       _t(t), _ZL(ZL), _dEH(dEH), _dEN(dEN), _m(*(_t->model())),
-      _seq(*(_m._seq)), _lam(_m.lambda()) {}
+      _seq(*(_m._seq)) {}
 
       template<int e, int e1>
       forceinline
@@ -281,8 +282,9 @@ namespace iyak {
                                  IS const&  s, IS const&  s1,
                                  IS const&  s2, IS const&  s3,
                                  double const tsc,
-                                 double const wt) const {
-        double diff = mulL(wt, (debug&DBG_NO_LOGSUM)? pow(tsc,_lam): _lam*tsc);
+                                 double const wt,
+                                 double const lam) const {
+        double diff = mulL(wt, (debug&DBG_NO_LOGSUM)? pow(tsc,lam): lam*tsc);
         double z
         = divL(mulL(diff,
                     (EM::ST_O==e?
@@ -305,7 +307,45 @@ namespace iyak {
                      _t->outside(k,l,e1,s1))),
                _ZL);
         if (zeroL == z) return;
-        _dEH += logNL(tsc) * expL(z);
+        if (oneL!=tsc) {
+          switch (_m.em.states_to_trans[e1][e]) {
+            case EM::TT_E_H: {
+              _m.add_trans_count(_dEH, s.l, +logNL(tsc)*expL(z));
+              break;
+            }
+            case EM::TT_P_E:
+            case EM::TT_P_P:
+            case EM::TT_O_O:
+            case EM::TT_L_L:
+            case EM::TT_O_OP: {
+              _m.add_trans_count(_dEH, s1.r, +logNL(tsc)*expL(z));
+              break;
+            }
+            case EM::TT_E_P: {
+              _m.add_trans_count(_dEH, s1.l, +logNL(tsc)*expL(z));
+              break;
+            }
+  #if !DBG_NO_MULTI
+            case EM::TT_E_M:
+            case EM::TT_M_M: {
+              _m.add_trans_count(_dEH, s.l, +logNL(tsc)*expL(z));
+              break;
+            }
+            case EM::TT_M_B:
+            case EM::TT_1_B:
+            case EM::TT_1_2:
+            case EM::TT_2_P: {
+              _m.add_trans_count(_dEH, s.r, +logNL(tsc)*expL(z));
+              break;
+            }
+            case EM::TT_B_12:
+            case EM::TT_2_2: {
+              _m.add_trans_count(_dEH, s1.r, +logNL(tsc)*expL(z));
+              break;
+            }
+  #endif
+          }
+        }
 
         switch (e1) {
           case EM::ST_P: {
@@ -389,11 +429,10 @@ namespace iyak {
       RNAelemTrainDP* _t;
       V const& _wsL;
       RNAelem& _m;
-      double _lam;
       double part_func() const {return _t->part_func();}
       double part_func_outside() const {return _t->part_func_outside();}
       InsideFeatFun(RNAelemTrainDP* t, V const& ws):
-      _t(t), _wsL(ws), _m(*(_t->model())), _lam(_m.lambda()) {}
+      _t(t), _wsL(ws), _m(*(_t->model())) {}
 
       template<int e, int e1>
       forceinline
@@ -402,7 +441,8 @@ namespace iyak {
                                 IS const&  s, IS const&  s1,
                                 IS const&  s2, IS const&  s3,
                                 double const tsc,
-                                double const wt) const {
+                                double const wt,
+                                double const lam) const {
 
         double extra = oneL;
         switch(e) {
@@ -442,7 +482,7 @@ namespace iyak {
           default:{break;}
         }
 
-        double diff = mulL(wt, (debug&DBG_NO_LOGSUM)? pow(tsc,_lam): _lam*tsc, extra);
+        double diff = mulL(wt, (debug&DBG_NO_LOGSUM)? pow(tsc,lam): lam*tsc, extra);
         if (EM::ST_E==e and EM::ST_P==e1) {
           addL(_t->inside(i, j, e, s),
                mulL(_t->inside(k, l, e1, s1),
@@ -481,17 +521,16 @@ namespace iyak {
     public:
       RNAelemTrainDP* _t;
       double const _ZwL;
-      double& _dEH;
+      V& _dEH;
       VV& _dEN;
       V const& _wsL;
       RNAelem& _m;
       VI& _seq;
-      double _lam;
       double part_func() const {return _t->part_func();}
       double part_func_outside() const {return _t->part_func_outside();}
-      OutsideFeatFun(RNAelemTrainDP* t, double ZwL, double& dEH, VV& dEN, V const& ws):
+      OutsideFeatFun(RNAelemTrainDP* t, double ZwL, V& dEH, VV& dEN, V const& ws):
       _t(t), _ZwL(ZwL), _dEH(dEH), _dEN(dEN), _wsL(ws), _m(*(_t->model())),
-      _seq(*(_m._seq)), _lam(_m.lambda()) {}
+      _seq(*(_m._seq)) {}
 
       template<int e, int e1>
       forceinline
@@ -500,10 +539,11 @@ namespace iyak {
                                  IS const&  s, IS const&  s1,
                                  IS const&  s2, IS const&  s3,
                                  double const tsc,
-                                 double const wt) const {
+                                 double const wt,
+                                 double const lam) const {
         double z
         = divL(mulL(wt,
-                    (debug&DBG_NO_LOGSUM)? pow(tsc,_lam): _lam*tsc,
+                    (debug&DBG_NO_LOGSUM)? pow(tsc,lam): lam*tsc,
                     (EM::ST_O==e?
                      _t->inside_o(j,s):
                      _t->inside(i,j,e,s)),
@@ -569,9 +609,47 @@ namespace iyak {
 #endif
           default:{break;}
         }
-        _dEH -= logNL(tsc) * expL(mulL(z,extra));
+        if (oneL!=tsc) {
+          switch (_m.em.states_to_trans[e1][e]) {
+            case EM::TT_E_H: {
+              _m.add_trans_count(_dEH, s.l, -logNL(tsc)*expL(mulL(z,extra)));
+              break;
+            }
+            case EM::TT_P_E:
+            case EM::TT_P_P:
+            case EM::TT_O_O:
+            case EM::TT_L_L:
+            case EM::TT_O_OP: {
+              _m.add_trans_count(_dEH, s1.r, -logNL(tsc)*expL(mulL(z,extra)));
+              break;
+            }
+            case EM::TT_E_P: {
+              _m.add_trans_count(_dEH, s1.l, -logNL(tsc)*expL(mulL(z,extra)));
+              break;
+            }
+  #if !DBG_NO_MULTI
+            case EM::TT_E_M:
+            case EM::TT_M_M: {
+              _m.add_trans_count(_dEH, s.l, -logNL(tsc)*expL(mulL(z,extra)));
+              break;
+            }
+            case EM::TT_M_B:
+            case EM::TT_1_B:
+            case EM::TT_1_2:
+            case EM::TT_2_P: {
+              _m.add_trans_count(_dEH, s.r, -logNL(tsc)*expL(mulL(z,extra)));
+              break;
+            }
+            case EM::TT_B_12:
+            case EM::TT_2_2: {
+              _m.add_trans_count(_dEH, s1.r, -logNL(tsc)*expL(mulL(z,extra)));
+              break;
+            }
+  #endif
+          }
+        }
 
-        double diff = mulL(wt, (debug&DBG_NO_LOGSUM)? pow(tsc,_lam): _lam*tsc, extra);
+        double diff = mulL(wt, (debug&DBG_NO_LOGSUM)? pow(tsc,lam): lam*tsc, extra);
         if (EM::ST_E==e1 and EM::ST_P==e) {
           addL(_t->outside(i, j, e, s),
                mulL(_t->outside(k, l, e1, s1),
@@ -644,7 +722,7 @@ namespace iyak {
     double _pseudo_cov;
     int _thread;
     double _sum_eff;
-    double _lambda_init=0.;
+    double _lambda_init=1.;
     mutex _mx_input;
     mutex _mx_update;
     RNAelemTrainer(unsigned m=TR_NORMAL, int t=1): _mode(m), _thread(t) {}
@@ -687,6 +765,9 @@ namespace iyak {
       lower.push_back(0);
       upper.push_back(inf);
       type.push_back(1); // lower bound
+      lower.push_back(0);
+      upper.push_back(inf);
+      type.push_back(1); // lower bound
       _opt.set_bounds(lower, upper, type);
     }
 
@@ -713,7 +794,7 @@ namespace iyak {
 
     void train(RNAelem& model) {
       _motif = &model;
-      _motif->lambda() = _lambda_init;
+      _motif->set_lambda(_lambda_init);
       _motif->pack_params(_params);
       if (_mode & TR_MASK) {
         set_mask_boundary(model);

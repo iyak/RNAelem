@@ -51,8 +51,7 @@ namespace iyak {
       _fn = _gr.back();
       _gr.pop_back();
 
-      /* _params.back() is lambda */
-      for (int i=size(_params)-1; 0<=i; i-=4) {
+      for (int i=0; i<size(_params); ++i) {
         V p(_params);
         p[i] += d/2.;
         _model.unpack_params(p);
@@ -62,7 +61,7 @@ namespace iyak {
         _model.unpack_params(p);
         fm = _eval.eval(_model).back();
 
-        EXPECT_NEAR(_gr[i], (fp-fm)/d, 1e-7)
+        EXPECT_NEAR(_gr[i], (fp-fm)/d, 1e-6)
         <<"x:"<<x<<",i:"<<i;
       }
     }

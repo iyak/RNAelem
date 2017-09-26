@@ -347,11 +347,10 @@ namespace iyak {
     public:
       RNAelemScanDP* _s;
       RNAelem& _m;
-      double const _lam;
       double part_func() const {return _s->part_func();}
       double part_func_outside() const {return _s->part_func_outside();}
       InsideFun(RNAelemScanDP* s):
-      _s(s), _m(*(_s->model())), _lam(_m.lambda()) {}
+      _s(s), _m(*(_s->model())) {}
 
       template<int e, int e1>
       forceinline
@@ -360,8 +359,9 @@ namespace iyak {
                                 IS const& s, IS const& s1,
                                 IS const& s2, IS const& s3,
                                 double const tsc,
-                                double const wt) const {
-        double diff = mulL(wt, (debug&DBG_NO_LOGSUM)? pow(tsc,_lam): _lam*tsc);
+                                double const wt,
+                                double const lam) const {
+        double diff = mulL(wt, (debug&DBG_NO_LOGSUM)? pow(tsc,lam): lam*tsc);
         if (EM::ST_E==e and EM::ST_P==e1) {
           addL(_s->inside(i, j, e, s),
                mulL(_s->inside(k, l, e1, s1),
@@ -403,12 +403,10 @@ namespace iyak {
       V& _PysL;
       V& _PyiL;
       RNAelem& _m;
-      double const _lam;
       double part_func() const {return _s->part_func();}
       double part_func_outside() const {return _s->part_func_outside();}
       OutsideFun(RNAelemScanDP* s, double const ZL, V& PysL, V& PyiL):
-      _s(s), _ZL(ZL), _PysL(PysL), _PyiL(PyiL), _m(*(_s->model())),
-      _lam(_m.lambda()) {}
+      _s(s), _ZL(ZL), _PysL(PysL), _PyiL(PyiL), _m(*(_s->model())) {}
 
       template<int e, int e1>
       forceinline
@@ -417,8 +415,9 @@ namespace iyak {
                                  IS const& s, IS const& s1,
                                  IS const& s2, IS const& s3,
                                  double const tsc,
-                                 double const wt) const {
-        double diff = mulL(wt, (debug&DBG_NO_LOGSUM)? pow(tsc,_lam): _lam*tsc);
+                                 double const wt,
+                                 double const lam) const {
+        double diff = mulL(wt, (debug&DBG_NO_LOGSUM)? pow(tsc,lam): lam*tsc);
         double z
         = divL(mulL(diff,
                     (EM::ST_O==e?
@@ -532,11 +531,10 @@ namespace iyak {
       RNAelemScanDP* _s;
       int _Ys;
       RNAelem& _m;
-      double _lam;
       double part_func() const {return _s->part_func();}
       double part_func_outisde() const {return _s->part_func_outside();}
       InsideEndFun(RNAelemScanDP* s, double Ys):
-      _s(s), _Ys(Ys), _m(*(_s->model())), _lam(_m.lambda()) {}
+      _s(s), _Ys(Ys), _m(*(_s->model())) {}
 
       template<int e, int e1>
       forceinline
@@ -545,7 +543,8 @@ namespace iyak {
                                 IS const& s, IS const& s1,
                                 IS const& s2, IS const& s3,
                                 double const tsc,
-                                double const wt) const {
+                                double const wt,
+                                double const lam) const {
         switch(e) {
           case EM::ST_P: {
             if (i==k-1 and l==j-1) {
@@ -575,7 +574,7 @@ namespace iyak {
           default:{break;}
         }
 
-        double diff = mulL(wt, (debug&DBG_NO_LOGSUM)? pow(tsc, _lam): _lam*tsc);
+        double diff = mulL(wt, (debug&DBG_NO_LOGSUM)? pow(tsc, lam): lam*tsc);
         if (EM::ST_E==e and EM::ST_P==e1) {
           addL(_s->inside(i, j, e, s),
                mulL(_s->inside(k, l, e1, s1),
@@ -617,12 +616,10 @@ namespace iyak {
       double const _ZeL;
       V& _PyeL;
       RNAelem& _m;
-      double _lam;
       double part_func() const {return _s->part_func();}
       double part_func_outside() const {return _s->part_func_outside();}
       OutsideEndFun(RNAelemScanDP* s, int Ys, double const ZeL, V& PyeL):
-      _s(s), _Ys(Ys), _ZeL(ZeL), _PyeL(PyeL), _m(*(_s->model())),
-      _lam(_m.lambda()) {}
+      _s(s), _Ys(Ys), _ZeL(ZeL), _PyeL(PyeL), _m(*(_s->model())) {}
 
       template<int e, int e1>
       forceinline
@@ -631,8 +628,9 @@ namespace iyak {
                                  IS const& s, IS const& s1,
                                  IS const& s2, IS const& s3,
                                  double const tsc,
-                                 double const wt) const {
-        double diff = mulL(wt, (debug&DBG_NO_LOGSUM)? pow(tsc,_lam): _lam*tsc);
+                                 double const wt,
+                                 double const lam) const {
+        double diff = mulL(wt, (debug&DBG_NO_LOGSUM)? pow(tsc,lam): lam*tsc);
         double z
         = divL(mulL(diff,
                     (EM::ST_O==e?
@@ -748,11 +746,10 @@ namespace iyak {
       RNAelemScanDP* _s;
       int _ys, _ye;
       RNAelem& _m;
-      double _lam;
       double part_func() const {return _s->part_func();}
       double part_func_outisde() const {return _s->part_func_outside();}
       CYKFun(RNAelemScanDP* s, int ys, int ye):
-      _s(s), _ys(ys), _ye(ye), _m(*(_s->model())), _lam(_m.lambda()) {}
+      _s(s), _ys(ys), _ye(ye), _m(*(_s->model())) {}
 
       template<int e, int e1>
       forceinline
@@ -776,7 +773,8 @@ namespace iyak {
                                 IS const& s, IS const& s1,
                                 IS const& s2, IS const& s3,
                                 double const tsc,
-                                double const wt) const {
+                                double const wt,
+                                double const lam) const {
         switch (e) {
           case EM::ST_P: {
             if (i==k-1 and l==j-1) {
@@ -813,7 +811,7 @@ namespace iyak {
           default:{break;}
         }
 
-        double diff = mulL(wt, (debug&DBG_NO_LOGSUM)? pow(tsc, _lam): _lam*tsc);
+        double diff = mulL(wt, (debug&DBG_NO_LOGSUM)? pow(tsc, lam): lam*tsc);
         if (EM::ST_E==e and EM::ST_P==e1) {
           compare<e,e1>(i, j, k, l, s, s1,
                         _s->cyk(i, j, e, s),

@@ -6,7 +6,7 @@ max-internal-loop: 999
 rho-theta: 0.1
 rho-lambda: 0.1
 tau: 0.1 
-lambda: 0.12 
+lambda: [0.12,1.83]
 min-bpp: 0.0001 
 no-rss: 0
 no-profile: 1

@@ -75,7 +75,7 @@ namespace iyak {
       dat(_out, "rho-theta:", _m->rho_theta());
       dat(_out, "rho-lambda:", _m->rho_lambda());
       dat(_out, "tau:", _m->tau());
-      dat(_out, "lambda:", _m->lambda());
+      dat(_out, "lambda:", _m->_lambda);
       dat(_out, "lambda-prior:", _m->lambda_prior());
       dat(_out, "min-bpp:", _m->em.min_BPP());
       dat(_out, "no-rss:", _m->no_rss());
@@ -125,7 +125,7 @@ namespace iyak {
       double rho_theta = 0.;
       double rho_lambda = 0.;
       double tau = 0.;
-      double lambda = 0.;
+      V lambda = {0.,0.};
       double lambda_prior = 0.;
       double min_bpp = 0;
 
@@ -183,7 +183,9 @@ namespace iyak {
         }
 
         else if ("lambda" == p[0]) {
-          lambda = iss_cast<double>(p[1]);
+          int i = (int)p[1].find_first_of("[");
+          int j = (int)p[1].find_last_of("]");
+          lambda=split<double>(p[1].substr(i+1,j-i-1),",");
           set |= (1<<7);
         }
 
