@@ -307,45 +307,9 @@ namespace iyak {
                      _t->outside(k,l,e1,s1))),
                _ZL);
         if (zeroL == z) return;
-        if (oneL!=tsc) {
-          switch (_m.em.states_to_trans[e1][e]) {
-            case EM::TT_E_H: {
-              _m.add_trans_count(_dEH, s.l, +logNL(tsc)*expL(z));
-              break;
-            }
-            case EM::TT_P_E:
-            case EM::TT_P_P:
-            case EM::TT_O_O:
-            case EM::TT_L_L:
-            case EM::TT_O_OP: {
-              _m.add_trans_count(_dEH, s1.r, +logNL(tsc)*expL(z));
-              break;
-            }
-            case EM::TT_E_P: {
-              _m.add_trans_count(_dEH, s1.l, +logNL(tsc)*expL(z));
-              break;
-            }
-  #if !DBG_NO_MULTI
-            case EM::TT_E_M:
-            case EM::TT_M_M: {
-              _m.add_trans_count(_dEH, s.l, +logNL(tsc)*expL(z));
-              break;
-            }
-            case EM::TT_M_B:
-            case EM::TT_1_B:
-            case EM::TT_1_2:
-            case EM::TT_2_P: {
-              _m.add_trans_count(_dEH, s.r, +logNL(tsc)*expL(z));
-              break;
-            }
-            case EM::TT_B_12:
-            case EM::TT_2_2: {
-              _m.add_trans_count(_dEH, s1.r, +logNL(tsc)*expL(z));
-              break;
-            }
-  #endif
-          }
-        }
+        //_m.add_trans_count(_dEH,s,+logNL(tsc)*expL(z));
+        if (lam==_m._lambda[0]) _dEH[0]+=logNL(tsc)*expL(z);
+        else _dEH[1]+=logNL(tsc)*expL(z);
 
         switch (e1) {
           case EM::ST_P: {
@@ -609,45 +573,9 @@ namespace iyak {
 #endif
           default:{break;}
         }
-        if (oneL!=tsc) {
-          switch (_m.em.states_to_trans[e1][e]) {
-            case EM::TT_E_H: {
-              _m.add_trans_count(_dEH, s.l, -logNL(tsc)*expL(mulL(z,extra)));
-              break;
-            }
-            case EM::TT_P_E:
-            case EM::TT_P_P:
-            case EM::TT_O_O:
-            case EM::TT_L_L:
-            case EM::TT_O_OP: {
-              _m.add_trans_count(_dEH, s1.r, -logNL(tsc)*expL(mulL(z,extra)));
-              break;
-            }
-            case EM::TT_E_P: {
-              _m.add_trans_count(_dEH, s1.l, -logNL(tsc)*expL(mulL(z,extra)));
-              break;
-            }
-  #if !DBG_NO_MULTI
-            case EM::TT_E_M:
-            case EM::TT_M_M: {
-              _m.add_trans_count(_dEH, s.l, -logNL(tsc)*expL(mulL(z,extra)));
-              break;
-            }
-            case EM::TT_M_B:
-            case EM::TT_1_B:
-            case EM::TT_1_2:
-            case EM::TT_2_P: {
-              _m.add_trans_count(_dEH, s.r, -logNL(tsc)*expL(mulL(z,extra)));
-              break;
-            }
-            case EM::TT_B_12:
-            case EM::TT_2_2: {
-              _m.add_trans_count(_dEH, s1.r, -logNL(tsc)*expL(mulL(z,extra)));
-              break;
-            }
-  #endif
-          }
-        }
+        //_m.add_trans_count(_dEH,s1,-logNL(tsc)*expL(mulL(z,extra)));
+        if (lam==_m._lambda[0]) _dEH[0]+=-logNL(tsc)*expL(mulL(z,extra));
+        else _dEH[1]+=-logNL(tsc)*expL(mulL(z,extra));
 
         double diff = mulL(wt, (debug&DBG_NO_LOGSUM)? pow(tsc,lam): lam*tsc, extra);
         if (EM::ST_E==e1 and EM::ST_P==e) {

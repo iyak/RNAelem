@@ -91,18 +91,16 @@ namespace iyak {
     double& tau() {return _tau;}
     double& ltau() {return _log_tau;}
     double& tauL() {return (debug&DBG_NO_LOGSUM)? _tau: _log_tau;}
-    double lambda(int h) {
-      if('('==mm.node(h) or ')'==mm.node(h) or '.'==mm.node(h))
-        return _lambda[1];
-      else return _lambda[0];
+    double lambda(IS const s) {
+      if (s.l==s.r) return _lambda[0];
+      return _lambda[1];
     }
     void set_lambda(double l) {for(auto& _l: _lambda) _l=l;}
     double& lambda_prior() {return _lambda_prior;}
     double& theta_prior() {return _theta_prior;}
-    void add_trans_count(V& c, int h, double d) {
-      if('('==mm.node(h) or ')'==mm.node(h) or '.'==mm.node(h))
-        c[1]+=d;
-      else c[0]+=d;
+    void add_trans_count(V& c, IS const& s, double const d) {
+      if (s.l==s.r) c[0]+=d;
+      else c[1]+=d;
     }
 
     bool no_rss() {return _no_rss;}
@@ -240,7 +238,7 @@ namespace iyak {
       void before_transition(int const i0, int const j) {
         for (int i=j-1; i0<=i; --i) {
           for (auto const& s: _f._m.mm.loop_state()) {
-            double lam=_f._m.lambda(s.r);
+            double lam=_f._m.lambda(s);
             for (auto const& s1: _f._m.mm.loop_right_trans(s.id)) {
               double w = _f._m.no_prf()? oneL: _f._m.mm.weightL(s.r, _seq[j-1]);
               double t = (s.r == s1.r and
@@ -258,7 +256,7 @@ namespace iyak {
         switch (tt) {
           case EM::TT_E_H: {
             for (auto const& s: _f._m.mm.loop_state()) {
-              double lam=_f._m.lambda(s.l);
+              double lam=_f._m.lambda(s);
               _f.template on_inside_transition<EM::ST_E,EM::ST_L>
               (i, j, k, l, s, s, _s, _s, tsc, oneL, lam);
             }
@@ -266,7 +264,7 @@ namespace iyak {
           }
           case EM::TT_P_E: {
             for (auto const& s: _f._m.mm.state()) {
-              double lam=_f._m.lambda(s.r);
+              double lam=_f._m.lambda(s);
               for (auto const& s1: _f._m.mm.pair_trans(s.id)) {
                 double w = _f._m.no_prf()? oneL:
                 _f._m.mm.weightL(s1.l, s.r, _seq[i], _seq[j-1]);
@@ -280,7 +278,7 @@ namespace iyak {
           }
           case EM::TT_P_P: {
             for (auto const& s: _f._m.mm.state()) {
-              double lam=_f._m.lambda(s.r);
+              double lam=_f._m.lambda(s);
               for (auto const& s1: _f._m.mm.pair_trans(s.id)) {
                 double w = _f._m.no_prf()? oneL:
                 _f._m.mm.weightL(s1.l, s.r, _seq[i], _seq[l]);
@@ -294,7 +292,7 @@ namespace iyak {
           }
           case EM::TT_O_O: {
             for (auto const& s: _f._m.mm.state()) {
-              double lam=_f._m.lambda(s.r);
+              double lam=_f._m.lambda(s);
               for (auto const& s1: _f._m.mm.loop_right_trans(s.id)) {
                 double w = _f._m.no_prf()? oneL: _f._m.mm.weightL(s.r, _seq[l]);
                 double t = (s.r == s1.r and
@@ -307,7 +305,7 @@ namespace iyak {
           }
           case EM::TT_O_OP: {
             for (auto const& s: _f._m.mm.state()) {
-              double lam=_f._m.lambda(s.r);
+              double lam=_f._m.lambda(s);
               for (int h=s.l; h<=s.r; ++h) {
                 if (_f._m.mm.reachable(s.l, h) and _f._m.mm.reachable(h, s.r)) {
                   IS const& s1 = _f._m.mm.n2s(h, s.r); // pair
@@ -321,7 +319,7 @@ namespace iyak {
           }
           case EM::TT_E_P: {
             for (auto const& ss: _f._m.mm.loop_loop_states()) {
-              double lam=_f._m.lambda(ss[0].l);
+              double lam=_f._m.lambda(ss[0]);
               _f.template on_inside_transition<EM::ST_E,EM::ST_P>
               (i, j, k, l, ss[0], ss[1], ss[2], ss[3], tsc, oneL, lam);
             }
@@ -330,7 +328,7 @@ namespace iyak {
 #if !DBG_NO_MULTI
           case EM::TT_E_M: {
             for (auto const& s: _f._m.mm.state()) {
-              double lam=_f._m.lambda(s.l);
+              double lam=_f._m.lambda(s);
               _f.template on_inside_transition<EM::ST_E,EM::ST_M>
               (i, j, k, l, s, s, _s, _s, tsc, oneL, lam);
             }
@@ -338,8 +336,8 @@ namespace iyak {
           }
           case EM::TT_M_M: {
             for (auto const& s: _f._m.mm.state()) {
+              double lam=_f._m.lambda(s);
               for (auto const& s1: _f._m.mm.loop_left_trans(s.id)) {
-                double lam=_f._m.lambda(s.l);
                 double w = _f._m.no_prf()? oneL: _f._m.mm.weightL(s1.l, _seq[i]);
                 double t = (s.l == s1.l and
                             '.' == _f._m.mm.node(s.l))? _f._m.tauL(): oneL;
@@ -351,7 +349,7 @@ namespace iyak {
           }
           case EM::TT_M_B: {
             for (auto const& s: _f._m.mm.state()) {
-              double lam=_f._m.lambda(s.r); // whichever s.r, s.l
+              double lam=_f._m.lambda(s); // whichever s.r, s.l
               _f.template on_inside_transition<EM::ST_M,EM::ST_B>
               (i, j, k, l, s, s, _s, _s, tsc, oneL, lam);
             }
@@ -359,7 +357,7 @@ namespace iyak {
           }
           case EM::TT_B_12: {
             for (auto const& s: _f._m.mm.state()) {
-              double lam=_f._m.lambda(s.r); // whichever s.r, s.l
+              double lam=_f._m.lambda(s); // whichever s.r, s.l
               for (int h = s.l; h <= s.r; ++ h) {
                 if (!_f._m.mm.reachable(s.l, h) or
                     !_f._m.mm.reachable(h, s.r)) continue;
@@ -373,7 +371,7 @@ namespace iyak {
           }
           case EM::TT_2_2: {
             for (auto const& s: _f._m.mm.state()) {
-              double lam=_f._m.lambda(s.r);
+              double lam=_f._m.lambda(s);
               for (auto const& s1: _f._m.mm.loop_right_trans(s.id)) {
                 double w = _f._m.no_prf()? oneL: _f._m.mm.weightL(s.r, _seq[l]);
                 double t = (s.r == s1.r and
@@ -386,7 +384,7 @@ namespace iyak {
           }
           case EM::TT_2_P: {
             for (auto const& s: _f._m.mm.state()) {
-              double lam=_f._m.lambda(s.r);
+              double lam=_f._m.lambda(s);
               _f.template on_inside_transition<EM::ST_2,EM::ST_P>
               (i, j, k, l, s, s, _s, _s, tsc, oneL, lam);
             }
@@ -394,7 +392,7 @@ namespace iyak {
           }
           case EM::TT_1_2: {
             for (auto const& s: _f._m.mm.state()) {
-              double lam=_f._m.lambda(s.r); // whichever s.r, s.l
+              double lam=_f._m.lambda(s); // whichever s.r, s.l
               _f.template on_inside_transition<EM::ST_1,EM::ST_2>
               (i, j, k, l, s, s, _s, _s, tsc, oneL, lam);
             }
@@ -402,7 +400,7 @@ namespace iyak {
           }
           case EM::TT_1_B: {
             for (auto const& s: _f._m.mm.state()) {
-              double lam=_f._m.lambda(s.r); // whichever s.r, s.l
+              double lam=_f._m.lambda(s); // whichever s.r, s.l
               _f.template on_inside_transition<EM::ST_1,EM::ST_B>
               (i, j, k, l, s, s, _s, _s, tsc, oneL, lam);
             }
@@ -424,7 +422,7 @@ namespace iyak {
       void after_transition(int const j0, int const j) {
         for (int i=j0; i<=j; ++i) {
           for (auto const& s1: _f._m.mm.loop_state()) {
-            double lam=_f._m.lambda(s1.r);
+            double lam=_f._m.lambda(s1);
             for (auto const& s: _f._m.mm.loop_right_trans(s1.id)) {
               double w = _f._m.no_prf()? oneL: _f._m.mm.weightL(s1.r, _seq[j]);
               double t = (s.r == s1.r and
@@ -442,7 +440,7 @@ namespace iyak {
         switch (tt) {
           case EM::TT_E_H: {
             for (auto const& s: _f._m.mm.loop_state()) {
-              double lam=_f._m.lambda(s.l);
+              double lam=_f._m.lambda(s);
               _f.template on_outside_transition<EM::ST_L,EM::ST_E>
               (i, j, k, l, s, s, _s, _s, tsc, oneL, lam);
             }
@@ -450,7 +448,7 @@ namespace iyak {
           }
           case EM::TT_P_E: {
             for (auto const& s1: _f._m.mm.state()) {
-              double lam=_f._m.lambda(s1.r);
+              double lam=_f._m.lambda(s1);
               for (auto const& s: _f._m.mm.pair_trans(s1.id)) {
                 double w = _f._m.no_prf()? oneL:
                 _f._m.mm.weightL(s.l, s1.r, _seq[k], _seq[j]);
@@ -464,7 +462,7 @@ namespace iyak {
           }
           case EM::TT_P_P: {
             for (auto const& s1: _f._m.mm.state()) {
-              double lam=_f._m.lambda(s1.r);
+              double lam=_f._m.lambda(s1);
               for (auto const& s: _f._m.mm.pair_trans(s1.id)) {
                 double w = _f._m.no_prf()? oneL:
                 _f._m.mm.weightL(s.l, s1.r, _seq[k], _seq[j]);
@@ -478,7 +476,7 @@ namespace iyak {
           }
           case EM::TT_O_O: {
             for (auto const& s1: _f._m.mm.state()) {
-              double lam=_f._m.lambda(s1.r);
+              double lam=_f._m.lambda(s1);
               for (auto const& s: _f._m.mm.loop_right_trans(s1.id)) {
                 double w = _f._m.no_prf()? oneL: _f._m.mm.weightL(s1.r, _seq[j]);
                 double t = (s.r == s1.r and
@@ -491,7 +489,7 @@ namespace iyak {
           }
           case EM::TT_O_OP: {
             for (auto const& s1: _f._m.mm.state()) {
-              double lam=_f._m.lambda(s1.r);
+              double lam=_f._m.lambda(s1);
               for (int h=s1.l; h<=s1.r; ++h) {
                 if (_f._m.mm.reachable(s1.l, h) and _f._m.mm.reachable(h, s1.r)) {
                   IS const& s = _f._m.mm.n2s(h, s1.r); // pair
@@ -505,7 +503,7 @@ namespace iyak {
           }
           case EM::TT_E_P: {
             for (auto const& ss: _f._m.mm.loop_loop_states()) {
-              double lam=_f._m.lambda(ss[0].l);
+              double lam=_f._m.lambda(ss[0]);
               _f.template on_outside_transition<EM::ST_P,EM::ST_E>
               (i, j, k, l, ss[1], ss[0], ss[2], ss[3], tsc, oneL, lam);
             }
@@ -514,7 +512,7 @@ namespace iyak {
 #if !DBG_NO_MULTI
           case EM::TT_E_M: {
             for (auto const& s: _f._m.mm.state()) {
-              double lam=_f._m.lambda(s.l);
+              double lam=_f._m.lambda(s);
               _f.template on_outside_transition<EM::ST_M,EM::ST_E>
               (i, j, k, l, s, s, _s, _s, tsc, oneL, lam);
             }
@@ -522,8 +520,8 @@ namespace iyak {
           }
           case EM::TT_M_M: {
             for (auto const& s1: _f._m.mm.state()) {
+              double lam=_f._m.lambda(s1);
               for (auto const& s: _f._m.mm.loop_left_trans(s1.id)) {
-                double lam=_f._m.lambda(s.l);
                 double w = _f._m.no_prf()? oneL: _f._m.mm.weightL(s.l, _seq[k]);
                 double t = (s.l == s1.l and
                             '.' == _f._m.mm.node(s1.l))? _f._m.tauL(): oneL;
@@ -535,7 +533,7 @@ namespace iyak {
           }
           case EM::TT_2_2: {
             for (auto const& s1: _f._m.mm.state()) {
-              double lam=_f._m.lambda(s1.r);
+              double lam=_f._m.lambda(s1);
               for (auto const& s: _f._m.mm.loop_right_trans(s1.id)) {
                 double w = _f._m.no_prf()? oneL: _f._m.mm.weightL(s1.r, _seq[j]);
                 double t = (s.r == s1.r and
@@ -548,7 +546,7 @@ namespace iyak {
           }
           case EM::TT_2_P: {
             for (auto const& s: _f._m.mm.state()) {
-              double lam=_f._m.lambda(s.r);
+              double lam=_f._m.lambda(s);
               _f.template on_outside_transition<EM::ST_P,EM::ST_2>
               (i, j, k, l, s, s, _s, _s, tsc, oneL, lam);
             }
@@ -556,7 +554,7 @@ namespace iyak {
           }
           case EM::TT_1_2: {
             for (auto const& s: _f._m.mm.state()) {
-              double lam=_f._m.lambda(s.r); // whichever s.r, s.l
+              double lam=_f._m.lambda(s); // whichever s.r, s.l
               _f.template on_outside_transition<EM::ST_2,EM::ST_1>
               (i, j, k, l, s, s, _s, _s, tsc, oneL, lam);
             }
@@ -564,7 +562,7 @@ namespace iyak {
           }
           case EM::TT_1_B: {
             for (auto const& s: _f._m.mm.state()) {
-              double lam=_f._m.lambda(s.r); // whichever s.r, s.l
+              double lam=_f._m.lambda(s); // whichever s.r, s.l
               _f.template on_outside_transition<EM::ST_B,EM::ST_1>
               (i, j, k, l, s, s, _s, _s, tsc, oneL, lam);
             }
@@ -572,7 +570,7 @@ namespace iyak {
           }
           case EM::TT_M_B: {
             for (auto const& s: _f._m.mm.state()) {
-              double lam=_f._m.lambda(s.r); // whichever s.r, s.l
+              double lam=_f._m.lambda(s); // whichever s.r, s.l
               _f.template on_outside_transition<EM::ST_B,EM::ST_M>
               (i, j, k, l, s, s, _s, _s, tsc, oneL, lam);
             }
@@ -580,7 +578,7 @@ namespace iyak {
           }
           case EM::TT_B_12: {
             for (auto const& s1: _f._m.mm.state()) {
-              double lam=_f._m.lambda(s1.r); // whichever s.r, s.l
+              double lam=_f._m.lambda(s1); // whichever s.r, s.l
               for (int h = s1.l; h <= s1.r; ++ h) {
                 if (!_f._m.mm.reachable(s1.l, h) or
                     !_f._m.mm.reachable(h, s1.r)) continue;
