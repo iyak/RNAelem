@@ -128,13 +128,15 @@ namespace iyak {
 
     void calc_ws(VI const& q) {
       V const& c = _convo_kernel;
-      _wsL.assign(size(q), zeroL);
+      V ws(size(q)-1,0.);
       for (int i=0; i<size(q)-1; ++i)
         for (int j=0; j<size(c); ++ j)
           if (0<=i+j-size(c)/2 and i+j-size(c)/2<size(q)-1)
-            addL(_wsL[i], logL(_convo_kernel[j]*q[i+j-size(c)/2]));
-      for (auto& w: _wsL) addL(w,logL(_pseudo_cov));
-      _wsL.back() = logL(q.back());
+            ws[i]+=_convo_kernel[j]*q[i+j-size(c)/2];
+      _wsL.clear();
+      for (auto const& w: ws)
+        _wsL.push_back(w<0?logL(_pseudo_cov):logL(w+_pseudo_cov));
+      _wsL.push_back(logL(q.back()));
     }
 
     void operator() (double& fn, V& gr) {
