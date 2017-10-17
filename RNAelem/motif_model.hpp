@@ -92,15 +92,18 @@ namespace iyak {
     double& ltau() {return _log_tau;}
     double& tauL() {return (debug&DBG_NO_LOGSUM)? _tau: _log_tau;}
     double lambda(IS const s) {
-      if (s.l==s.r) return _lambda[0];
+      if (s.l==s.r)
+        return _lambda[0];
       return _lambda[1];
     }
     void set_lambda(double l) {for(auto& _l: _lambda) _l=l;}
     double& lambda_prior() {return _lambda_prior;}
     double& theta_prior() {return _theta_prior;}
     void add_trans_count(V& c, IS const& s, double const d) {
-      if (s.l==s.r) c[0]+=d;
-      else c[1]+=d;
+      if (s.l==s.r)
+        c[0]+=d;
+      else
+        c[1]+=d;
     }
 
     bool no_rss() {return _no_rss;}
