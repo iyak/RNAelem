@@ -70,6 +70,7 @@ namespace iyak {
                  int base = 33
                  ) {
       seq_stoi(seq, _seq);
+      VI _qual {};
       FastqReader::qual_stoi(qual, _qual);
       _rss = rss;
       if (debug&DBG_FIX_RSS) _m.em.fix_rss(_rss);

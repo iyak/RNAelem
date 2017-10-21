@@ -53,7 +53,6 @@ namespace iyak {
 
     string _id;
     VI _seq;
-    VI _qual;
     string _rss;
     V _wsL;
 
@@ -137,6 +136,7 @@ namespace iyak {
       for (auto const& w: ws)
         _wsL.push_back(w<0?logL(_pseudo_cov):logL(w+_pseudo_cov));
       _wsL.push_back(logL(q.back()));
+      normalizeL(_wsL);
     }
 
     void operator() (double& fn, V& gr) {
@@ -149,23 +149,21 @@ namespace iyak {
         clear_emit_count(_m.mm, dENn);
         V dEHn={0.,0.};
 
+        VI qual;
         /* sync block */ {
           lock l(_mx_input);
-          if (_qr.is_end())
-            break;
-          _qr.read_seq(_id, _seq, _qual, _rss);
-          check(size(_seq)+1 == size(_qual),
-                "bad seq format.", _id, size(_seq), size(_qual));
+          if (_qr.is_end()) break;
+          _qr.read_seq(_id, _seq, qual, _rss);
+          check(size(_seq)+1 == size(qual),
+                "bad seq format.", _id, size(_seq), size(qual));
           if (_mode & TR_ARRAYEVAL) {
-            if (_qr.cnt() < _from+1)
-              continue;
-            if (_to+1 <= _qr.cnt())
-              break;
+            if (_qr.cnt() < _from+1) continue;
+            if (_to+1 <= _qr.cnt()) break;
           }
         }
         if (debug&DBG_FIX_RSS) _m.em.fix_rss(_rss);
         _m.set_seq(_seq);
-        calc_ws(_qual);
+        calc_ws(qual);
 
         init_inside_tables();
         init_outside_tables();

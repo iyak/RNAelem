@@ -217,16 +217,15 @@ namespace iyak {
     void operator() () {
       while (1) {
 
+        VI qual;
         /* sync block */ {
           lock l(_mx_input);
           if (_qr.is_end()) break;
           /* read one record */
-          VI qual;
           _qr.read_seq(_id, _seq, qual, _rss);
-          if (debug&DBG_FIX_RSS)
-              _m.em.fix_rss(_rss);
-          _m.set_seq(_seq);
         }
+        if (debug&DBG_FIX_RSS) _m.em.fix_rss(_rss);
+        _m.set_seq(_seq);
 
         PysL.assign(_m.L, zeroL);
         PyeL.assign(_m.L+1, zeroL);
