@@ -54,7 +54,7 @@ namespace iyak {
     string _id;
     VI _seq;
     string _rss;
-    V _wsL;
+    V* _wsL;
 
     VVVV _inside; /* L+1 W E S */
     VV _inside_o; /* L+1 S */
@@ -99,18 +99,18 @@ namespace iyak {
       inside_o(0, _m.mm.n2s(0,0)) = oneL;
     }
 
-    void init_outside_tables() {
+    void init_outside_tables(bool ari=true,bool nasi=true) {
       _outside.assign(_m.L+1, VVV(_m.W+1, VV(_m.E-1, V(_m.S, zeroL))));
       _outside_o.assign(_m.L+1, V(_m.S, zeroL));
-      outside_o(_m.L, _m.mm.n2s(0,0)) = oneL;
-      outside_o(_m.L, _m.mm.n2s(0,_m.M-1)) = oneL;
-      outside_o(_m.L, _m.mm.n2s(0,_m.M-2)) = oneL;
+      outside_o(_m.L, _m.mm.n2s(0,0)) = nasi?oneL:zeroL;
+      outside_o(_m.L, _m.mm.n2s(0,_m.M-1)) = ari?oneL:zeroL;
+      outside_o(_m.L, _m.mm.n2s(0,_m.M-2)) = ari?oneL:zeroL;
     }
 
-    double part_func() {
-      return sumL(inside_o(_m.L, _m.mm.n2s(0,0)),
-                  inside_o(_m.L, _m.mm.n2s(0,_m.M-2)),
-                  inside_o(_m.L, _m.mm.n2s(0,_m.M-1)));
+    double part_func(bool ari=true,bool nasi=true) {
+      return sumL(nasi?inside_o(_m.L, _m.mm.n2s(0,0)):zeroL,
+                  ari?inside_o(_m.L, _m.mm.n2s(0,_m.M-2)):zeroL,
+                  ari?inside_o(_m.L, _m.mm.n2s(0,_m.M-1)):zeroL);
     }
 
     double part_func_outside() { /* for debug */
@@ -125,29 +125,16 @@ namespace iyak {
       }
     }
 
-    void calc_ws(VI const& q) {
-      V const& c = _convo_kernel;
-      V ws(size(q)-1,0.);
-      for (int i=0; i<size(q)-1; ++i)
-        for (int j=0; j<size(c); ++ j)
-          if (0<=i+j-size(c)/2 and i+j-size(c)/2<size(q)-1)
-            ws[i]+=_convo_kernel[j]*q[i+j-size(c)/2];
-      _wsL.clear();
-      for (auto const& w: ws)
-        _wsL.push_back(w<0?logL(_pseudo_cov):logL(w+_pseudo_cov));
-      _wsL.push_back(logL(q.back()));
-      normalizeL(_wsL);
-    }
-
     void operator() (double& fn, V& gr) {
       double sum_eff = 0.;
       _fn = 0;
       clear_emit_count(_m.mm, _dEN);
       _dEH = {0.,0.};
       while (1) {
-        VV dENn {};
-        clear_emit_count(_m.mm, dENn);
-        V dEHn={0.,0.};
+        VV dENn{},dENnw{};
+        clear_emit_count(_m.mm,dENn);
+        clear_emit_count(_m.mm,dENnw);
+        V dEHn={0.,0.},dEHnw={0.,0.};
 
         VI qual;
         /* sync block */ {
@@ -163,31 +150,34 @@ namespace iyak {
         }
         if (debug&DBG_FIX_RSS) _m.em.fix_rss(_rss);
         _m.set_seq(_seq);
-        calc_ws(qual);
+        _m.set_ws(qual,_convo_kernel,_pseudo_cov);
+        _wsL=&(_m._ws);
 
         init_inside_tables();
-        init_outside_tables();
-        _m.compute_inside(InsideFun(this));
+        init_outside_tables(true,true);
+        _m.compute_inside(InsideFun(this,*_wsL));
         if (not std::isfinite(_ZL = part_func())) {
           if (0==_opt.fdfcount()) cry("skipped:", _id);
           continue;
         }
-        _m.compute_outside(OutsideFun(this, _ZL, dEHn, dENn));
-        init_inside_tables();
-        init_outside_tables();
-        _m.compute_inside(InsideFeatFun(this, _wsL));
-        if (not std::isfinite(_ZwL = part_func())) {
-          if (0==_opt.fdfcount()) cry("skipped:", _id);
-          continue;
+        _m.compute_outside(OutsideFun(this,*_wsL,_ZL,dEHn,dENn));
+        if(-inf<_wsL->back()){//seq without motif
+          init_outside_tables(false,true);
+          _ZwL=part_func(false,true);
+          _m.compute_outside(OutsideFun(this,*_wsL,_ZwL,dEHnw,dENnw));
         }
-        _m.compute_outside(OutsideFeatFun(this, _ZwL, dEHn, dENn, _wsL));
+        else{//seq with motif
+          init_outside_tables(true,false);
+          _ZwL=part_func(true,false);
+          _m.compute_outside(OutsideFun(this,*_wsL,_ZwL,dEHnw,dENnw));
+        }
         /* local update */
         _fn += logNL(divL(_ZL,_ZwL));
         for (int i=0; i<size(_dEN); ++i)
           for (int j=0; j<size(_dEN[i]); ++j)
-            _dEN[i][j] += dENn[i][j];
+            _dEN[i][j]+=dENn[i][j]-dENnw[i][j];
         for (int i=0; i<size(_dEH); ++i)
-          _dEH[i]+=dEHn[i];
+          _dEH[i]+=dEHn[i]-dEHnw[i];
         sum_eff += _m.em.bpp_eff();
       }
 
@@ -213,10 +203,13 @@ namespace iyak {
     public:
       RNAelemTrainDP* _t;
       RNAelem& _m;
-      double part_func() const {return _t->part_func();}
+      V const& _wsL;
+      double part_func(bool ari=true,bool nasi=true) const {
+        return _t->part_func(ari,nasi);
+      }
       double part_func_outside() const {return _t->part_func_outside();}
-      InsideFun(RNAelemTrainDP* t):
-      _t(t), _m(*(_t->model())) {}
+      InsideFun(RNAelemTrainDP* t,V const& ws):
+      _t(t), _m(*(_t->model())),_wsL(ws) {}
 
       template<int e, int e1>
       forceinline
@@ -270,11 +263,14 @@ namespace iyak {
       VV& _dEN;
       RNAelem& _m;
       VI& _seq;
-      double part_func() const {return _t->part_func();}
+      V const& _wsL;
+      double part_func(bool ari=true,bool nasi=true) const {
+        return _t->part_func(ari,nasi);
+      }
       double part_func_outside() const {return _t->part_func_outside();}
-      OutsideFun(RNAelemTrainDP* t, double ZL, V& dEH, VV& dEN):
+      OutsideFun(RNAelemTrainDP* t,V const& ws,double ZL, V& dEH, VV& dEN):
       _t(t), _ZL(ZL), _dEH(dEH), _dEN(dEN), _m(*(_t->model())),
-      _seq(*(_m._seq)) {}
+      _seq(*(_m._seq)),_wsL(ws) {}
 
       template<int e, int e1>
       forceinline
@@ -315,7 +311,7 @@ namespace iyak {
         switch (e1) {
           case EM::ST_P: {
             if (k==i-1 and j==l-1 and not _m.no_prf())
-              _m.mm.add_emit_count(_dEN, s.l, s1.r, _seq[k], _seq[j], +expL(z));
+              _m.mm.add_emit_count(_dEN, s.l, s1.r, _seq[k], _seq[j], expL(z));
             break;
           }
 #if !DBG_NO_MULTI
@@ -324,13 +320,13 @@ namespace iyak {
           case EM::ST_O:
           case EM::ST_L: {
             if (k==i and j==l-1 and not _m.no_prf())
-              _m.mm.add_emit_count(_dEN, s1.r, _seq[j], +expL(z));
+              _m.mm.add_emit_count(_dEN, s1.r, _seq[j], expL(z));
             break;
           }
 #if !DBG_NO_MULTI
           case EM::ST_M: {
             if (k==i-1 and j==l and not _m.no_prf())
-              _m.mm.add_emit_count(_dEN, s.l, _seq[k], +expL(z));
+              _m.mm.add_emit_count(_dEN, s.l, _seq[k], expL(z));
             break;
           }
 #endif
@@ -394,7 +390,9 @@ namespace iyak {
       RNAelemTrainDP* _t;
       V const& _wsL;
       RNAelem& _m;
-      double part_func() const {return _t->part_func();}
+      double part_func(bool ari=true,bool nasi=true) const {
+        return _t->part_func(ari,nasi);
+      }
       double part_func_outside() const {return _t->part_func_outside();}
       InsideFeatFun(RNAelemTrainDP* t, V const& ws):
       _t(t), _wsL(ws), _m(*(_t->model())) {}
@@ -491,7 +489,9 @@ namespace iyak {
       V const& _wsL;
       RNAelem& _m;
       VI& _seq;
-      double part_func() const {return _t->part_func();}
+      double part_func(bool ari=true,bool nasi=true) const {
+        return _t->part_func(ari,nasi);
+      }
       double part_func_outside() const {return _t->part_func_outside();}
       OutsideFeatFun(RNAelemTrainDP* t, double ZwL, V& dEH, VV& dEN, V const& ws):
       _t(t), _ZwL(ZwL), _dEH(dEH), _dEN(dEN), _wsL(ws), _m(*(_t->model())),
@@ -542,7 +542,7 @@ namespace iyak {
                 extra = mulL(extra,_wsL[_m.L]);
               if (not _m.no_prf())
                 _m.mm.add_emit_count(_dEN, s.l, s1.r, _seq[k], _seq[j],
-                                     -expL(mulL(z,extra)));
+                                     expL(mulL(z,extra)));
             }
             break;
           }
@@ -557,7 +557,7 @@ namespace iyak {
               else if (0==s1.r and _m.L==l)
                 extra = mulL(extra,_wsL[_m.L]);
               if (not _m.no_prf())
-                _m.mm.add_emit_count(_dEN, s1.r, _seq[j], -expL(mulL(z,extra)));
+                _m.mm.add_emit_count(_dEN, s1.r, _seq[j], expL(mulL(z,extra)));
             }
             break;
           }
@@ -567,7 +567,7 @@ namespace iyak {
               if (0==s1.l and 1==s.l)
                 extra = mulL(extra,_wsL[k]);
               if (not _m.no_prf())
-                _m.mm.add_emit_count(_dEN, s.l, _seq[k], -expL(mulL(z,extra)));
+                _m.mm.add_emit_count(_dEN, s.l, _seq[k], expL(mulL(z,extra)));
             }
             break;
           }

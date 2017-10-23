@@ -19,23 +19,23 @@ namespace iyak {
     void dp() {
       init_inside_tables();
       init_outside_tables();
-      _m.compute_inside(InsideFun(this));
+      _m.compute_inside(InsideFun(this,*_wsL));
       _ZL = part_func();
-      _m.compute_outside(OutsideFun(this, oneL, _dEH, _dEN));
+      _m.compute_outside(OutsideFun(this,*_wsL,oneL,_dEH,_dEN));
     }
 
     void dp_fn() {
       /* inside-outside */
       init_inside_tables();
       init_outside_tables();
-      _m.compute_inside(InsideFun(this));
+      _m.compute_inside(InsideFun(this,*_wsL));
       _ZL = part_func();
-      _m.compute_outside(OutsideFun(this, _ZL, _dEH, _dEN));
+      _m.compute_outside(OutsideFun(this,*_wsL,_ZL,_dEH,_dEN));
       init_inside_tables();
       init_outside_tables();
-      _m.compute_inside(InsideFeatFun(this, _wsL));
+      _m.compute_inside(InsideFeatFun(this,*_wsL));
       _ZwL = part_func();
-      _m.compute_outside(OutsideFeatFun(this, _ZwL, _dEH, _dEN, _wsL));
+      _m.compute_outside(OutsideFeatFun(this, _ZwL, _dEH, _dEN,*_wsL));
     }
 
   public:
@@ -75,7 +75,7 @@ namespace iyak {
       _rss = rss;
       if (debug&DBG_FIX_RSS) _m.em.fix_rss(_rss);
       _m.set_seq(_seq);
-      calc_ws(_qual);
+      _m.set_ws(_qual,{1},0);
       clear_emit_count(_m.mm, _dEN);
       dp_fn();
     }

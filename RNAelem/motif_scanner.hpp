@@ -35,6 +35,7 @@ namespace iyak {
     string _id;
     VI _seq;
     string _rss;
+    V _wsL;
 
     int Ys;
     int Ye;
@@ -145,10 +146,10 @@ namespace iyak {
       cyk_state_path.assign(_m.L, ' ');
     }
 
-    double part_func() {
-      return sumL(inside_o(_m.L, _m.mm.n2s(0,0)),
-                  inside_o(_m.L, _m.mm.n2s(0,_m.M-2)),
-                  inside_o(_m.L, _m.mm.n2s(0,_m.M-1)));
+    double part_func(bool ari=true,bool nasi=true) {
+      return sumL(nasi?inside_o(_m.L, _m.mm.n2s(0,0)):zeroL,
+                  ari?inside_o(_m.L, _m.mm.n2s(0,_m.M-2)):zeroL,
+                  ari?inside_o(_m.L, _m.mm.n2s(0,_m.M-1)):zeroL);
     }
 
     double part_func_outside() { /* for debug */
@@ -159,7 +160,7 @@ namespace iyak {
       init_cyk_tables();
       init_trace_back_tables();
 
-      _m.compute_inside(CYKFun(this, -1, -1));
+      _m.compute_inside(CYKFun(this,_wsL,-1,-1));
 
       IS const& s1 =
       cyk_o(_m.L, _m.mm.n2s(0,_m.M-2))<
@@ -174,7 +175,7 @@ namespace iyak {
       init_cyk_tables();
       init_trace_back_tables();
 
-      _m.compute_inside(CYKFun(this, Ys, Ye));
+      _m.compute_inside(CYKFun(this,_wsL,Ys,Ye));
       IS const& s =
       cyk_o(_m.L, _m.mm.n2s(0,_m.M-2))<
       cyk_o(_m.L, _m.mm.n2s(0,_m.M-1))?
@@ -188,18 +189,18 @@ namespace iyak {
       init_inside_tables();
       init_outside_tables();
 
-      _m.compute_inside(InsideFun(this));
+      _m.compute_inside(InsideFun(this,_wsL));
       ZL = part_func();
-      _m.compute_outside(OutsideFun(this, ZL, PysL, PyiL));
+      _m.compute_outside(OutsideFun(this,_wsL, ZL, PysL, PyiL));
     }
 
     void calc_motif_end_position(int const s) {
       init_inside_tables();
       init_outside_tables();
 
-      _m.compute_inside(InsideEndFun(this, s));
+      _m.compute_inside(InsideEndFun(this,_wsL,s));
       ZeL = part_func();
-      _m.compute_outside(OutsideEndFun(this, s, ZeL, PyeL));
+      _m.compute_outside(OutsideEndFun(this,_wsL,s,ZeL,PyeL));
     }
 
     void calc_motif_positions() {
@@ -213,7 +214,6 @@ namespace iyak {
       double s = sumL(sumL(PysL), PyNL);
       expect(double_eq(oneL, s), "log sum:", logNL(s));
     }
-
     void operator() () {
       while (1) {
 
@@ -226,6 +226,7 @@ namespace iyak {
         }
         if (debug&DBG_FIX_RSS) _m.em.fix_rss(_rss);
         _m.set_seq(_seq);
+        _m.set_ws(qual,_convo_kernel,_pseudo_cov);
 
         PysL.assign(_m.L, zeroL);
         PyeL.assign(_m.L+1, zeroL);
@@ -346,10 +347,13 @@ namespace iyak {
     public:
       RNAelemScanDP* _s;
       RNAelem& _m;
-      double part_func() const {return _s->part_func();}
+      V const& _wsL;
+      double part_func(bool ari=true,bool nasi=true) const {
+        return _s->part_func(ari,nasi);
+      }
       double part_func_outside() const {return _s->part_func_outside();}
-      InsideFun(RNAelemScanDP* s):
-      _s(s), _m(*(_s->model())) {}
+      InsideFun(RNAelemScanDP* s,V const& ws):
+      _s(s), _m(*(_s->model())),_wsL(ws) {}
 
       template<int e, int e1>
       forceinline
@@ -402,10 +406,13 @@ namespace iyak {
       V& _PysL;
       V& _PyiL;
       RNAelem& _m;
-      double part_func() const {return _s->part_func();}
+      V const& _wsL;
+      double part_func(bool ari=true,bool nasi=true) const {
+        return _s->part_func(ari,nasi);
+      }
       double part_func_outside() const {return _s->part_func_outside();}
-      OutsideFun(RNAelemScanDP* s, double const ZL, V& PysL, V& PyiL):
-      _s(s), _ZL(ZL), _PysL(PysL), _PyiL(PyiL), _m(*(_s->model())) {}
+      OutsideFun(RNAelemScanDP* s,V const& ws,double const ZL,V& PysL,V& PyiL):
+      _s(s), _ZL(ZL), _PysL(PysL), _PyiL(PyiL), _m(*(_s->model())),_wsL(ws) {}
 
       template<int e, int e1>
       forceinline
@@ -530,10 +537,13 @@ namespace iyak {
       RNAelemScanDP* _s;
       int _Ys;
       RNAelem& _m;
-      double part_func() const {return _s->part_func();}
+      V const& _wsL;
+      double part_func(bool ari=true,bool nasi=true) const {
+        return _s->part_func(ari,nasi);
+      }
       double part_func_outisde() const {return _s->part_func_outside();}
-      InsideEndFun(RNAelemScanDP* s, double Ys):
-      _s(s), _Ys(Ys), _m(*(_s->model())) {}
+      InsideEndFun(RNAelemScanDP* s,V const& ws,double Ys):
+      _s(s), _Ys(Ys), _m(*(_s->model())),_wsL(ws){}
 
       template<int e, int e1>
       forceinline
@@ -615,10 +625,13 @@ namespace iyak {
       double const _ZeL;
       V& _PyeL;
       RNAelem& _m;
-      double part_func() const {return _s->part_func();}
+      V const& _wsL;
+      double part_func(bool ari=true,bool nasi=true) const {
+        return _s->part_func(ari,nasi);
+      }
       double part_func_outside() const {return _s->part_func_outside();}
-      OutsideEndFun(RNAelemScanDP* s, int Ys, double const ZeL, V& PyeL):
-      _s(s), _Ys(Ys), _ZeL(ZeL), _PyeL(PyeL), _m(*(_s->model())) {}
+      OutsideEndFun(RNAelemScanDP* s,V const& ws,int Ys,double const ZeL,V& PyeL):
+      _s(s),_Ys(Ys),_ZeL(ZeL),_PyeL(PyeL),_m(*(_s->model())),_wsL(ws) {}
 
       template<int e, int e1>
       forceinline
@@ -745,10 +758,13 @@ namespace iyak {
       RNAelemScanDP* _s;
       int _ys, _ye;
       RNAelem& _m;
-      double part_func() const {return _s->part_func();}
+      V const& _wsL;
+      double part_func(bool ari=true,bool nasi=true) const {
+        return _s->part_func(ari,nasi);
+      }
       double part_func_outisde() const {return _s->part_func_outside();}
-      CYKFun(RNAelemScanDP* s, int ys, int ye):
-      _s(s), _ys(ys), _ye(ye), _m(*(_s->model())) {}
+      CYKFun(RNAelemScanDP* s,V const& ws, int ys, int ye):
+      _s(s), _ys(ys), _ye(ye), _m(*(_s->model())),_wsL(ws) {}
 
       template<int e, int e1>
       forceinline
