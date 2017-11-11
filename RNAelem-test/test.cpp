@@ -85,7 +85,7 @@ namespace iyak {
                 t._qr, t._opt, t._pseudo_cov, t._convo_kernel, t._mode);
 
     //EXPECT_TRUE(debug & DBG_NO_ENE);
-    EXPECT_TRUE(debug & DBG_NO_WEIGHT);
+    EXPECT_TRUE(debug & DBG_NO_THETA);
     EXPECT_TRUE(debug & DBG_FIX_RSS);
     EXPECT_TRUE(debug & DBG_NO_TURN);
 
@@ -176,7 +176,7 @@ namespace iyak {
                 t._qr, t._opt, t._pseudo_cov, t._convo_kernel, t._mode);
 
     //EXPECT_TRUE(debug & DBG_NO_ENE);
-    EXPECT_TRUE(debug & DBG_NO_WEIGHT);
+    EXPECT_TRUE(debug & DBG_NO_THETA);
     EXPECT_TRUE(debug & DBG_FIX_RSS);
     EXPECT_TRUE(debug & DBG_NO_TURN);
 
@@ -202,7 +202,7 @@ namespace iyak {
                 t._qr, t._opt, t._pseudo_cov, t._convo_kernel, t._mode);
 
     //EXPECT_TRUE(debug & DBG_NO_ENE);
-    EXPECT_TRUE(debug & DBG_NO_WEIGHT);
+    EXPECT_TRUE(debug & DBG_NO_THETA);
     EXPECT_TRUE(debug & DBG_FIX_RSS);
     EXPECT_TRUE(debug & DBG_NO_TURN);
 

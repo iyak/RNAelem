@@ -219,10 +219,10 @@ namespace iyak {
   double expNL(double x) {return (debug&DBG_NO_LOGSUM)? exp(x): x;}
   double logNL(double x) {return (debug&DBG_NO_LOGSUM)? log(x): x;}
 
-  int max_index(V const& v) {
+  template<class T>
+  int max_index(vector<T> const& v) {
     int s = 0;
-
-    double m = -inf;
+    T m=std::numeric_limits<T>::lowest();
     for (int i = 0; i < (int) v.size(); ++i )
       if (m <= v[i]) {
         s = i;

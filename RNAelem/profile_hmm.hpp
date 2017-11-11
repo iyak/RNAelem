@@ -41,8 +41,9 @@ namespace iyak {
     VI _pair;
     VVI _edge_to;
     VVI _edge_from;
-    VI _weight_id;
-    VV _weightL;
+    VI _theta_id;
+    VV _theta;
+    VV _s;
     VVB _reachable;
     VVB _reachable_as_loop;
     VIS _state;
@@ -63,7 +64,7 @@ namespace iyak {
     VIS const& loop_left_trans(int s) {return _loop_left_trans[s];}
     VIS const& pair_trans(int s) {return _pair_trans[s];}
     VVIS const& loop_loop_states() {return _loop_loop_states;}
-    int weight_id(int i) {return _weight_id[i];}
+    int theta_id(int i) {return _theta_id[i];}
 
     int node(int i) {return _node[i];}
     bool reachable(int s, int s1) {return _reachable[s][s1];}
@@ -84,19 +85,27 @@ namespace iyak {
     }
 
     size_t size() {return _node.size();}
-    VV& weightL() {return _weightL;}
+    VV& theta() {return _theta;}
+    VV& s() {return _s;}
+    void calc_theta(){
+      _theta.clear();
+      for(int i=0;i<iyak::size(_s);++i){
+        _theta.push_back(V(iyak::size(_s[i]),-1));
+        double tot=logsumexp(_s[i]);
+        for(int j=0;j<iyak::size(_s[i]);++j)
+          _theta[i][j]=_s[i][j]-tot;
+      }
+    }
 
-    double weightL(int const h, int const h1, int const i, int const j) {
+    double theta(int const h, int const h1, int const i, int const j) {
       char const cl = _node[h];
       char const cr = _node[h1];
-
       if (')'==cr) {
         if (debug&DBG_PROOF)
           check(h==_pair[h1], h, _pair[h1]);
-        return (debug&DBG_NO_WEIGHT? oneL:
-                _weightL[_weight_id[h1]][bp[i][j]]);
+        return (debug&DBG_NO_THETA? oneL:
+                _theta[_theta_id[h1]][bp[i][j]]);
       }
-
       if (debug&DBG_PROOF)
         check((('z'==cl and 'z'==cr) or
                ('z'==cl and '*'==cr) or
@@ -104,16 +113,14 @@ namespace iyak {
                ('*'==cl and '*'==cr) or
                ('*'==cl and 'o'==cr) or
                ('o'==cl and 'o'==cr)),
-
-              "weight", cl, cr);
-
-      return debug&DBG_NO_WEIGHT? oneL:
-      _weightL[_weight_id[h]][i] +
-      _weightL[_weight_id[h1]][j];
+              "theta", cl, cr);
+      return debug&DBG_NO_THETA? oneL:
+      _theta[_theta_id[h]][i] +
+      _theta[_theta_id[h1]][j];
     }
 
-    double weightL(int const h, int const j) {
-      return debug&DBG_NO_WEIGHT? oneL: _weightL[_weight_id[h]][j];
+    double theta(int const h, int const j) {
+      return debug&DBG_NO_THETA? oneL: _theta[_theta_id[h]][j];
     }
 
     /* setter */
@@ -126,7 +133,7 @@ namespace iyak {
 
         if (debug&DBG_PROOF)
           check(h==_pair[h1], h, _pair[h1]);
-        double &c = e[_weight_id[h1]][bp[i][j]];
+        double &c = e[_theta_id[h1]][bp[i][j]];
         c += w;
 
       } else {
@@ -141,16 +148,16 @@ namespace iyak {
 
                 "add_emit_count", cl, cr);
 
-        double &c = e[_weight_id[h]][i];
+        double &c = e[_theta_id[h]][i];
         c += w;
-        double &d = e[_weight_id[h1]][j];
+        double &d = e[_theta_id[h1]][j];
         d += w;
 
       }
     }
 
     void add_emit_count(VV& e, int const h, int const j, double const w) {
-      double &c = e[_weight_id[h]][j];
+      double &c = e[_theta_id[h]][j];
       c += w;
     }
 
@@ -164,7 +171,7 @@ namespace iyak {
 
       set_pair();
       set_edge();
-      set_weight();
+      set_s_theta();
 
       set_reachable();
       set_interval_state();
@@ -233,29 +240,25 @@ namespace iyak {
     }
 
     /* set initial log-ordered profile over bases/base pairs */
-    void set_weight() {
+    void set_s_theta() {
 
-      _weight_id.assign(_node.size(), -1);
-      _weightL.assign(1, V(nchar, debug&DBG_NO_WEIGHT? oneL: logL(1./nchar)));
+      _theta_id.assign(_node.size(),-1);
+      _s.assign(1,V(nchar,0));
 
       for (int h=0; h < (int)_node.size(); ++h) {
         switch (_node[h]) {
           case ')':
-            _weight_id[h] = (int)_weightL.size();
-            _weightL.push_back(V(nchar2, debug&DBG_NO_WEIGHT? oneL: logL(1./nchar2)));
+            _theta_id[h]=(int)_s.size();
+            _s.push_back(V(nchar2,0));
             break;
           case '.':
-            _weight_id[h] = (int)_weightL.size();
-            _weightL.push_back(V(nchar, debug&DBG_NO_WEIGHT? oneL: logL(1./nchar)));
+            _theta_id[h]=(int)_s.size();
+            _s.push_back(V(nchar,0));
             break;
-          case '*':
-          case 'z':
-          case 'o':
-            _weight_id[h] = 0;
+          case '*':case 'z':case 'o':
+            _theta_id[h]=0;
             break;
-          case '<':
-          case '>':
-          case '(':
+          case '<':case '>':case '(':
             /* no-op */
             break;
           default:
@@ -263,6 +266,7 @@ namespace iyak {
             break;
         };
       }
+      calc_theta();
     }
 
     /* define reachable nodes, which will form IS.*/

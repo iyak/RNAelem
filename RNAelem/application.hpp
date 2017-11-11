@@ -39,7 +39,7 @@ namespace iyak {
     int max_iloop;
 
     double eps;
-    double rho_theta;
+    double rho_s;
     double rho_lambda;
     double tau;
     double lambda_init;
@@ -155,9 +155,9 @@ namespace iyak {
       .metavar("DOUBLE");
 
       _parser
-      .add_option("--rho-theta")
+      .add_option("--rho-s")
       .help("rho: regularization scaler.")
-      .dest("rho_theta")
+      .dest("rho_s")
       .set_default(1e-1)
       .metavar("DOUBLE[0,]");
 
@@ -336,7 +336,7 @@ namespace iyak {
       max_iloop = (int)options.get("max_iloop");
 
       eps = (double)options.get("eps");
-      rho_theta = (double)options.get("rho_theta");
+      rho_s = (double)options.get("rho_s");
       rho_lambda = (double)options.get("rho_lambda");
       tau = (double)options.get("tau");
       lambda_init = (double)options.get("lambda_init");

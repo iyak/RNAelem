@@ -41,7 +41,7 @@ namespace iyak {
     VI type {};
 
     int i = 0;
-    for (auto const& wi: motif.mm.weightL()) {
+    for (auto const& wi: motif.mm.s()) {
       for (auto const wij: wi) {
         if (any(_vary_x, i)) {
           lower.push_back(zeroL);

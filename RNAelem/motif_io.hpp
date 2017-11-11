@@ -68,11 +68,11 @@ namespace iyak {
       _m = &m;
 
       dat(_out, "pattern:", _m->mm.pattern());
-      dat(_out, "weight:", apply(logNL, _m->mm.weightL()));
+      dat(_out, "s:", apply(logNL, _m->mm.s()));
       dat(_out, "ene-param:", _m->em.param_fname);
       dat(_out, "max-span:", _m->em.max_pair());
       dat(_out, "max-internal-loop:", _m->em.max_iloop());
-      dat(_out, "rho-theta:", _m->rho_theta());
+      dat(_out, "rho-s:", _m->rho_s());
       dat(_out, "rho-lambda:", _m->rho_lambda());
       dat(_out, "tau:", _m->tau());
       dat(_out, "lambda:", _m->_lambda);
@@ -82,7 +82,7 @@ namespace iyak {
       dat(_out, "no-profile:", _m->no_prf());
       dat(_out, "no-energy:", _m->em.no_ene());
 
-      pict(_m->mm.pattern(), apply(logNL, _m->mm.weightL()));
+      pict(_m->mm.pattern(), apply(logNL, _m->mm.s()));
     }
   };
 
@@ -122,7 +122,7 @@ namespace iyak {
       int max_iloop = 0;
       VV w;
       string pattern;
-      double rho_theta = 0.;
+      double rho_s = 0.;
       double rho_lambda = 0.;
       double tau = 0.;
       V lambda = {0.,0.};
@@ -152,7 +152,7 @@ namespace iyak {
           set |= (1<<0);
         }
 
-        else if ("weight" == p[0]) {
+        else if ("s" == p[0]) {
           w = parse_table(p[1]);
           set |= (1<<1);
         }
@@ -167,8 +167,8 @@ namespace iyak {
           set |= (1<<3);
         }
 
-        else if ("rho-theta" == p[0]) {
-          rho_theta = iss_cast<double>(p[1]);
+        else if ("rho-s" == p[0]) {
+          rho_s = iss_cast<double>(p[1]);
           set |= (1<<4);
         }
 
@@ -224,13 +224,13 @@ namespace iyak {
             _model_fname, bit_index(((1<<10)-1)^set));
 
       _m->set_motif_pattern(pattern, no_rss, no_prf);
-      for (int i=0; i<size(_m->mm.weightL()); ++i)
-        for (int j=0; j<size(_m->mm.weightL()[i]); ++j)
-          _m->mm.weightL().at(i).at(j) = expNL(w.at(i).at(j));
+      for (int i=0; i<size(_m->mm.s()); ++i)
+        for (int j=0; j<size(_m->mm.s()[i]); ++j)
+          _m->mm.s().at(i).at(j) = expNL(w.at(i).at(j));
       for (int i=0; i<size(_m->_lambda); ++i)
         _m->_lambda.at(i)=lambda.at(i);
       _m->set_energy_params(ene_fname, max_span, max_iloop, min_bpp, no_ene);
-      _m->set_hyper_param(rho_theta, rho_lambda, tau, lambda_prior);
+      _m->set_hyper_param(rho_s, rho_lambda, tau, lambda_prior);
     }
   };
 }

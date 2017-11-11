@@ -55,10 +55,12 @@ namespace iyak {
         V p(_params);
         p[i] += d/2.;
         _model.unpack_params(p);
+        _model.mm.calc_theta();
         fp = _eval.eval(_model).back();
 
         p[i] -= d;
         _model.unpack_params(p);
+        _model.mm.calc_theta();
         fm = _eval.eval(_model).back();
 
         EXPECT_NEAR(_gr[i], (fp-fm)/d, 1e-6)

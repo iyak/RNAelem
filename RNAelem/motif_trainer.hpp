@@ -118,9 +118,9 @@ namespace iyak {
     }
 
     void clear_emit_count(ProfileHMM& m,  VV& e) {
-      e.resize(m.weightL().size(), V{});
-      for (int i=0; i<size(m.weightL()); ++i) {
-        e[i].resize(m.weightL()[i].size(), 0);
+      e.resize(m.theta().size(), V{});
+      for (int i=0; i<size(m.theta()); ++i) {
+        e[i].resize(m.theta()[i].size(), 0);
         for (auto& eij: e[i]) eij = 0;
       }
     }
@@ -173,9 +173,15 @@ namespace iyak {
         }
         /* local update */
         _fn += logNL(divL(_ZL,_ZwL));
-        for (int i=0; i<size(_dEN); ++i)
-          for (int j=0; j<size(_dEN[i]); ++j)
-            _dEN[i][j]+=dENn[i][j]-dENnw[i][j];
+        for (int i=0; i<size(_dEN); ++i) {
+          double tot=0;
+          for (int j=0;j<size(_dEN[i]);++j)tot+=dENn[i][j]-dENnw[i][j];
+          for (int j=0; j<size(_dEN[i]); ++j) {
+            double tmp=dENn[i][j]-dENnw[i][j];
+            double p=exp(_m.mm.theta()[i][j]);
+            _dEN[i][j]+=(1-p)*tmp-p*(tot-tmp);
+          }
+        }
         for (int i=0; i<size(_dEH); ++i)
           _dEH[i]+=dEHn[i]-dEHnw[i];
         sum_eff += _m.em.bpp_eff();
@@ -186,13 +192,9 @@ namespace iyak {
         /* global update */
         fn += _fn;
         int k = 0;
-        for (int i=0; i<size(_dEN); ++i) {
-          for (int j=0; j<size(_dEN[i]); ++j) {
-            gr[k++] += (debug&DBG_NO_LOGSUM)?
-            _dEN[i][j] / _m.mm.weightL()[i][j]:
-            _dEN[i][j];
-          }
-        }
+        for (int i=0; i<size(_dEN); ++i)
+          for (int j=0; j<size(_dEN[i]); ++j)
+            gr[k++]+=_dEN[i][j];
         for (int i=0; i<size(_dEH); ++i)
           gr[k++] += _dEH[i];
         _sum_eff += sum_eff;
@@ -686,7 +688,7 @@ namespace iyak {
       V upper {};
       VI type {};
       int s = 0;
-      for (auto const& wi: motif.mm.weightL())
+      for (auto const& wi: motif.mm.theta())
         s += size(wi);
       lower.assign(s, zeroL);
       upper.assign(s, inf);
@@ -741,6 +743,7 @@ namespace iyak {
 
     int operator() (V const& x, double& fn, V& gr) {
       _motif->unpack_params(x);
+      _motif->mm.calc_theta();
       if (_mode & TR_ARRAYEVAL) {
         fn = 0.;
         gr.assign(size(x), 0.);

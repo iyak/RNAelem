@@ -24,13 +24,13 @@ namespace iyak {
 
     VI* _seq;
     V _ws;
-    double _rho_theta; /* regularization scaler */
+    double _rho_s; /* regularization scaler */
     double _rho_lambda; /* regularization scaler */
     double _tau; /* transition score */
     double _log_tau;
     V _lambda {1.,1.}; /* seq-rss ballancer {background,inside-motif} */
     double _lambda_prior=-1; /* no prior if negative */
-    double _theta_prior=0.;
+    double _s_prior=0.;
 
     IS const _s = IS{-1, -1, -1};
 
@@ -54,16 +54,13 @@ namespace iyak {
       W = min(L, em.max_pair());
     }
     void set_ws(VI const& q,V const& c,double pc) {
-      V ws(size(q)-1,0.);
-      for (int i=0; i<size(q)-1; ++i)
-        for (int j=0; j<size(c); ++ j)
-          if (0<=i+j-size(c)/2 and i+j-size(c)/2<size(q)-1)
-            ws[i]+=c[j]*q[i+j-size(c)/2];
+      VI cnt(127-33,0);
+      for (int i=0;i<size(q);++i) cnt.at(q[i])+=1;
+      int mode=max_index(cnt);
       _ws.clear();
-      for (auto const& w: ws)
-        _ws.push_back(w<0?logL(pc):logL(w+pc));
-      _ws.push_back(logL(q.back()));
-      normalizeL(_ws);
+      for (int i=0;i<size(q);++i)
+        _ws.push_back(logL((0.01+double(q[i]))/(0.01+mode)));
+      _ws.push_back(0==q.back()?logL(0):logL(1));
     }
 
     void set_energy_params(string const& param_fname, int const max_span,
@@ -91,15 +88,15 @@ namespace iyak {
       S = (int)mm.state().size();
     }
 
-    void set_hyper_param(double const rho_theta, double const rho_lambda,
+    void set_hyper_param(double const rho_s, double const rho_lambda,
                          double const tau, double const lambda_prior) {
-      _rho_theta = rho_theta;
+      _rho_s = rho_s;
       _rho_lambda = rho_lambda;
       _tau = tau;
       _log_tau = log(_tau);
       _lambda_prior = lambda_prior;
     }
-    double& rho_theta() {return _rho_theta;}
+    double& rho_s() {return _rho_s;}
     double& rho_lambda() {return _rho_lambda;}
     double& tau() {return _tau;}
     double& ltau() {return _log_tau;}
@@ -111,7 +108,7 @@ namespace iyak {
     }
     void set_lambda(double l) {for(auto& _l: _lambda) _l=l;}
     double& lambda_prior() {return _lambda_prior;}
-    double& theta_prior() {return _theta_prior;}
+    double& s_prior() {return _s_prior;}
     void add_trans_count(V& c, IS const& s, double const d) {
       if (s.l==s.r)
         c[0]+=d;
@@ -136,7 +133,7 @@ namespace iyak {
 
     void pack_params(V& to) {
       to.clear();
-      for (auto& wi: mm.weightL())
+      for (auto& wi: mm.s())
         to.insert(to.end(), wi.begin(), wi.end());
       for (auto& li: _lambda)
         to.push_back(li);
@@ -144,7 +141,7 @@ namespace iyak {
 
     void unpack_params(V const& from) {
       int i = 0;
-      for (auto& wi: mm.weightL())
+      for (auto& wi: mm.s())
         for (auto& wij: wi)
           wij = from[i++];
       for (auto& li: _lambda)
@@ -158,8 +155,8 @@ namespace iyak {
       for (int i=0; i<size(x)-size(_lambda); ++i) {
         if (_no_prf) x[i]=0;
         else {
-          double y=x[i]-_theta_prior;
-          fn+=y*y*_rho_theta/2.;
+          double y=x[i]-_s_prior;
+          fn+=y*y*_rho_s/2.;
         }
       }
       for (int i=size(x)-size(_lambda); i<size(x); ++i) {
@@ -178,7 +175,7 @@ namespace iyak {
       for (int i=0; i<size(x)-size(_lambda); ++i) {
         if (_no_prf) x[i]=0;
         else
-          x[i]=(x[i]-_theta_prior)*_rho_theta;
+          x[i]=(x[i]-_s_prior)*_rho_s;
       }
       for (int i=size(x)-size(_lambda); i<size(x); ++i) {
         if (_no_rss) x[i]=0;
@@ -194,7 +191,7 @@ namespace iyak {
         for (int i=1; i<=L; ++i) {
           for (auto const& s: mm.state()) {
             for (auto const& s1: mm.loop_right_trans(s.id)) {
-              double w = mm.weightL(s.r, (*_seq)[i-1]);
+              double w = mm.theta(s.r, (*_seq)[i-1]);
               double ws=f._m.weight(s.r,i-1);
               double t = (s.r == s1.r and
                           '.' == mm.node(s.r))? tauL(): oneL;
@@ -216,7 +213,7 @@ namespace iyak {
         for (int i=L; 1<=i; --i) {
           for (auto const& s: mm.state()) {
             for (auto const& s1: mm.loop_right_trans(s.id)) {
-              double w = mm.weightL(s.r, (*_seq)[i-1]);
+              double w = mm.theta(s.r, (*_seq)[i-1]);
               double ws=f._m.weight(s.r,i-1);
               double t = (s.r == s1.r and
                           '.' == mm.node(s.r))? tauL(): oneL;
@@ -266,7 +263,7 @@ namespace iyak {
           for (auto const& s: _f._m.mm.loop_state()) {
             double lam=_f._m.lambda(s);
             for (auto const& s1: _f._m.mm.loop_right_trans(s.id)) {
-              double w = _f._m.no_prf()? oneL: _f._m.mm.weightL(s.r, _seq[j-1]);
+              double w = _f._m.no_prf()? oneL: _f._m.mm.theta(s.r, _seq[j-1]);
               double ws=_f._m.weight(s.r,j-1);
               double t = (s.r == s1.r and
                           '.' == _f._m.mm.node(s.r))? _f._m.tauL(): oneL;
@@ -294,7 +291,7 @@ namespace iyak {
               double lam=_f._m.lambda(s);
               for (auto const& s1: _f._m.mm.pair_trans(s.id)) {
                 double w = _f._m.no_prf()? oneL:
-                _f._m.mm.weightL(s1.l, s.r, _seq[i], _seq[j-1]);
+                _f._m.mm.theta(s1.l, s.r, _seq[i], _seq[j-1]);
                 double ws=mulL(_f._m.weight(s1.l,i),_f._m.weight(s.r,j-1));
                 double t = (s.r == s1.r and
                             ')' == _f._m.mm.node(s1.r))? _f._m.tauL(): oneL;
@@ -309,7 +306,7 @@ namespace iyak {
               double lam=_f._m.lambda(s);
               for (auto const& s1: _f._m.mm.pair_trans(s.id)) {
                 double w = _f._m.no_prf()? oneL:
-                _f._m.mm.weightL(s1.l, s.r, _seq[i], _seq[l]);
+                _f._m.mm.theta(s1.l, s.r, _seq[i], _seq[l]);
                 double ws=mulL(_f._m.weight(s1.l,i),_f._m.weight(s.r,l));
                 double t = (s.r == s1.r and
                             ')' == _f._m.mm.node(s1.r))? _f._m.tauL(): oneL;
@@ -323,7 +320,7 @@ namespace iyak {
             for (auto const& s: _f._m.mm.state()) {
               double lam=_f._m.lambda(s);
               for (auto const& s1: _f._m.mm.loop_right_trans(s.id)) {
-                double w = _f._m.no_prf()? oneL: _f._m.mm.weightL(s.r, _seq[l]);
+                double w = _f._m.no_prf()? oneL: _f._m.mm.theta(s.r, _seq[l]);
                 double ws=_f._m.weight(s.r,l);
                 double t = (s.r == s1.r and
                             '.' == _f._m.mm.node(s.r))? _f._m.tauL(): oneL;
@@ -368,7 +365,7 @@ namespace iyak {
             for (auto const& s: _f._m.mm.state()) {
               double lam=_f._m.lambda(s);
               for (auto const& s1: _f._m.mm.loop_left_trans(s.id)) {
-                double w = _f._m.no_prf()? oneL: _f._m.mm.weightL(s1.l, _seq[i]);
+                double w = _f._m.no_prf()? oneL: _f._m.mm.theta(s1.l, _seq[i]);
                 double ws=_f._m.weight(s1.l,i);
                 double t = (s.l == s1.l and
                             '.' == _f._m.mm.node(s.l))? _f._m.tauL(): oneL;
@@ -404,7 +401,7 @@ namespace iyak {
             for (auto const& s: _f._m.mm.state()) {
               double lam=_f._m.lambda(s);
               for (auto const& s1: _f._m.mm.loop_right_trans(s.id)) {
-                double w = _f._m.no_prf()? oneL: _f._m.mm.weightL(s.r, _seq[l]);
+                double w = _f._m.no_prf()? oneL: _f._m.mm.theta(s.r, _seq[l]);
                 double ws=_f._m.weight(s.r,l);
                 double t = (s.r == s1.r and
                             '.' == _f._m.mm.node(s.r))? _f._m.tauL(): oneL;
@@ -456,7 +453,7 @@ namespace iyak {
           for (auto const& s1: _f._m.mm.loop_state()) {
             double lam=_f._m.lambda(s1);
             for (auto const& s: _f._m.mm.loop_right_trans(s1.id)) {
-              double w = _f._m.no_prf()? oneL: _f._m.mm.weightL(s1.r, _seq[j]);
+              double w = _f._m.no_prf()? oneL: _f._m.mm.theta(s1.r, _seq[j]);
               double ws=_f._m.weight(s1.r,j);
               double t = (s.r == s1.r and
                           '.' == _f._m.mm.node(s1.r))? _f._m.tauL(): oneL;
@@ -484,7 +481,7 @@ namespace iyak {
               double lam=_f._m.lambda(s1);
               for (auto const& s: _f._m.mm.pair_trans(s1.id)) {
                 double w = _f._m.no_prf()? oneL:
-                _f._m.mm.weightL(s.l, s1.r, _seq[k], _seq[j]);
+                _f._m.mm.theta(s.l, s1.r, _seq[k], _seq[j]);
                 double ws=mulL(_f._m.weight(s.l,k),_f._m.weight(s1.r,j));
                 double t = (s.r == s1.r and
                             ')' == _f._m.mm.node(s1.r))? _f._m.tauL(): oneL;
@@ -499,7 +496,7 @@ namespace iyak {
               double lam=_f._m.lambda(s1);
               for (auto const& s: _f._m.mm.pair_trans(s1.id)) {
                 double w = _f._m.no_prf()? oneL:
-                _f._m.mm.weightL(s.l, s1.r, _seq[k], _seq[j]);
+                _f._m.mm.theta(s.l, s1.r, _seq[k], _seq[j]);
                 double ws=mulL(_f._m.weight(s.l,k),_f._m.weight(s1.r,j));
                 double t = (s.r == s1.r and
                             ')' == _f._m.mm.node(s1.r))? _f._m.tauL(): oneL;
@@ -513,7 +510,7 @@ namespace iyak {
             for (auto const& s1: _f._m.mm.state()) {
               double lam=_f._m.lambda(s1);
               for (auto const& s: _f._m.mm.loop_right_trans(s1.id)) {
-                double w = _f._m.no_prf()? oneL: _f._m.mm.weightL(s1.r, _seq[j]);
+                double w = _f._m.no_prf()? oneL: _f._m.mm.theta(s1.r, _seq[j]);
                 double ws=_f._m.weight(s1.r,j);
                 double t = (s.r == s1.r and
                             '.' == _f._m.mm.node(s1.r))? _f._m.tauL(): oneL;
@@ -558,7 +555,7 @@ namespace iyak {
             for (auto const& s1: _f._m.mm.state()) {
               double lam=_f._m.lambda(s1);
               for (auto const& s: _f._m.mm.loop_left_trans(s1.id)) {
-                double w = _f._m.no_prf()? oneL: _f._m.mm.weightL(s.l, _seq[k]);
+                double w = _f._m.no_prf()? oneL: _f._m.mm.theta(s.l, _seq[k]);
                 double ws=_f._m.weight(s.l,k);
                 double t = (s.l == s1.l and
                             '.' == _f._m.mm.node(s1.l))? _f._m.tauL(): oneL;
@@ -572,7 +569,7 @@ namespace iyak {
             for (auto const& s1: _f._m.mm.state()) {
               double lam=_f._m.lambda(s1);
               for (auto const& s: _f._m.mm.loop_right_trans(s1.id)) {
-                double w = _f._m.no_prf()? oneL: _f._m.mm.weightL(s1.r, _seq[j]);
+                double w = _f._m.no_prf()? oneL: _f._m.mm.theta(s1.r, _seq[j]);
                 double ws=_f._m.weight(s1.r,j);
                 double t = (s.r == s1.r and
                             '.' == _f._m.mm.node(s1.r))? _f._m.tauL(): oneL;
