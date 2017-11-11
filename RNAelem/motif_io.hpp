@@ -227,6 +227,7 @@ namespace iyak {
       for (int i=0; i<size(_m->mm.s()); ++i)
         for (int j=0; j<size(_m->mm.s()[i]); ++j)
           _m->mm.s().at(i).at(j) = expNL(w.at(i).at(j));
+      _m->mm.calc_theta();
       for (int i=0; i<size(_m->_lambda); ++i)
         _m->_lambda.at(i)=lambda.at(i);
       _m->set_energy_params(ene_fname, max_span, max_iloop, min_bpp, no_ene);
