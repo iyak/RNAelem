@@ -29,7 +29,7 @@ namespace iyak {
     }
 
     _motif = &model;
-    set_boundary(model);
+    set_bounds(model);
 
     _motif->pack_params(_x);
 

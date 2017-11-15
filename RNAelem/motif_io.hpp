@@ -43,15 +43,17 @@ namespace iyak {
         if ('.'==c) {
           alphs.push_back({"A","C","G","U"});
           w.push_back({});
+          double tot=logsumexp(ww[i]);
           for (int j=1; j<size(ww[i]); ++j)
-            w.back().push_back(exp(ww[i][j]));
+            w.back().push_back(exp(ww[i][j]-tot));
           ++i;
         }
         else if (')'==c) {
           alphs.push_back({"CG","GC","GU","UG","AU","UA"});
+          double tot=logsumexp(ww[i]);
           w.push_back({});
           for (int j=1; j<size(ww[i]); ++j)
-            w.back().push_back(exp(ww[i][j]));
+            w.back().push_back(exp(ww[i][j]-tot));
           ++i;
         }
         else {
@@ -69,6 +71,14 @@ namespace iyak {
 
       dat(_out, "pattern:", _m->mm.pattern());
       dat(_out, "s:", apply(logNL, _m->mm.s()));
+      VV p {};
+      for(int i=0;i<size(_m->mm.s());++i){
+        p.push_back({});
+        double tot=logsumexp(_m->mm.s()[i]);
+        for(int j=0;j<size(_m->mm.s()[i]);++j)
+          p.back().push_back(exp(_m->mm.s()[i][j]-tot));
+      }
+      dat(_out, "p:",p);
       dat(_out, "ene-param:", _m->em.param_fname);
       dat(_out, "max-span:", _m->em.max_pair());
       dat(_out, "max-internal-loop:", _m->em.max_iloop());

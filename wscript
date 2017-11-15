@@ -7,10 +7,10 @@ def exe(cmd):
     return Popen(cmd.split(), stdout=PIPE).stdout.read().decode("utf8").strip()
 
 def options(opt):
-    opt.load("compiler_cxx waf_unit_test")
+    opt.load("compiler_cxx compiler_c waf_unit_test")
 
 def configure(cnf):
-    cnf.load("compiler_cxx waf_unit_test")
+    cnf.load("compiler_cxx compiler_c waf_unit_test")
     cnf.find_program("freetype-config", var="FTCNF")
 
     cnf.check_cfg(
@@ -46,14 +46,20 @@ def configure(cnf):
 
 
 def build(bld):
+    bld(
+            features="c",
+            cflags="-c -O3",
+            source="RNAelem/ushuffle/ushuffle.c",
+            target="ushuffle")
+
     bld.program(
             features="cxx cxxprogram",
             cxxflags="-std=c++14 -Wall -O3 -static"
             " -Wno-unknown-pragmas",
             source="RNAelem/main.cpp",
-            includes="RNAelem",
+            includes="RNAelem RNAelem/ushuffle",
             target="bin/RNAelem",
-            use="freetype",
+            use="freetype ushuffle",
             lib="pthread")
 
     bld(
@@ -72,7 +78,7 @@ def build(bld):
             includes="RNAelem RNAelem-test"
             " RNAelem-test/gtest/include",
             target="bin/RNAelem-test",
-            use="gtest freetype",
+            use="gtest freetype ushuffle",
             lib="pthread")
 
     bld.program(
@@ -83,7 +89,7 @@ def build(bld):
             includes="RNAelem RNAelem-test"
             " RNAelem-test/gtest/include",
             target="bin/RNAelem-test-exact",
-            use="gtest freetype",
+            use="gtest freetype ushuffle",
             lib="pthread")
 
 def test(ctx):

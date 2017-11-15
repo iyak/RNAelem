@@ -69,6 +69,89 @@ namespace iyak {
       }
   };
 
+  class Adam {
+    double _alpha=0.001; //stepsize
+    double _beta1=0.9,_beta2=0.999; //exponential decay rates
+    V _m{},_v{}; //moment vectors
+    double _m0i=0,_v0i=0; //initial moment vector elements
+    double _epsilon=1e-8; //stepsize auxiliary parameter
+    double _rho=0.1; //regularization term
+    V _x{}; //parameter vector
+    V _xl{},_xu{}; //boudary of x vector
+    VI _xb{}; //boundary type of x vector. 1:lower 2:upper 3:both
+    VI _xr{}; //regularization of x. 0:None, 1:L1, 2:L2
+    int _t; //time
+  public:
+    Adam(){}
+    void set_hp(double m0i,double v0i,double alpha,double beta1,
+                double beta2,double epsilon){
+      _alpha=alpha;
+      _beta1=beta1;_beta2=beta2;
+      _m0i=m0i;_v0i=v0i;
+      _epsilon=epsilon;
+    }
+    void set_bounds(V& lower,V& upper,VI& xb){
+      _xl=lower;_xu=upper;_xb=xb;
+    }
+    void set_regularization(VI const& xr){_xr=xr;}
+    bool converged(V const& gr,double y){
+      return norm2(gr)<(y+1.)*1.e-5;
+    }
+    void before_update(int i,double& y,V& gr){
+      /* regularize */
+      if(1==_xr[i]){
+        y+=_rho*abs(_x[i]);
+        gr[i]+=_rho*0<_x[i]?1:-1;
+      }
+      else if(2==_xr[i]){
+        y+=_rho*_x[i]*_x[i];
+        gr[i]+=_rho*_x[i]/2.;
+      }
+    }
+    void after_update(int i,double& y,V& gr){
+      /* clip bounds */
+      if(1==_xb[i] or 3==_xb[i])
+        if(_x[i]<_xl[i])
+          _x[i]=_xl[i];
+      if(2==_xb[i] or 3==_xb[i])
+        if(_xr[i]<_x[i])
+          _x[i]=_xr[i];
+    }
+    template<class T>
+    void minimize(
+        T& f,//stochastic objective function with parameter x
+        V const& x0, //initial parameter vector
+        int max_iter=100 //max count of iteration
+    ){
+      _t=0;
+      _m.assign(size(x0),_m0i);
+      _v.assign(size(x0),_v0i);
+      _x=x0;
+      _xl.resize(size(x0),-inf);
+      _xu.resize(size(x0),inf);
+      _xu.resize(size(x0),0);
+      _xr.resize(size(x0),0);
+      V gr(size(x0),0);
+      double y=0;
+      do{
+        ++_t;
+        f(_x,y,gr);
+        for(int i=0;i<size(_x);++i){
+          before_update(i,y,gr);
+          _m[i]+=(1.-_beta1)*(gr[i]-_m[i]);
+          _v[i]+=(1.-_beta2)*(gr[i]*gr[i]-_v[i]);
+          double mhat=_m[i]/(1.-pow(_beta1,_t));
+          double vhat=_v[i]/(1.-pow(_beta2,_t));
+          _x[i]-=_alpha*mhat/(sqrt(vhat)+_epsilon);
+          after_update(i,y,gr);
+        }
+        cry("iter:",_t,", y:",y,", |gr|:",norm2(gr));
+      }while(not converged(gr,y) and _t<max_iter);
+    }
+    V& x(){return _x;}
+    int itercount(){return _t-1;}
+  };
+
   class Lbfgsb {
     public:
       using VC = vector<char>;
@@ -86,6 +169,8 @@ namespace iyak {
       V      _l;
       V      _u;
       VI     _nbd;
+      VI     _xr;
+      double _rho;
       double _f;
       V      _g;
       double _factr;
@@ -105,9 +190,9 @@ namespace iyak {
       int    _iter;
       double _best_fn;
       V      _best_x;
-      Lbfgsb() : c__1(1), c__11(11), _n(0), _m(5), _f(HUGE_VAL), 
-      _factr(1.0e7), _pgtol(1.0e-3), _maxit(200), 
-      _iprint(0), _fncount(0), _grcount(0), _fdfcount(0), _fail(0), _best_fn(HUGE_VAL) {}
+      Lbfgsb():c__1(1),c__11(11),_n(0),_m(5),_rho(0.1),_f(HUGE_VAL),
+      _factr(1.0e7),_pgtol(1.0e-3),_maxit(200),_iprint(0),_fncount(0),
+      _grcount(0),_fdfcount(0),_fail(0),_best_fn(HUGE_VAL){}
       double fn() const {return _best_fn;}
       double best_fn() const {return _best_fn;}
       const V& best_x() const { return _best_x;}
@@ -121,6 +206,8 @@ namespace iyak {
       void set_initial_point(const V& x) {_x = x; _n = (int)x.size();}
       void set_num_corrections(int m) {_m = m;}
       // type of bound. nbd[i] = {0=none, 1=l, 2=l&u, 3=u}
+      void set_rho(double rho){_rho=rho;}
+      void set_regularization(VI const& xr){_xr=xr;}
       void set_bounds(const V& l, const V& u, 
           const VI& nbd) { _l = l; _u = u; _nbd = nbd;}
       void set_eps(double eps) { _pgtol = eps;}
@@ -135,6 +222,17 @@ namespace iyak {
       //  iprint>100  print details of every iteration including x and g;
       //  When iprint > 0, the file iterate.dat will be created to summarize the iteration.
       void set_verbosity(int n) {_iprint = n;}
+      void before_update(int i,double& y,V& gr){
+        /* regularize */
+        if(1==_xr[i]){
+          y+=_rho*abs(_x[i]);
+          gr[i]+=_rho*0<_x[i]?1:-1;
+        }
+        else if(2==_xr[i]){
+          y+=_rho*_x[i]*_x[i];
+          gr[i]+=_rho*_x[i]/2.;
+        }
+      }
       template <typename Block>
         void minimize(const V& x0, Block& compute_fn_gr) {
           set_initial_point(x0);
@@ -172,7 +270,9 @@ namespace iyak {
                 _factr, &_pgtol, &_wa[0], &_iwa[0], &_task[0], 
                 _iprint, &_lsave[0], &_isave[0], &_dsave[0]);
             if (strncmp(&_task[0], "FG", 2) == 0) {
-              int st = compute_fn_gr(_x, _f, _g); ++_fdfcount;
+              int st = compute_fn_gr(_x, _f, _g);
+              for(int i=0;i<size(_x);++i)before_update(i,_f,_g);
+              ++_fdfcount;
               if (_f < _best_fn) { _best_fn = _f; _best_x = _x;}
               if (st) return;
               if (!std::isfinite(_f)) {

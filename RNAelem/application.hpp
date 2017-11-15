@@ -361,6 +361,7 @@ namespace iyak {
         if ("array-eval"==args[0]) tr_mode |= TR_ARRAYEVAL;
         else if (1 < array) tr_mode |= TR_ARRAY;
       }
+      if (options.get("no_shuffle"))tr_mode|=TR_NO_SHUFFLE;
 
       no_rss = options.get("no_rss");
       no_prf = options.get("no_prf");

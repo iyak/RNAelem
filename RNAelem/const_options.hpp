@@ -27,6 +27,7 @@ namespace iyak {
     debug = DBG_NONE
   };
 #define DBG_NO_MULTI 1
+#define MAX_SEQLEN 9999
 }
 
 #endif /* const_options_h */

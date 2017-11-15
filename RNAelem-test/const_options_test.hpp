@@ -32,5 +32,6 @@ namespace iyak {
     | DBG_PROOF
   };
 #define DBG_NO_MULTI 0
+#define MAX_SEQLEN 9999
 }
 #endif /* const_options_test_h */

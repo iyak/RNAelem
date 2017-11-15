@@ -58,9 +58,9 @@ namespace iyak {
       for (int i=0;i<size(q);++i) cnt.at(q[i])+=1;
       int mode=max_index(cnt);
       _ws.clear();
-      for (int i=0;i<size(q);++i)
+      for (int i=0;i<size(q)-1;++i)
         _ws.push_back(logL((0.01+double(q[i]))/(0.01+mode)));
-      _ws.push_back(0==q.back()?logL(0):logL(1));
+      _ws.push_back(0==q.back()?zeroL:oneL);
     }
 
     void set_energy_params(string const& param_fname, int const max_span,

@@ -18,6 +18,9 @@
 #include"arrayjob_manager.hpp"
 #include"fastq_io.hpp"
 #include"optimizer.hpp"
+namespace ushuffle{extern "C"{
+#include "ushuffle/ushuffle.h"
+}}
 
 namespace iyak {
 
@@ -28,6 +31,7 @@ namespace iyak {
     TR_MULTI = 1<<2,
     TR_BAL = 1<<3,
     TR_ARRAYEVAL = 1<<4,
+    TR_NO_SHUFFLE=1<<5,
   };
 
   class RNAelemTrainDP {
@@ -41,15 +45,16 @@ namespace iyak {
     mutex& _mx_update;
     FastqReader& _qr;
     Lbfgsb& _opt;
+    Adam& _adam;
     double _pseudo_cov;
     V const& _convo_kernel;
     unsigned _mode;
     RNAelemTrainDP(RNAelem& m, int from, int to, double& sum_eff, mutex& mx_input,
-                   mutex& mx_update, FastqReader& qr, Lbfgsb& opt,
+                   mutex& mx_update, FastqReader& qr, Lbfgsb& opt,Adam& adam,
                    double pseudo_cov, V const& convo_kernel, unsigned mode):
-    _m(m), _from(from), _to(to), _sum_eff(sum_eff), _mx_input(mx_input),
-    _mx_update(mx_update), _qr(qr), _opt(opt), _pseudo_cov(pseudo_cov),
-    _convo_kernel(convo_kernel), _mode(mode) {};
+    _m(m),_from(from),_to(to),_sum_eff(sum_eff),_mx_input(mx_input),
+    _mx_update(mx_update),_qr(qr),_opt(opt),_adam(adam),
+    _pseudo_cov(pseudo_cov),_convo_kernel(convo_kernel),_mode(mode){};
 
     string _id;
     VI _seq;
@@ -136,7 +141,8 @@ namespace iyak {
         clear_emit_count(_m.mm,dENnw);
         V dEHn={0.,0.},dEHnw={0.,0.};
 
-        VI qual;
+        VI qual{};
+        VI neg{};
         /* sync block */ {
           lock l(_mx_input);
           if (_qr.is_end()) break;
@@ -147,8 +153,16 @@ namespace iyak {
             if (_qr.cnt() < _from+1) continue;
             if (_to+1 <= _qr.cnt()) break;
           }
+          if(!(_mode&TR_NO_SHUFFLE)){
+            char neg_s[MAX_SEQLEN]="";
+            string s;seq_itos(_seq,s);
+            ushuffle::shuffle(s.c_str(),neg_s,size(s),2);
+            seq_stoi(neg_s,neg);
+          }
         }
         if (debug&DBG_FIX_RSS) _m.em.fix_rss(_rss);
+
+        /* given training set */
         _m.set_seq(_seq);
         _m.set_ws(qual,_convo_kernel,_pseudo_cov);
         _wsL=&(_m._ws);
@@ -173,6 +187,30 @@ namespace iyak {
         }
         /* local update */
         _fn += logNL(divL(_ZL,_ZwL));
+
+        if(!(_mode&TR_NO_SHUFFLE)){
+          /* negative example */
+          _m.set_seq(neg);
+          for(auto& q:qual)q=0;
+          qual.back()=1;
+          _m.set_ws(qual,_convo_kernel,_pseudo_cov);
+          _wsL=&(_m._ws);
+
+          init_inside_tables();
+          init_outside_tables(true,true);
+          _m.compute_inside(InsideFun(this,*_wsL));
+          if (not std::isfinite(_ZL = part_func())) {
+            if (0==_opt.fdfcount()) cry("skipped:", _id);
+            continue;
+          }
+          _m.compute_outside(OutsideFun(this,*_wsL,_ZL,dEHn,dENn));
+          init_outside_tables(false,true); //without motif
+          _ZwL=part_func(false,true);
+          _m.compute_outside(OutsideFun(this,*_wsL,_ZwL,dEHnw,dENnw));
+          /* local update */
+          _fn += logNL(divL(_ZL,_ZwL));
+        }
+
         for (int i=0; i<size(_dEN); ++i) {
           double tot=0;
           for (int j=0;j<size(_dEN[i]);++j)tot+=dENn[i][j]-dENnw[i][j];
@@ -642,8 +680,8 @@ namespace iyak {
     string _fq_name;
     FastqReader _qr;
     Lbfgsb _opt;
+    Adam _adam;
     RNAelem *_motif;
-    double _eps = 1e-1;
     int _max_iter = 30;
     int L; /* seq size */
     int N; /* num of seqs */
@@ -683,7 +721,7 @@ namespace iyak {
     void set_train_params(VI const& x);
 
     /* function */
-    void set_boundary(RNAelem& motif) {
+    void set_bounds(RNAelem& motif) {
       V lower {};
       V upper {};
       VI type {};
@@ -699,7 +737,15 @@ namespace iyak {
       lower.push_back(0);
       upper.push_back(inf);
       type.push_back(1); // lower bound
-      _opt.set_bounds(lower, upper, type);
+      if(_mode&TR_NO_SHUFFLE)_opt.set_bounds(lower, upper, type);
+      else _adam.set_bounds(lower, upper, type);
+    }
+    void set_regularization(RNAelem& motif){
+      int s=0;
+      for(auto const& wi:motif.mm.theta())s+=size(wi);
+      s+=size(motif._lambda);
+      if(_mode&TR_NO_SHUFFLE)_opt.set_regularization(VI(s,2)); //L2 norm
+      else _adam.set_regularization(VI(s,2)); //L2 norm
     }
 
     /* setter */
@@ -716,10 +762,12 @@ namespace iyak {
 
     void set_conditions(int max_iter, double epsilon, double lambda_init) {
       _max_iter = max_iter;
-      _opt.set_maxit(max_iter - 1);
-      _eps = epsilon;
-      _opt.set_eps(epsilon);
-      _opt.set_verbosity(1);
+      if(_mode&TR_NO_SHUFFLE){
+        _opt.set_maxit(max_iter - 1);
+        _opt.set_eps(epsilon);
+        _opt.set_verbosity(1);
+      }
+      else _adam.set_hp(0,0,0.1,0.9,0.999,1.e-8);
       _lambda_init = lambda_init;
     }
 
@@ -731,12 +779,14 @@ namespace iyak {
         set_mask_boundary(model);
         cry("format: 'index:x:gr, ..., fn:fn'");
       } else {
-        set_boundary(model);
+        set_bounds(model);
       }
       lap();
       _cnt = 0;
-      _opt.minimize(_params, *this);
-      _motif->unpack_params(_opt.best_x());
+      if(_mode&TR_NO_SHUFFLE)_opt.minimize(_params, *this);
+      else _adam.minimize(*this,_params,_max_iter);
+      if(_mode&TR_NO_SHUFFLE)_motif->unpack_params(_opt.best_x());
+      else _motif->unpack_params(_adam.x());
       double time = lap();
       cry("wall clock time per eval:", time / _cnt);
     }
@@ -744,14 +794,9 @@ namespace iyak {
     int operator() (V const& x, double& fn, V& gr) {
       _motif->unpack_params(x);
       _motif->mm.calc_theta();
-      if (_mode & TR_ARRAYEVAL) {
-        fn = 0.;
-        gr.assign(size(x), 0.);
-      } else {
-        fn = _motif->regul_fn();
-        gr = _motif->regul_gr();
-      }
-      _sum_eff = 0.;
+      fn=0.;
+      gr.assign(size(x),0.);
+      _sum_eff=0.;
       if (_mode & TR_ARRAY) {
         fclear(4);
         _writer.set_out_id(4, -1);
@@ -763,14 +808,17 @@ namespace iyak {
         _qr.clear();
         ClassThread<RNAelemTrainDP>
         ct(_thread,
-           *_motif, _from,  _to, _sum_eff, _mx_input,
-           _mx_update, _qr, _opt, _pseudo_cov,
-           _convo_kernel, _mode);
+           *_motif,_from,_to,_sum_eff,_mx_input,_mx_update,_qr,_opt,_adam,
+           _pseudo_cov,_convo_kernel,_mode);
         ct(fn, gr);
       }
       if (_mode & TR_MASK) cry(flatten(x,gr)+"fn:"+to_str(fn));
-      if (0==_opt.fdfcount()) cry("considered BP:", _sum_eff / N);
-      ++ _cnt;
+      if(_mode&TR_NO_SHUFFLE){
+        if(0==_opt.fdfcount())
+          cry("considered BP:", _sum_eff / N);
+      }
+      else if (0==_adam.itercount()) cry("considered BP:", _sum_eff / N);
+      ++_cnt;
       return 0;
     }
   };

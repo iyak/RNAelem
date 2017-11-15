@@ -67,8 +67,8 @@ namespace iyak {
       }
       ++ i;
     }
-
-    _opt.set_bounds(lower, upper, type);
+    if(_mode&TR_NO_SHUFFLE)_opt.set_bounds(lower, upper, type);
+    _adam.set_bounds(lower, upper, type);
   }
 
   void RNAelemTrainer::set_train_params(VI const& x) {

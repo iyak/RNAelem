@@ -39,7 +39,7 @@ namespace iyak {
   }
 
   void seq_itos(VI const& seq, string& s) {
-    check(size(seq) == size(seq), "seq_itos");
+    s.resize(size(seq));
     for (int i=0; i < size(seq); ++ i) {
       s[i] = nacgu[seq[i]];
     }

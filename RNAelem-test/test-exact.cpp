@@ -28,7 +28,7 @@ namespace iyak {
     RNAelemTrainer _eval;
     FastqReader _qr;
 
-    RNAelemExactTest() {
+    RNAelemExactTest():_eval(TR_NORMAL|TR_NO_SHUFFLE,1) {
       VS s = split<string>(__FILE__,"/");
       s.pop_back();
       _dir = (""==s[0])? paste(s, "/"): s.back();
