@@ -73,7 +73,7 @@ namespace iyak {
 
     RNAelemDPTest():t(TR_NORMAL|TR_NO_SHUFFLE,1) {
       model.set_energy_params("~T2004~", large, large, 0., true);
-      model.set_hyper_param(0., 0., 1., -1.);
+      model.set_hyper_param(0.,0.,0.,1.,-1.);
       t.set_preprocess({1}, 0);
       t.set_conditions(-1, 1e-4, 0);
     }

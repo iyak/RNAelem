@@ -25,6 +25,12 @@ namespace iyak {
     VI* _seq;
     V _ws;
     double _rho_s; /* regularization scaler */
+    double _rho_theta;/*regularization scaler*/
+    double _theta_softmax;/*flag whether to apply softmax to theta*/
+    /*
+     score of sequence = prod(exp theta)
+     exp theta = exp s / sum(exp s)
+     */
     double _rho_lambda; /* regularization scaler */
     double _tau; /* transition score */
     double _log_tau;
@@ -88,16 +94,21 @@ namespace iyak {
       S = (int)mm.state().size();
     }
 
-    void set_hyper_param(double const rho_s, double const rho_lambda,
-                         double const tau, double const lambda_prior) {
+    void set_theta_softmax(bool b){_theta_softmax=b;}
+    void set_hyper_param(double const rho_s,double const rho_theta,
+                         double const rho_lambda,double const tau,
+                         double const lambda_prior) {
       _rho_s = rho_s;
+      _rho_theta=rho_theta;
       _rho_lambda = rho_lambda;
       _tau = tau;
       _log_tau = log(_tau);
       _lambda_prior = lambda_prior;
     }
     double& rho_s() {return _rho_s;}
+    double& rho_theta() {return _rho_theta;}
     double& rho_lambda() {return _rho_lambda;}
+    bool theta_softmax(){return _theta_softmax;}
     double& tau() {return _tau;}
     double& ltau() {return _log_tau;}
     double& tauL() {return (debug&DBG_NO_LOGSUM)? _tau: _log_tau;}
@@ -133,56 +144,26 @@ namespace iyak {
 
     void pack_params(V& to) {
       to.clear();
-      for (auto& wi: mm.s())
-        to.insert(to.end(), wi.begin(), wi.end());
+      if(_theta_softmax)
+        for(auto& wi:mm.s())
+          to.insert(to.end(),wi.begin(),wi.end());
+      else
+        for(auto& wi:mm.theta())
+          to.insert(to.end(),wi.begin(),wi.end());
       for (auto& li: _lambda)
         to.push_back(li);
     }
 
     void unpack_params(V const& from) {
       int i = 0;
-      for (auto& wi: mm.s())
-        for (auto& wij: wi)
-          wij = from[i++];
+      if(_theta_softmax)
+        for(auto& wi:mm.s())
+          for(auto& wij:wi)wij=from[i++];
+      else
+        for(auto& wi:mm.theta())
+          for(auto& wij:wi)wij=from[i++];
       for (auto& li: _lambda)
         li = from[i++];
-    }
-
-    double regul_fn() {
-      V x;
-      double fn = 0;
-      pack_params(x);
-      for (int i=0; i<size(x)-size(_lambda); ++i) {
-        if (_no_prf) x[i]=0;
-        else {
-          double y=x[i]-_s_prior;
-          fn+=y*y*_rho_s/2.;
-        }
-      }
-      for (int i=size(x)-size(_lambda); i<size(x); ++i) {
-        if (_no_rss) x[i]=0;
-        else {
-          double y=x[i]-_lambda_prior;
-          fn+=y*y*_rho_lambda/2.;
-        }
-      }
-      return fn;
-    }
-
-    V regul_gr() {
-      V x;
-      pack_params(x);
-      for (int i=0; i<size(x)-size(_lambda); ++i) {
-        if (_no_prf) x[i]=0;
-        else
-          x[i]=(x[i]-_s_prior)*_rho_s;
-      }
-      for (int i=size(x)-size(_lambda); i<size(x); ++i) {
-        if (_no_rss) x[i]=0;
-        else
-          x[i]=(x[i]-_lambda_prior)*_rho_lambda;
-      }
-      return x;
     }
 
     template<class F> void compute_inside(F const& f) {

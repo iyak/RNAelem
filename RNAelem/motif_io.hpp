@@ -70,19 +70,21 @@ namespace iyak {
       _m = &m;
 
       dat(_out, "pattern:", _m->mm.pattern());
-      dat(_out, "s:", apply(logNL, _m->mm.s()));
-      VV p {};
-      for(int i=0;i<size(_m->mm.s());++i){
-        p.push_back({});
-        double tot=logsumexp(_m->mm.s()[i]);
-        for(int j=0;j<size(_m->mm.s()[i]);++j)
-          p.back().push_back(exp(_m->mm.s()[i][j]-tot));
+      if(_m->theta_softmax()){
+        dat(_out, "s:", apply(logNL, _m->mm.s()));
+        _m->mm.calc_theta();
       }
-      dat(_out, "p:",p);
+      else dat(_out, "theta:", apply(logNL, _m->mm.theta()));
+      VV exp_theta=apply(expL,_m->mm.theta());
+      dat(_out, "exp-theta:",exp_theta);
       dat(_out, "ene-param:", _m->em.param_fname);
       dat(_out, "max-span:", _m->em.max_pair());
       dat(_out, "max-internal-loop:", _m->em.max_iloop());
-      dat(_out, "rho-s:", _m->rho_s());
+      dat(_out, "theta-softmax:",_m->theta_softmax());
+      if(_m->theta_softmax())
+        dat(_out, "rho-s:", _m->rho_s());
+      else
+        dat(_out, "rho-theta:",_m->rho_theta());
       dat(_out, "rho-lambda:", _m->rho_lambda());
       dat(_out, "tau:", _m->tau());
       dat(_out, "lambda:", _m->_lambda);
@@ -130,10 +132,12 @@ namespace iyak {
       string ene_fname = "";
       int max_span = 0;
       int max_iloop = 0;
-      VV w;
+      VV w{};
       string pattern;
       double rho_s = 0.;
+      double rho_theta=0.;
       double rho_lambda = 0.;
+      bool theta_softmax=false;
       double tau = 0.;
       V lambda = {0.,0.};
       double lambda_prior = 0.;
@@ -166,6 +170,10 @@ namespace iyak {
           w = parse_table(p[1]);
           set |= (1<<1);
         }
+        else if ("theta" == p[0]) {
+          w = parse_table(p[1]);
+          set |= (1<<1); //one of s or theta is required
+        }
 
         else if ("ene-param" == p[0]) {
           ene_fname = strip(p[1]);
@@ -180,6 +188,11 @@ namespace iyak {
         else if ("rho-s" == p[0]) {
           rho_s = iss_cast<double>(p[1]);
           set |= (1<<4);
+        }
+
+        else if ("rho-theta" == p[0]) {
+          rho_theta = iss_cast<double>(p[1]);
+          set |= (1<<4); // one of rho_s or rho_theta is required
         }
 
         else if ("rho-lambda" == p[0]) {
@@ -225,23 +238,38 @@ namespace iyak {
           no_ene = iss_cast<bool>(p[1]); /* optional */
         }
 
+        else if ("exp-theta"==p[0]){}
+
+        else if ("theta-softmax"==p[0]){
+          theta_softmax=iss_cast<bool>(p[1]);
+          set|=(1<<10);
+        }
+
         else {
           cry("unused:", p[0]);
         }
       }
 
-      check((1<<10)-1 == set, "motif file broken:",
+      check((1<<11)-1 == set, "motif file broken:",
             _model_fname, bit_index(((1<<10)-1)^set));
 
       _m->set_motif_pattern(pattern, no_rss, no_prf);
-      for (int i=0; i<size(_m->mm.s()); ++i)
-        for (int j=0; j<size(_m->mm.s()[i]); ++j)
-          _m->mm.s().at(i).at(j) = expNL(w.at(i).at(j));
-      _m->mm.calc_theta();
+      _m->set_theta_softmax(theta_softmax);
+      if(theta_softmax){
+        for (int i=0; i<size(_m->mm.s()); ++i)
+          for (int j=0; j<size(_m->mm.s()[i]); ++j)
+            _m->mm.s().at(i).at(j) = expNL(w.at(i).at(j));
+        _m->mm.calc_theta();
+      }
+      else{
+        for (int i=0; i<size(_m->mm.s()); ++i)
+          for (int j=0; j<size(_m->mm.s()[i]); ++j)
+            _m->mm.theta().at(i).at(j) = expNL(w.at(i).at(j));
+      }
       for (int i=0; i<size(_m->_lambda); ++i)
         _m->_lambda.at(i)=lambda.at(i);
       _m->set_energy_params(ene_fname, max_span, max_iloop, min_bpp, no_ene);
-      _m->set_hyper_param(rho_s, rho_lambda, tau, lambda_prior);
+      _m->set_hyper_param(rho_s,rho_theta,rho_lambda,tau,lambda_prior);
     }
   };
 }

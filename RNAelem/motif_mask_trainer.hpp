@@ -33,7 +33,27 @@ namespace iyak {
     return oss.str();
   }
 
-  void RNAelemTrainer::set_mask_boundary(RNAelem& motif) {
+  void RNAelemTrainer::set_mask_regularization(RNAelem& motif){
+    check(_mode&TR_MASK,"not in mask mode");
+    VI reg{};
+    int i = 0;
+    for (auto const& wi: motif.mm.s()) {
+      for (auto const wij: wi) {
+        (void)wij;
+        reg.push_back(any(_vary_x,i)?2:0);
+        ++ i;
+      }
+    }
+    for (auto const& li: motif._lambda) {
+      (void)li;
+      reg.push_back(any(_vary_x,i)?2:0);
+      ++ i;
+    }
+    if(_mode&TR_NO_SHUFFLE)_opt.set_regularization(reg);
+    _adam.set_regularization(reg);
+  }
+
+  void RNAelemTrainer::set_mask_bounds(RNAelem& motif) {
     check(_mode & TR_MASK, "not in mask mode");
 
     V lower {};
@@ -41,7 +61,7 @@ namespace iyak {
     VI type {};
 
     int i = 0;
-    for (auto const& wi: motif.mm.s()) {
+    for (auto const& wi: motif.theta_softmax()?motif.mm.s():motif.mm.theta()){
       for (auto const wij: wi) {
         if (any(_vary_x, i)) {
           lower.push_back(zeroL);

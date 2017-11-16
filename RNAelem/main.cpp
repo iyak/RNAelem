@@ -53,7 +53,8 @@ int main(int const argc, char const* argv[]) {
           reader.set_model_fname(app.model_fname);
           reader.read_model(model);
         } else {
-          model.set_hyper_param(app.rho_s, app.rho_lambda,
+          model.set_theta_softmax(app.theta_softmax);
+          model.set_hyper_param(app.rho_s, app.rho_theta,app.rho_lambda,
                                 app.tau, app.lambda_prior);
           model.set_energy_params(app.ene_param_fname, app.max_span,
                                   app.max_iloop, app.min_bpp, app.no_ene);
@@ -94,7 +95,8 @@ int main(int const argc, char const* argv[]) {
           reader.set_model_fname(app.model_fname);
           reader.read_model(model);
         } else {
-          model.set_hyper_param(app.rho_s, app.rho_lambda,
+          model.set_theta_softmax(app.theta_softmax);
+          model.set_hyper_param(app.rho_s, app.rho_theta,app.rho_lambda,
                                 app.tau, app.lambda_prior);
           model.set_energy_params(app.ene_param_fname, app.max_span,
                                   app.max_iloop, app.min_bpp, app.no_ene);

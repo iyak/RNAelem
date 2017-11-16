@@ -10,3 +10,4 @@ lambda: [0.12,1.83]
 min-bpp: 0.0001
 no-rss: 0
 no-profile: 1
+theta-softmax: 1

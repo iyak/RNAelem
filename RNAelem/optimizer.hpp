@@ -554,7 +554,7 @@ L111:
         /* Compute the infinity norm of the (-) projected gradient. */
         projgr(n, &l[1], &u[1], &nbd[1], &x[1], &g[1], &sbgnrm);
 
-        if (iprint >= 1) print_message("At iterate %d: f=%.5g, |proj g|=%.5g\n",
+        if (iprint >= 1) print_message("iter: %d , f: %.5g , |gr|: %.5g\n",
             iter, *f, sbgnrm);
 
         if (sbgnrm <= *pgtol) {
@@ -2384,7 +2384,7 @@ L1000:
             pvector("G =", g, n);
           }
         } else if (iprint > 0 && iter%iprint == 0) {
-          print_message("At iterate %d: f=%.5g, |proj g|=%.5g\n",
+          print_message("iter: %d , f: %.5g , |gr|: %.5g\n",
               iter, *f, sbgnrm);
         }
       }

@@ -55,12 +55,12 @@ namespace iyak {
         V p(_params);
         p[i] += d/2.;
         _model.unpack_params(p);
-        _model.mm.calc_theta();
+        if(_model.theta_softmax())_model.mm.calc_theta();
         fp = _eval.eval(_model).back();
 
         p[i] -= d;
         _model.unpack_params(p);
-        _model.mm.calc_theta();
+        if(_model.theta_softmax())_model.mm.calc_theta();
         fm = _eval.eval(_model).back();
 
         EXPECT_NEAR(_gr[i], (fp-fm)/d, 1e-6)
@@ -80,7 +80,7 @@ namespace iyak {
 
     int W=50, C=30;
     _model.set_energy_params("~T2004~", W, C, 0., false);
-    _model.set_hyper_param(0.1, 0.1, 0.1, -1);
+    _model.set_hyper_param(0.1,0.1,0.1,0.1,-1);
 
     _qr.set_fq_fname(_dir+"/1.fq");
     while (not _qr.is_end()) {

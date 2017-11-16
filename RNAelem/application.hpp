@@ -40,6 +40,7 @@ namespace iyak {
 
     double eps;
     double rho_s;
+    double rho_theta;
     double rho_lambda;
     double tau;
     double lambda_init;
@@ -52,6 +53,7 @@ namespace iyak {
     bool no_rss = false;
     bool no_prf = false;
     bool no_ene = false;
+    bool theta_softmax=false;
 
     int mode;
     enum PROGRAM_MODE {
@@ -158,6 +160,13 @@ namespace iyak {
       .add_option("--rho-s")
       .help("rho: regularization scaler.")
       .dest("rho_s")
+      .set_default(1e-1)
+      .metavar("DOUBLE[0,]");
+
+      _parser
+      .add_option("--rho-theta")
+      .help("rho: regularization scaler.")
+      .dest("rho_theta")
       .set_default(1e-1)
       .metavar("DOUBLE[0,]");
 
@@ -270,6 +279,18 @@ namespace iyak {
       .set_default(1)
       .metavar("INT");
 
+      _parser
+      .add_option("--no-shuffle")
+      .help("train without shuffled negative sequences")
+      .dest("no_shuffle")
+      .action("store_true");
+
+      _parser
+      .add_option("--theta-softmax")
+      .help("apply softmax function to theta parameter")
+      .dest("theta_softmax")
+      .action("store_true");
+
       auto const options = _parser.parse_args(argc, argv);
       auto const args = _parser.args();
 
@@ -337,6 +358,8 @@ namespace iyak {
 
       eps = (double)options.get("eps");
       rho_s = (double)options.get("rho_s");
+      rho_theta=(double)options.get("rho_theta");
+      theta_softmax=options.get("theta_softmax");
       rho_lambda = (double)options.get("rho_lambda");
       tau = (double)options.get("tau");
       lambda_init = (double)options.get("lambda_init");

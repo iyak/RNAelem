@@ -162,7 +162,7 @@ namespace iyak {
         }
         if (debug&DBG_FIX_RSS) _m.em.fix_rss(_rss);
 
-        /* given training set */
+        /* training set, given by user */
         _m.set_seq(_seq);
         _m.set_ws(qual,_convo_kernel,_pseudo_cov);
         _wsL=&(_m._ws);
@@ -211,14 +211,23 @@ namespace iyak {
           _fn += logNL(divL(_ZL,_ZwL));
         }
 
-        for (int i=0; i<size(_dEN); ++i) {
-          double tot=0;
-          for (int j=0;j<size(_dEN[i]);++j)tot+=dENn[i][j]-dENnw[i][j];
-          for (int j=0; j<size(_dEN[i]); ++j) {
-            double tmp=dENn[i][j]-dENnw[i][j];
-            double p=exp(_m.mm.theta()[i][j]);
-            _dEN[i][j]+=(1-p)*tmp-p*(tot-tmp);
+        /* local update */
+        if(_m.theta_softmax()){
+          for(int i=0;i<size(_dEN);++i) {
+            double tot=0;
+            for(int j=0;j<size(_dEN[i]);++j)
+              tot+=dENn[i][j]-dENnw[i][j];//the order prevents digit reduction
+            for(int j=0;j<size(_dEN[i]);++j){
+              double tmp=dENn[i][j]-dENnw[i][j];
+              double p=exp(_m.mm.theta()[i][j]);
+              _dEN[i][j]+=(1-p)*tmp-p*(tot-tmp);
+            }
           }
+        }
+        else{
+          for(int i=0;i<size(_dEN);++i)
+            for(int j=0;j<size(_dEN[i]);++j)
+              _dEN[i][j]+=dENn[i][j]-dENnw[i][j];
         }
         for (int i=0; i<size(_dEH); ++i)
           _dEH[i]+=dEHn[i]-dEHnw[i];
@@ -717,7 +726,8 @@ namespace iyak {
     /* mask */
     VI _vary_x;
     string flatten(V const& x, V const& gr);
-    void set_mask_boundary(RNAelem& motif);
+    void set_mask_bounds(RNAelem& motif);
+    void set_mask_regularization(RNAelem& motif);
     void set_train_params(VI const& x);
 
     /* function */
@@ -776,24 +786,31 @@ namespace iyak {
       _motif->set_lambda(_lambda_init);
       _motif->pack_params(_params);
       if (_mode & TR_MASK) {
-        set_mask_boundary(model);
+        set_mask_bounds(model);
+        set_mask_regularization(model);
         cry("format: 'index:x:gr, ..., fn:fn'");
       } else {
         set_bounds(model);
+        set_regularization(model);
       }
       lap();
       _cnt = 0;
-      if(_mode&TR_NO_SHUFFLE)_opt.minimize(_params, *this);
-      else _adam.minimize(*this,_params,_max_iter);
-      if(_mode&TR_NO_SHUFFLE)_motif->unpack_params(_opt.best_x());
-      else _motif->unpack_params(_adam.x());
+      if(_mode&TR_NO_SHUFFLE){
+        _opt.minimize(_params, *this);
+        _motif->unpack_params(_opt.best_x());
+      }
+      else {
+        _adam.minimize(*this,_params,_max_iter);
+        _motif->unpack_params(_adam.x());
+      }
       double time = lap();
       cry("wall clock time per eval:", time / _cnt);
     }
 
     int operator() (V const& x, double& fn, V& gr) {
       _motif->unpack_params(x);
-      _motif->mm.calc_theta();
+      if(_motif->theta_softmax())
+        _motif->mm.calc_theta();
       fn=0.;
       gr.assign(size(x),0.);
       _sum_eff=0.;
