@@ -115,7 +115,7 @@ namespace iyak {
           _x[i]=_xl[i];
       if(2==_xb[i] or 3==_xb[i])
         if(_xr[i]<_x[i])
-          _x[i]=_xr[i];
+          _x[i]=_xu[i];
     }
     template<class T>
     void minimize(
@@ -129,7 +129,6 @@ namespace iyak {
       _x=x0;
       _xl.resize(size(x0),-inf);
       _xu.resize(size(x0),inf);
-      _xu.resize(size(x0),0);
       _xr.resize(size(x0),0);
       V gr(size(x0),0);
       double y=0;
