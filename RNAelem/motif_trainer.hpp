@@ -49,13 +49,14 @@ namespace iyak {
     double _pseudo_cov;
     V const& _convo_kernel;
     unsigned _mode;
+    int _cnt;
     RNAelemTrainDP(RNAelem& m, int from, int to, double& sum_eff, mutex& mx_input,
                    mutex& mx_update, FastqReader& qr, Lbfgsb& opt,Adam& adam,
-                   double pseudo_cov, V const& convo_kernel, unsigned mode):
+                   double pseudo_cov, V const& convo_kernel, unsigned mode,
+                   int cnt):
     _m(m),_from(from),_to(to),_sum_eff(sum_eff),_mx_input(mx_input),
     _mx_update(mx_update),_qr(qr),_opt(opt),_adam(adam),
-    _pseudo_cov(pseudo_cov),_convo_kernel(convo_kernel),_mode(mode){};
-
+    _pseudo_cov(pseudo_cov),_convo_kernel(convo_kernel),_mode(mode),_cnt(cnt){}
     string _id;
     VI _seq;
     string _rss;
@@ -130,6 +131,10 @@ namespace iyak {
       }
     }
 
+    static long seed;
+    static std::mt19937 mt;
+    static long fmt(){return mt();}
+
     void operator() (double& fn, V& gr) {
       double sum_eff = 0.;
       _fn = 0;
@@ -154,8 +159,10 @@ namespace iyak {
             if (_to+1 <= _qr.cnt()) break;
           }
           if(!(_mode&TR_NO_SHUFFLE)){
-            char neg_s[MAX_SEQLEN]="";
             string s;seq_itos(_seq,s);
+            mt.seed((int)count(s.begin(),s.end(),s[0])+_cnt);
+            ushuffle::set_randfunc(fmt);
+            char neg_s[MAX_SEQLEN]="";
             ushuffle::shuffle(s.c_str(),neg_s,size(s),2);
             seq_stoi(neg_s,neg);
           }
@@ -826,7 +833,7 @@ namespace iyak {
         ClassThread<RNAelemTrainDP>
         ct(_thread,
            *_motif,_from,_to,_sum_eff,_mx_input,_mx_update,_qr,_opt,_adam,
-           _pseudo_cov,_convo_kernel,_mode);
+           _pseudo_cov,_convo_kernel,_mode,_cnt);
         ct(fn, gr);
       }
       if (_mode & TR_MASK) cry(flatten(x,gr)+"fn:"+to_str(fn));
@@ -839,6 +846,8 @@ namespace iyak {
       return 0;
     }
   };
+  long RNAelemTrainDP::seed;
+  std::mt19937 RNAelemTrainDP::mt;
 }
 #include"motif_array_trainer.hpp"
 #include"motif_mask_trainer.hpp"
