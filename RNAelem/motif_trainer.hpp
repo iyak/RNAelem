@@ -161,7 +161,6 @@ namespace iyak {
             char neg_s[MAX_SEQLEN]="";
             ushuffle::shuffle(s.c_str(),neg_s,size(s),2);
             seq_stoi(neg_s,neg);
-            cry(neg_s);;;;;
           }
         }
         if (debug&DBG_FIX_RSS) _m.em.fix_rss(_rss);

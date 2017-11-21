@@ -55,7 +55,7 @@ def build(bld):
     bld.program(
             features="cxx cxxprogram",
             cxxflags="-std=c++14 -Wall -O3 -static"
-            " -Wno-unknown-pragmas",
+            " -Wno-unknown-pragmas -ffast-math",
             source="RNAelem/main.cpp",
             includes="RNAelem RNAelem/ushuffle",
             target="bin/RNAelem",
@@ -73,7 +73,7 @@ def build(bld):
     bld.program(
             features="test",
             cxxflags="-std=c++14 -Wall -O3"
-            " -Wno-unknown-pragmas",
+            " -Wno-unknown-pragmas -ffast-math",
             source="RNAelem-test/test.cpp",
             includes="RNAelem RNAelem-test"
             " RNAelem-test/gtest/include",
@@ -84,7 +84,7 @@ def build(bld):
     bld.program(
             features="test",
             cxxflags="-std=c++14 -Wall -O3"
-            " -Wno-unknown-pragmas",
+            " -Wno-unknown-pragmas -ffast-math",
             source="RNAelem-test/test-exact.cpp",
             includes="RNAelem RNAelem-test"
             " RNAelem-test/gtest/include",
