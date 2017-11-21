@@ -152,6 +152,28 @@ int main(int const argc, char const* argv[]) {
 
         break;
       }
+
+      case App::PM_GENNEG: {
+        FastqReader qr;
+        qr.set_fq_fname(app.seq_fname);
+        for(int i=0;i<app.max_iter;++i){
+          qr.clear();
+          while(not qr.is_end()){
+            string id,rss;
+            VI seq,qual,neg;
+            qr.read_seq(id,seq,qual,rss);
+            string s;seq_itos(seq,s);
+            srand((int)std::count(s.begin(),s.end(),s[0])+i);
+            ushuffle::set_randfunc(long_rand);
+            char neg_s[MAX_SEQLEN]="";
+            ushuffle::shuffle(s.c_str(),neg_s,size(s),2);
+            seq_stoi(string(neg_s),neg);
+            dat(1,">iter:"+to_str(i)+";seq:"+to_str(qr.cnt())+";orig:\""+id+"\"");
+            dat(1,neg_s);
+          }
+        }
+        break;
+      }
     }
   } catch (std::runtime_error& e) {
     if (debug&DBG_CORE_FILE) {

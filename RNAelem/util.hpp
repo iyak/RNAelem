@@ -112,7 +112,10 @@ namespace iyak {
   /* debug log */
   void _format(std::ostream& c) {c<<std::endl;}
   template<class T, class...A>
-  void _format(std::ostream& c, T const& t, A const&...a) {c<<t<<' ';_format(c, a...);}
+  void _format(std::ostream& c,T const& t,A const&...a){
+    c<<t<<(0==sizeof...(a)?"":" ");
+    _format(c, a...);
+  }
   template<class...A>void cry(A const&...a){_format(std::cerr, a...);}
   template<class...A>void die(A const&...a){cry(a...);throw std::runtime_error("");}
   template<class...A>void say(A const&...a){if(debug&DBG_VERBOSE){cry(a...);}}
@@ -389,6 +392,8 @@ namespace iyak {
         y.push_back(i);
     return y;
   }
+
+  long long_rand(){return static_cast<long>(rand());}
 }
 
 #endif /* util_h */

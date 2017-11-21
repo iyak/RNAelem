@@ -48,6 +48,22 @@ namespace iyak {
 
     public:
 
+    void write_seq(string const& id,VI const& seq,VI const& q,string const& rss){
+      dat(1,id);
+      string tmp;
+      seq_itos(seq,tmp);
+      dat(1,tmp);
+      dat(1,'+');
+      qual_itos(q,tmp);
+      dat(1,tmp);
+    }
+
+    void static qual_itos(VI const& qual,string & s,int base=33) {
+      s.resize(qual.size());
+      for (int i=0; i < size(qual); ++ i)
+        s[i] = char(base+qual[i]);
+    }
+
     void static qual_stoi(string const& s, VI& qual, int base=33) {
       qual.resize(s.size());
       for (int i=0; i < size(s); ++ i) {

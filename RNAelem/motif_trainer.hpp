@@ -131,10 +131,6 @@ namespace iyak {
       }
     }
 
-    static long seed;
-    static std::mt19937 mt;
-    static long fmt(){return mt();}
-
     void operator() (double& fn, V& gr) {
       double sum_eff = 0.;
       _fn = 0;
@@ -160,11 +156,12 @@ namespace iyak {
           }
           if(!(_mode&TR_NO_SHUFFLE)){
             string s;seq_itos(_seq,s);
-            mt.seed((int)count(s.begin(),s.end(),s[0])+_cnt);
-            ushuffle::set_randfunc(fmt);
+            srand((int)count(s.begin(),s.end(),s[0])+_cnt);
+            ushuffle::set_randfunc(long_rand);
             char neg_s[MAX_SEQLEN]="";
             ushuffle::shuffle(s.c_str(),neg_s,size(s),2);
             seq_stoi(neg_s,neg);
+            cry(neg_s);;;;;
           }
         }
         if (debug&DBG_FIX_RSS) _m.em.fix_rss(_rss);
@@ -846,11 +843,9 @@ namespace iyak {
       return 0;
     }
   };
-  long RNAelemTrainDP::seed;
-  std::mt19937 RNAelemTrainDP::mt;
 }
 #include"motif_array_trainer.hpp"
 #include"motif_mask_trainer.hpp"
 #include"motif_eval.hpp"
 
-#endif /* motif_trainer_h */
+ #endif /* motif_trainer_h */

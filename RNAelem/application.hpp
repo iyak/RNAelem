@@ -64,6 +64,7 @@ namespace iyak {
       PM_EVAL,
       PM_DEVELOP,
       PM_LOGO,
+      PM_GENNEG,
     };
     unsigned tr_mode = TR_NORMAL;
 
@@ -302,6 +303,7 @@ namespace iyak {
       "eval"==args[0]? PM_EVAL:
       "develop"==args[0]? PM_DEVELOP:
       "logo"==args[0]? PM_LOGO:
+      "gen-neg"==args[0]? PM_GENNEG:
       -1;
       array = (int)options.get("array");
       thread = (int)options.get("thread");
