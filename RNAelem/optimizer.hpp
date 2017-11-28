@@ -97,25 +97,29 @@ namespace iyak {
     bool converged(V const& gr,double y){
       return norm2(gr)<(y+1.)*1.e-5;
     }
-    void before_update(int i,double& y,V& gr){
+    void before_update(double& y,V& gr){
       /* regularize */
-      if(1==_xr[i]){
-        y+=_rho*abs(_x[i]);
-        gr[i]+=_rho*0<_x[i]?1:-1;
-      }
-      else if(2==_xr[i]){
-        y+=_rho*_x[i]*_x[i];
-        gr[i]+=_rho*_x[i]/2.;
+      for(int i=0;i<size(_x);++i){
+        if(1==_xr[i]){
+          y+=_rho*abs(_x[i]);
+          gr[i]+=_rho*0<_x[i]?1:-1;
+        }
+        else if(2==_xr[i]){
+          y+=_rho*_x[i]*_x[i]/2.;
+          gr[i]+=_rho*_x[i];
+        }
       }
     }
-    void after_update(int i,double& y,V& gr){
+    void after_update(double& y,V& gr){
       /* clip bounds */
-      if(1==_xb[i] or 3==_xb[i])
-        if(_x[i]<_xl[i])
-          _x[i]=_xl[i];
-      if(2==_xb[i] or 3==_xb[i])
-        if(_xr[i]<_x[i])
-          _x[i]=_xu[i];
+      for(int i=0;i<size(_x);++i){
+        if(1==_xb[i] or 3==_xb[i])
+          if(_x[i]<_xl[i])
+            _x[i]=_xl[i];
+        if(2==_xb[i] or 3==_xb[i])
+          if(_xu[i]<_x[i])
+            _x[i]=_xu[i];
+      }
     }
     template<class T>
     void minimize(
@@ -132,18 +136,21 @@ namespace iyak {
       _xr.resize(size(x0),0);
       V gr(size(x0),0);
       double y=0;
+      double beta1t=_beta1,beta2t=_beta2;
       do{
         ++_t;
         f(_x,y,gr);
+        before_update(y,gr);
+        beta1t*=_beta1;
+        beta2t*=_beta2;
         for(int i=0;i<size(_x);++i){
-          before_update(i,y,gr);
           _m[i]+=(1.-_beta1)*(gr[i]-_m[i]);
           _v[i]+=(1.-_beta2)*(gr[i]*gr[i]-_v[i]);
-          double mhat=_m[i]/(1.-pow(_beta1,_t));
-          double vhat=_v[i]/(1.-pow(_beta2,_t));
+          double mhat=_m[i]/(1.-beta1t);
+          double vhat=_v[i]/(1.-beta2t);
           _x[i]-=_alpha*mhat/(sqrt(vhat)+_epsilon);
-          after_update(i,y,gr);
         }
+        after_update(y,gr);
         cry("iter:",_t,", y:",y,", |gr|:",norm2(gr));
       }while(not converged(gr,y) and _t<max_iter);
     }
@@ -221,15 +228,17 @@ namespace iyak {
       //  iprint>100  print details of every iteration including x and g;
       //  When iprint > 0, the file iterate.dat will be created to summarize the iteration.
       void set_verbosity(int n) {_iprint = n;}
-      void before_update(int i,double& y,V& gr){
+      void before_update(double& y,V& gr){
         /* regularize */
-        if(1==_xr[i]){
-          y+=_rho*abs(_x[i]);
-          gr[i]+=_rho*0<_x[i]?1:-1;
-        }
-        else if(2==_xr[i]){
-          y+=_rho*_x[i]*_x[i];
-          gr[i]+=_rho*_x[i]/2.;
+        for(int i=0;i<size(_x);++i){
+          if(1==_xr[i]){
+            y+=_rho*abs(_x[i]);
+            gr[i]+=_rho*0<_x[i]?1:-1;
+          }
+          else if(2==_xr[i]){
+            y+=_rho*_x[i]*_x[i]/2.;
+            gr[i]+=_rho*_x[i];
+          }
         }
       }
       template <typename Block>
@@ -270,7 +279,7 @@ namespace iyak {
                 _iprint, &_lsave[0], &_isave[0], &_dsave[0]);
             if (strncmp(&_task[0], "FG", 2) == 0) {
               int st = compute_fn_gr(_x, _f, _g);
-              for(int i=0;i<size(_x);++i)before_update(i,_f,_g);
+              for(int i=0;i<size(_x);++i)before_update(_f,_g);
               ++_fdfcount;
               if (_f < _best_fn) { _best_fn = _f; _best_x = _x;}
               if (st) return;
