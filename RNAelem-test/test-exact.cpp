@@ -79,6 +79,7 @@ namespace iyak {
      */
 
     int W=50, C=30;
+    _model.set_theta_softmax(false);
     _model.set_energy_params("~T2004~", W, C, 0., false);
     _model.set_hyper_param(0.1,0.1,0.1,0.1,-1);
 

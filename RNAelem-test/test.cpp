@@ -72,17 +72,18 @@ namespace iyak {
     mutex a, b;
 
     RNAelemDPTest():t(TR_NORMAL|TR_NO_SHUFFLE,1) {
+      model.set_theta_softmax(false);
       model.set_energy_params("~T2004~", large, large, 0., true);
       model.set_hyper_param(0.,0.,0.,1.,-1.);
       t.set_preprocess({1}, 0);
-      t.set_conditions(-1, 1e-4, 0);
+      t.set_conditions(-1, 1e-4, 0,2);
     }
   };
 
   TEST_F(RNAelemDPTest, PATH_COUNT_CASES) {
 
     RNAelemDP f(model,t._from,t._to,t._sum_eff,t._mx_input,t._mx_update, t._qr,
-                t._opt,t._adam,t._pseudo_cov,t._convo_kernel,t._mode,0);
+                t._opt,t._adam,t._pseudo_cov,t._convo_kernel,t._mode,0,2);
 
     //EXPECT_TRUE(debug & DBG_NO_ENE);
     EXPECT_TRUE(debug & DBG_NO_THETA);
@@ -173,7 +174,7 @@ namespace iyak {
   TEST_F(RNAelemDPTest, EMISSION_COUNT_CASES) {
 
     RNAelemDP f(model,t._from,t._to,t._sum_eff,t._mx_input,t._mx_update,t._qr,
-                t._opt,t._adam,t._pseudo_cov,t._convo_kernel,t._mode,0);
+                t._opt,t._adam,t._pseudo_cov,t._convo_kernel,t._mode,0,2);
 
     //EXPECT_TRUE(debug & DBG_NO_ENE);
     EXPECT_TRUE(debug & DBG_NO_THETA);
@@ -184,45 +185,16 @@ namespace iyak {
     auto& ec = f._dEN;
 
     f.eval("A", ".");
-    EXPECT_EQ(to_str(ec), to_str(VV{{0,1,0,0,0},{0,1,0,0,0}}));
+    EXPECT_EQ(to_str(ec), to_str(VV{{1,0,0,0},{1,0,0,0}}));
 
     f.eval("CAG", "(.)");
-    EXPECT_EQ(to_str(ec), to_str(VV{{0,1,2,2,0},{0,1,0,0,0}}));
+    EXPECT_EQ(to_str(ec), to_str(VV{{1,2,2,0},{1,0,0,0}}));
 
     f.eval("CACGG", "(...)");
-    EXPECT_EQ(to_str(ec), to_str(VV{{0,4,10,11,0},{0,3,4,3,0}}));
+    EXPECT_EQ(to_str(ec), to_str(VV{{4,10,11,0},{3,4,3,0}}));
 
     f.eval("CAGAU", "(.)..");
-    EXPECT_EQ(to_str(ec), to_str(VV{{0,7,5,5,3},{0,3,0,0,2}}));
-  }
-
-  TEST_F(RNAelemDPTest, FN_GR_CASES) {
-
-    RNAelemDP f(model,t._from,t._to,t._sum_eff,t._mx_input,t._mx_update,t._qr,
-                t._opt,t._adam,t._pseudo_cov,t._convo_kernel,t._mode,0);
-
-    //EXPECT_TRUE(debug & DBG_NO_ENE);
-    EXPECT_TRUE(debug & DBG_NO_THETA);
-    EXPECT_TRUE(debug & DBG_FIX_RSS);
-    EXPECT_TRUE(debug & DBG_NO_TURN);
-
-    f._m.set_motif_pattern(".");
-
-    f.eval_fn("A", ".", "#!");
-    EXPECT_NEAR(log(2./2.), f.fn(), 1e-15);
-    EXPECT_EQ(to_str(V{0,0.5,0,0,0, 0,-0.5,0,0,0, 0}), to_str(f.gr()));
-
-    f.eval_fn("C", ".", "#\"");
-    EXPECT_NEAR(log(2./3.), f.fn(), 1e-15);
-    EXPECT_EQ(to_str(V{0,0,1./6.,0,0, 0,0,-1./6.,0,0, 0}), to_str(f.gr()));
-
-    f.eval_fn("CAG", "(.)", "!$#!");
-    EXPECT_NEAR(log(2./3.), f.fn(), 1e-15);
-    EXPECT_EQ(to_str(V{0,0.5,0,0,0, 0,-0.5,0,0,0, 0}), to_str(f.gr()));
-
-    f.eval_fn("CAG", "(.)", "!#!!");
-    EXPECT_NEAR(log(2./2.), f.fn(), 1e-15);
-    EXPECT_EQ(to_str(V{0,0.5,0,0,0, 0,-0.5,0,0,0, 0}), to_str(f.gr()));
+    EXPECT_EQ(to_str(ec), to_str(VV{{7,5,5,3},{3,0,0,2}}));
   }
 }
 
