@@ -45,13 +45,13 @@ namespace iyak {
     mutex& _mx_update;
     FastqReader& _qr;
     unsigned _mode;
-    int _cnt;
+    int _iter_cnt;
     int _kmer_shuf;
     RNAelemTrainDP(RNAelem& m, int from, int to, double& sum_eff, mutex& mx_input,
-                   mutex& mx_update, FastqReader& qr,unsigned mode,int cnt,
+                   mutex& mx_update, FastqReader& qr,unsigned mode,int iter_cnt,
                    int kmer_shuf):
     _m(m),_from(from),_to(to),_sum_eff(sum_eff),_mx_input(mx_input),
-    _mx_update(mx_update),_qr(qr),_mode(mode),_cnt(cnt),
+    _mx_update(mx_update),_qr(qr),_mode(mode),_iter_cnt(iter_cnt),
     _kmer_shuf(kmer_shuf){}
     string _id;
     VI _seq;
@@ -152,7 +152,7 @@ namespace iyak {
           }
           if(!(_mode&TR_NO_SHUFFLE)){
             string s;seq_itos(_seq,s);
-            srand((int)count(s.begin(),s.end(),s[0])+_cnt);
+            srand((int)count(s.begin(),s.end(),s[0])+_iter_cnt);
             ushuffle::set_randfunc(long_rand);
             char neg_s[MAX_SEQLEN]="";
             ushuffle::shuffle(s.c_str(),neg_s,size(s),_kmer_shuf);
@@ -169,7 +169,7 @@ namespace iyak {
         init_outside_tables(true,true);
         _m.compute_inside(InsideFun(this,ws()));
         if (not std::isfinite(_ZL = part_func())) {
-          if (0==_cnt) cry("skipped:", _id);
+          if (0==_iter_cnt) cry("skipped:", _id);
           continue;
         }
         _m.compute_outside(OutsideFun(this,ws(),_ZL,dEHn,dENn));
@@ -196,7 +196,7 @@ namespace iyak {
           init_outside_tables(true,true);
           _m.compute_inside(InsideFun(this,ws()));
           if (not std::isfinite(_ZL = part_func())) {
-            if (0==_cnt) cry("skipped:", _id);
+            if (0==_iter_cnt) cry("skipped:", _id);
             continue;
           }
           _m.compute_outside(OutsideFun(this,ws(),_ZL,dEHn,dENn));
