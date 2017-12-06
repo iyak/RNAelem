@@ -62,7 +62,7 @@ namespace iyak {
     string _id;
     VI _seq;
     string _rss;
-    V* _wsL;
+    V& ws(){return _m._ws;}
 
     VVVV _inside; /* L+1 W E S */
     VV _inside_o; /* L+1 S */
@@ -173,21 +173,21 @@ namespace iyak {
 
         init_inside_tables();
         init_outside_tables(true,true);
-        _m.compute_inside(InsideFun(this,*_wsL));
+        _m.compute_inside(InsideFun(this,ws()));
         if (not std::isfinite(_ZL = part_func())) {
           if (0==_opt.fdfcount()) cry("skipped:", _id);
           continue;
         }
-        _m.compute_outside(OutsideFun(this,*_wsL,_ZL,dEHn,dENn));
-        if(-inf<_wsL->back()){//seq without motif
+        _m.compute_outside(OutsideFun(this,ws(),_ZL,dEHn,dENn));
+        if(-inf<ws().back()){//seq without motif
           init_outside_tables(false,true);
           _ZwL=part_func(false,true);
-          _m.compute_outside(OutsideFun(this,*_wsL,_ZwL,dEHnw,dENnw));
+          _m.compute_outside(OutsideFun(this,ws(),_ZwL,dEHnw,dENnw));
         }
         else{//seq with motif
           init_outside_tables(true,false);
           _ZwL=part_func(true,false);
-          _m.compute_outside(OutsideFun(this,*_wsL,_ZwL,dEHnw,dENnw));
+          _m.compute_outside(OutsideFun(this,ws(),_ZwL,dEHnw,dENnw));
         }
         /* local update */
         _fn += logNL(divL(_ZL,_ZwL));
@@ -196,21 +196,19 @@ namespace iyak {
           /* negative example */
           _m.set_seq(neg);
           for(auto& q:qual)q=0;
-          qual.back()=1;
           _m.set_ws(qual,_convo_kernel,_pseudo_cov);
-          _wsL=&(_m._ws);
 
           init_inside_tables();
           init_outside_tables(true,true);
-          _m.compute_inside(InsideFun(this,*_wsL));
+          _m.compute_inside(InsideFun(this,ws()));
           if (not std::isfinite(_ZL = part_func())) {
             if (0==_opt.fdfcount()) cry("skipped:", _id);
             continue;
           }
-          _m.compute_outside(OutsideFun(this,*_wsL,_ZL,dEHn,dENn));
+          _m.compute_outside(OutsideFun(this,ws(),_ZL,dEHn,dENn));
           init_outside_tables(false,true); //without motif
           _ZwL=part_func(false,true);
-          _m.compute_outside(OutsideFun(this,*_wsL,_ZwL,dEHnw,dENnw));
+          _m.compute_outside(OutsideFun(this,ws(),_ZwL,dEHnw,dENnw));
           /* local update */
           _fn += logNL(divL(_ZL,_ZwL));
         }
