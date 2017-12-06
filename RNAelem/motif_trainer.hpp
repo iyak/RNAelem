@@ -812,14 +812,14 @@ namespace iyak {
         _adam.minimize(*this,_params,_max_iter);
         _motif->unpack_params(_adam.x());
       }
+      if(_motif->theta_softmax())
+        _motif->mm.calc_theta();
       double time = lap();
       cry("wall clock time per eval:", time / _cnt);
     }
 
     int operator() (V const& x, double& fn, V& gr) {
       _motif->unpack_params(x);
-      if(_motif->theta_softmax())
-        _motif->mm.calc_theta();
       fn=0.;
       gr.assign(size(x),0.);
       _sum_eff=0.;

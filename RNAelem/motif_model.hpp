@@ -156,12 +156,11 @@ namespace iyak {
 
     void unpack_params(V const& from) {
       int i = 0;
+      for(auto& wi:_theta_softmax?mm.s():mm.theta())
+        for(auto& wij:wi)
+          wij=from[i++];
       if(_theta_softmax)
-        for(auto& wi:mm.s())
-          for(auto& wij:wi)wij=from[i++];
-      else
-        for(auto& wi:mm.theta())
-          for(auto& wij:wi)wij=from[i++];
+        mm.calc_theta();
       for (auto& li: _lambda)
         li = from[i++];
     }
