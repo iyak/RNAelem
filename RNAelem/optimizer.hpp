@@ -75,11 +75,12 @@ namespace iyak {
     V _m{},_v{}; //moment vectors
     double _m0i=0,_v0i=0; //initial moment vector elements
     double _epsilon=1e-8; //stepsize auxiliary parameter
-    double _rho=0.1; //regularization term
+    V _rho{}; //regularization term
     V _x{}; //parameter vector
     V _xl{},_xu{}; //boudary of x vector
     VI _xb{}; //boundary type of x vector. 1:lower 2:upper 3:both
     VI _xr{}; //regularization of x. 0:None, 1:L1, 2:L2
+    double _rgl_term; //sum of regularization terms
     int _t; //time
   public:
     Adam(){}
@@ -93,7 +94,7 @@ namespace iyak {
     void set_bounds(V& lower,V& upper,VI& xb){
       _xl=lower;_xu=upper;_xb=xb;
     }
-    void set_regularization(VI const& xr){_xr=xr;}
+    void set_regularization(VI const& xr,V const& rho){_xr=xr;_rho=rho;}
     bool converged(V const& gr,double y){
       return norm2(gr)<(y+1.)*1.e-5;
     }
@@ -101,14 +102,15 @@ namespace iyak {
       /* regularize */
       for(int i=0;i<size(_x);++i){
         if(1==_xr[i]){
-          y+=_rho*abs(_x[i]);
-          gr[i]+=_rho*0<_x[i]?1:-1;
+          _rgl_term+=_rho[i]*abs(_x[i]);
+          gr[i]+=_rho[i]*0<_x[i]?1:-1;
         }
         else if(2==_xr[i]){
-          y+=_rho*_x[i]*_x[i]/2.;
-          gr[i]+=_rho*_x[i];
+          _rgl_term+=_rho[i]*_x[i]*_x[i]/2.;
+          gr[i]+=_rho[i]*_x[i];
         }
       }
+      y+=_rgl_term;
     }
     void after_update(double& y,V& gr){
       /* clip bounds */
@@ -151,7 +153,7 @@ namespace iyak {
           _x[i]-=_alpha*mhat/(sqrt(vhat)+_epsilon);
         }
         after_update(y,gr);
-        cry("iter:",_t,", y:",y,", |gr|:",norm2(gr));
+        cry("iter:",_t,", y:",y,", |gr|:",norm2(gr),", p|x|:",_rgl_term);
       }while(not converged(gr,y) and _t<max_iter);
     }
     V& x(){return _x;}
@@ -176,7 +178,7 @@ namespace iyak {
       V      _u;
       VI     _nbd;
       VI     _xr;
-      double _rho;
+      V _rho;
       double _f;
       V      _g;
       double _factr;
@@ -196,9 +198,10 @@ namespace iyak {
       int    _iter;
       double _best_fn;
       V      _best_x;
-      Lbfgsb():c__1(1),c__11(11),_n(0),_m(5),_rho(0.1),_f(HUGE_VAL),
+      double _rgl_term;
+      Lbfgsb():c__1(1),c__11(11),_n(0),_m(5),_f(HUGE_VAL),
       _factr(1.0e7),_pgtol(1.0e-3),_maxit(200),_iprint(0),_fncount(0),
-      _grcount(0),_fdfcount(0),_fail(0),_best_fn(HUGE_VAL){}
+      _grcount(0),_fdfcount(0),_fail(0),_best_fn(HUGE_VAL),_rgl_term(0){}
       double fn() const {return _best_fn;}
       double best_fn() const {return _best_fn;}
       const V& best_x() const { return _best_x;}
@@ -212,8 +215,7 @@ namespace iyak {
       void set_initial_point(const V& x) {_x = x; _n = (int)x.size();}
       void set_num_corrections(int m) {_m = m;}
       // type of bound. nbd[i] = {0=none, 1=l, 2=l&u, 3=u}
-      void set_rho(double rho){_rho=rho;}
-      void set_regularization(VI const& xr){_xr=xr;}
+      void set_regularization(VI const& xr,V const& rho){_xr=xr;_rho=rho;}
       void set_bounds(const V& l, const V& u, 
           const VI& nbd) { _l = l; _u = u; _nbd = nbd;}
       void set_eps(double eps) { _pgtol = eps;}
@@ -230,16 +232,18 @@ namespace iyak {
       void set_verbosity(int n) {_iprint = n;}
       void before_update(double& y,V& gr){
         /* regularize */
+        _rgl_term=0.;
         for(int i=0;i<size(_x);++i){
           if(1==_xr[i]){
-            y+=_rho*abs(_x[i]);
-            gr[i]+=_rho*0<_x[i]?1:-1;
+            _rgl_term+=_rho[i]*abs(_x[i]);
+            gr[i]+=_rho[i]*0<_x[i]?1:-1;
           }
           else if(2==_xr[i]){
-            y+=_rho*_x[i]*_x[i]/2.;
-            gr[i]+=_rho*_x[i];
+            _rgl_term+=_rho[i]*_x[i]*_x[i]/2.;
+            gr[i]+=_rho[i]*_x[i];
           }
         }
+        y+=_rgl_term;
       }
       template <typename Block>
         void minimize(const V& x0, Block& compute_fn_gr) {
@@ -279,7 +283,7 @@ namespace iyak {
                 _iprint, &_lsave[0], &_isave[0], &_dsave[0]);
             if (strncmp(&_task[0], "FG", 2) == 0) {
               int st = compute_fn_gr(_x, _f, _g);
-              for(int i=0;i<size(_x);++i)before_update(_f,_g);
+              before_update(_f,_g);
               ++_fdfcount;
               if (_f < _best_fn) { _best_fn = _f; _best_x = _x;}
               if (st) return;
@@ -562,8 +566,8 @@ L111:
         /* Compute the infinity norm of the (-) projected gradient. */
         projgr(n, &l[1], &u[1], &nbd[1], &x[1], &g[1], &sbgnrm);
 
-        if (iprint >= 1) print_message("iter: %d , f: %.5g , |gr|: %.5g\n",
-            iter, *f, sbgnrm);
+        if (iprint >= 1) print_message("iter: %d , f: %.5g , |gr|: %.5g , p|x|: %.5g\n",
+            iter, *f, sbgnrm, _rgl_term);
 
         if (sbgnrm <= *pgtol) {
           /* terminate the algorithm. */
@@ -2392,8 +2396,8 @@ L1000:
             pvector("G =", g, n);
           }
         } else if (iprint > 0 && iter%iprint == 0) {
-          print_message("iter: %d , f: %.5g , |gr|: %.5g\n",
-              iter, *f, sbgnrm);
+          print_message("iter: %d , f: %.5g , |gr|: %.5g , p|x|: %.5g\n",
+              iter, *f, sbgnrm,_rgl_term);
         }
       }
       void prn3lb(int n, double *x, double *f, char *task, int iprint,

@@ -754,11 +754,15 @@ namespace iyak {
       else _adam.set_bounds(lower, upper, type);
     }
     void set_regularization(RNAelem& motif){
-      int s=0;
-      for(auto const& wi:motif.mm.theta())s+=size(wi);
-      s+=size(motif._lambda);
-      if(_mode&TR_NO_SHUFFLE)_opt.set_regularization(VI(s,2)); //L2 norm
-      else _adam.set_regularization(VI(s,2)); //L2 norm
+      int s1=0,s2=size(motif._lambda);
+      for(auto const& wi:motif.mm.theta())s1+=size(wi);
+      double rho=_motif->theta_softmax()?_motif->rho_s():_motif->rho_theta();
+      V rho1(s1,rho),rho2(s2,_motif->rho_lambda());
+      rho1.insert(rho1.end(),rho2.begin(),rho2.end());
+      if(_mode&TR_NO_SHUFFLE)
+        _opt.set_regularization(VI(s1+s2,2),rho1); //L2 norm
+      else
+        _adam.set_regularization(VI(s1+s2,2),rho1); //L2 norm
     }
 
     /* setter */
