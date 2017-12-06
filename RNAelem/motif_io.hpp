@@ -44,7 +44,7 @@ namespace iyak {
           alphs.push_back({"A","C","G","U"});
           w.push_back({});
           double tot=logsumexp(ww[i]);
-          for (int j=1; j<size(ww[i]); ++j)
+          for (int j=0; j<size(ww[i]); ++j)
             w.back().push_back(exp(ww[i][j]-tot));
           ++i;
         }
@@ -52,7 +52,7 @@ namespace iyak {
           alphs.push_back({"CG","GC","GU","UG","AU","UA"});
           double tot=logsumexp(ww[i]);
           w.push_back({});
-          for (int j=1; j<size(ww[i]); ++j)
+          for (int j=0; j<size(ww[i]); ++j)
             w.back().push_back(exp(ww[i][j]-tot));
           ++i;
         }
@@ -94,7 +94,7 @@ namespace iyak {
       dat(_out, "no-profile:", _m->no_prf());
       dat(_out, "no-energy:", _m->em.no_ene());
 
-      pict(_m->mm.pattern(), apply(logNL, _m->mm.s()));
+      pict(_m->mm.pattern(), apply(logNL,_m->mm.theta()));
     }
   };
 

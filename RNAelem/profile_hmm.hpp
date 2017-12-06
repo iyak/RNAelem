@@ -103,8 +103,9 @@ namespace iyak {
       if (')'==cr) {
         if (debug&DBG_PROOF)
           check(h==_pair[h1], h, _pair[h1]);
-        return (debug&DBG_NO_THETA? oneL:
-                _theta[_theta_id[h1]][bp[i][j]]);
+        return 0==bp[i][j] or debug&DBG_NO_THETA?
+          oneL:
+          _theta[_theta_id[h1]][bp[i][j]-1];
       }
       if (debug&DBG_PROOF)
         check((('z'==cl and 'z'==cr) or
@@ -114,13 +115,16 @@ namespace iyak {
                ('*'==cl and 'o'==cr) or
                ('o'==cl and 'o'==cr)),
               "theta", cl, cr);
-      return debug&DBG_NO_THETA? oneL:
-      _theta[_theta_id[h]][i] +
-      _theta[_theta_id[h1]][j];
+      return debug&DBG_NO_THETA?
+        oneL:
+        (0==i?oneL:_theta[_theta_id[h]][i-1])+
+        (0==j?oneL:_theta[_theta_id[h1]][j-1]);
     }
 
     double theta(int const h, int const j) {
-      return debug&DBG_NO_THETA? oneL: _theta[_theta_id[h]][j];
+      return 0==j or debug&DBG_NO_THETA?
+        oneL:
+        _theta[_theta_id[h]][j-1];
     }
 
     /* setter */
@@ -133,8 +137,10 @@ namespace iyak {
 
         if (debug&DBG_PROOF)
           check(h==_pair[h1], h, _pair[h1]);
-        double &c = e[_theta_id[h1]][bp[i][j]];
-        c += w;
+        if(0<bp[i][j]){
+            double &c = e[_theta_id[h1]][bp[i][j]-1];
+            c += w;
+        }
 
       } else {
 
@@ -148,17 +154,22 @@ namespace iyak {
 
                 "add_emit_count", cl, cr);
 
-        double &c = e[_theta_id[h]][i];
-        c += w;
-        double &d = e[_theta_id[h1]][j];
-        d += w;
-
+        if(0!=i){
+          double &c = e[_theta_id[h]][i-1];
+          c += w;
+        }
+        if(0!=j){
+          double &d = e[_theta_id[h1]][j-1];
+          d += w;
+        }
       }
     }
 
     void add_emit_count(VV& e, int const h, int const j, double const w) {
-      double &c = e[_theta_id[h]][j];
-      c += w;
+      if(0!=j){
+        double &c = e[_theta_id[h]][j-1];
+        c += w;
+      }
     }
 
     void build(string const& str) {
@@ -243,17 +254,17 @@ namespace iyak {
     void set_s_theta() {
 
       _theta_id.assign(_node.size(),-1);
-      _s.assign(1,V(nchar,0));
+      _s.assign(1,V(nchar-1,0));
 
       for (int h=0; h < (int)_node.size(); ++h) {
         switch (_node[h]) {
           case ')':
             _theta_id[h]=(int)_s.size();
-            _s.push_back(V(nchar2,0));
+            _s.push_back(V(nchar2-1,0));
             break;
           case '.':
             _theta_id[h]=(int)_s.size();
-            _s.push_back(V(nchar,0));
+            _s.push_back(V(nchar-1,0));
             break;
           case '*':case 'z':case 'o':
             _theta_id[h]=0;
