@@ -50,13 +50,15 @@ namespace iyak {
     V const& _convo_kernel;
     unsigned _mode;
     int _cnt;
+    int _kmer_shuf;
     RNAelemTrainDP(RNAelem& m, int from, int to, double& sum_eff, mutex& mx_input,
                    mutex& mx_update, FastqReader& qr, Lbfgsb& opt,Adam& adam,
                    double pseudo_cov, V const& convo_kernel, unsigned mode,
-                   int cnt):
+                   int cnt,int kmer_shuf):
     _m(m),_from(from),_to(to),_sum_eff(sum_eff),_mx_input(mx_input),
     _mx_update(mx_update),_qr(qr),_opt(opt),_adam(adam),
-    _pseudo_cov(pseudo_cov),_convo_kernel(convo_kernel),_mode(mode),_cnt(cnt){}
+    _pseudo_cov(pseudo_cov),_convo_kernel(convo_kernel),_mode(mode),_cnt(cnt),
+    _kmer_shuf(kmer_shuf){}
     string _id;
     VI _seq;
     string _rss;
@@ -159,7 +161,7 @@ namespace iyak {
             srand((int)count(s.begin(),s.end(),s[0])+_cnt);
             ushuffle::set_randfunc(long_rand);
             char neg_s[MAX_SEQLEN]="";
-            ushuffle::shuffle(s.c_str(),neg_s,size(s),2);
+            ushuffle::shuffle(s.c_str(),neg_s,size(s),_kmer_shuf);
             seq_stoi(neg_s,neg);
           }
         }
@@ -168,7 +170,6 @@ namespace iyak {
         /* training set, given by user */
         _m.set_seq(_seq);
         _m.set_ws(qual,_convo_kernel,_pseudo_cov);
-        _wsL=&(_m._ws);
 
         init_inside_tables();
         init_outside_tables(true,true);
@@ -698,6 +699,7 @@ namespace iyak {
     int L; /* seq size */
     int N; /* num of seqs */
     int _cnt;
+    int _kmer_shuf;
     V _params;
     V _convo_kernel {1};
     double _pseudo_cov;
@@ -773,8 +775,10 @@ namespace iyak {
       _pseudo_cov = p;
     }
 
-    void set_conditions(int max_iter, double epsilon, double lambda_init) {
+    void set_conditions(int max_iter, double epsilon, double lambda_init,
+                        int kmer_shuf) {
       _max_iter = max_iter;
+      _kmer_shuf=kmer_shuf;
       if(_mode&TR_NO_SHUFFLE){
         _opt.set_maxit(max_iter - 1);
         _opt.set_eps(epsilon);
@@ -829,7 +833,7 @@ namespace iyak {
         ClassThread<RNAelemTrainDP>
         ct(_thread,
            *_motif,_from,_to,_sum_eff,_mx_input,_mx_update,_qr,_opt,_adam,
-           _pseudo_cov,_convo_kernel,_mode,_cnt);
+           _pseudo_cov,_convo_kernel,_mode,_cnt,_kmer_shuf);
         ct(fn, gr);
       }
       if (_mode & TR_MASK) cry(flatten(x,gr)+"fn:"+to_str(fn));

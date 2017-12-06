@@ -64,7 +64,8 @@ int main(int const argc, char const* argv[]) {
         RNAelemTrainer train(app.tr_mode, app.thread);
         train.set_fq_name(app.seq_fname);
         train.set_preprocess(app.convo_kernel, app.pseudo_cov);
-        train.set_conditions(app.max_iter, app.eps, app.lambda_init);
+        train.set_conditions(app.max_iter, app.eps, app.lambda_init,
+                             app.kmer_shuf);
 
         if (app.tr_mode & TR_MASK)
           train.set_train_params(app.param_set);
@@ -106,7 +107,8 @@ int main(int const argc, char const* argv[]) {
         RNAelemTrainer train(app.tr_mode, app.thread);
         train.set_fq_name(app.seq_fname);
         train.set_preprocess(app.convo_kernel, app.pseudo_cov);
-        train.set_conditions(app.max_iter, app.eps, app.lambda_init);
+        train.set_conditions(app.max_iter, app.eps, app.lambda_init,
+                             app.kmer_shuf);
 
         if (app.tr_mode & TR_MASK)
           train.set_train_params(app.param_set);
@@ -166,7 +168,7 @@ int main(int const argc, char const* argv[]) {
             srand((int)std::count(s.begin(),s.end(),s[0])+i);
             ushuffle::set_randfunc(long_rand);
             char neg_s[MAX_SEQLEN]="";
-            ushuffle::shuffle(s.c_str(),neg_s,size(s),2);
+            ushuffle::shuffle(s.c_str(),neg_s,size(s),app.kmer_shuf);
             seq_stoi(string(neg_s),neg);
             dat(1,">iter:"+to_str(i)+";seq:"+to_str(qr.cnt())+";orig:\""+id+"\"");
             dat(1,neg_s);
