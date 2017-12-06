@@ -387,7 +387,7 @@ namespace iyak {
 
   VI bit_index(unsigned x) {
     VI y {};
-    for (int i=0; i<8*sizeof(unsigned); ++i, x>>=1)
+    for (unsigned i=0; i<8*sizeof(unsigned); ++i, x>>=1)
       if (x & 0x1)
         y.push_back(i);
     return y;
