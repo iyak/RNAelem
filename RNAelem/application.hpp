@@ -49,6 +49,7 @@ namespace iyak {
     V convo_kernel {};
     double pseudo_cov;
     VI param_set {};
+    int kmer_shuf;
 
     bool no_rss = false;
     bool no_prf = false;
@@ -292,6 +293,13 @@ namespace iyak {
       .dest("theta_softmax")
       .action("store_true");
 
+      _parser
+      .add_option("--kmer-shuf")
+      .help("k of kmer-shuffling to generate negative set")
+      .dest("kmer_shuf")
+      .set_default(2)
+      .metavar("INT");
+
       auto const options = _parser.parse_args(argc, argv);
       auto const args = _parser.args();
 
@@ -366,6 +374,7 @@ namespace iyak {
       tau = (double)options.get("tau");
       lambda_init = (double)options.get("lambda_init");
       lambda_prior = (double)options.get("lambda_prior");
+      kmer_shuf=(int)options.get("kmer_shuf");
 
       min_bpp = (double)options.get("min_bpp");
       convo_kernel = split<double>(options["convo_kernel"], ",");
