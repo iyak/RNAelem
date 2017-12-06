@@ -67,8 +67,6 @@ namespace iyak {
     (
      "--fastq", _fq_name,
      "--motif-model", get_ostream(4),
-     "--convo-kernel", paste(_convo_kernel, ","),
-     "--pseudo-cov", to_str(_pseudo_cov),
      "--array", to_str(n),
      "--tmp", get_ostream(4)
      );

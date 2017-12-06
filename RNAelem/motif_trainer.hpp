@@ -44,20 +44,14 @@ namespace iyak {
     mutex& _mx_input;
     mutex& _mx_update;
     FastqReader& _qr;
-    Lbfgsb& _opt;
-    Adam& _adam;
-    double _pseudo_cov;
-    V const& _convo_kernel;
     unsigned _mode;
     int _cnt;
     int _kmer_shuf;
     RNAelemTrainDP(RNAelem& m, int from, int to, double& sum_eff, mutex& mx_input,
-                   mutex& mx_update, FastqReader& qr, Lbfgsb& opt,Adam& adam,
-                   double pseudo_cov, V const& convo_kernel, unsigned mode,
-                   int cnt,int kmer_shuf):
+                   mutex& mx_update, FastqReader& qr,unsigned mode,int cnt,
+                   int kmer_shuf):
     _m(m),_from(from),_to(to),_sum_eff(sum_eff),_mx_input(mx_input),
-    _mx_update(mx_update),_qr(qr),_opt(opt),_adam(adam),
-    _pseudo_cov(pseudo_cov),_convo_kernel(convo_kernel),_mode(mode),_cnt(cnt),
+    _mx_update(mx_update),_qr(qr),_mode(mode),_cnt(cnt),
     _kmer_shuf(kmer_shuf){}
     string _id;
     VI _seq;
@@ -169,13 +163,13 @@ namespace iyak {
 
         /* training set, given by user */
         _m.set_seq(_seq);
-        _m.set_ws(qual,_convo_kernel,_pseudo_cov);
+        _m.set_ws(qual);
 
         init_inside_tables();
         init_outside_tables(true,true);
         _m.compute_inside(InsideFun(this,ws()));
         if (not std::isfinite(_ZL = part_func())) {
-          if (0==_opt.fdfcount()) cry("skipped:", _id);
+          if (0==_cnt) cry("skipped:", _id);
           continue;
         }
         _m.compute_outside(OutsideFun(this,ws(),_ZL,dEHn,dENn));
@@ -196,13 +190,13 @@ namespace iyak {
           /* negative example */
           _m.set_seq(neg);
           for(auto& q:qual)q=0;
-          _m.set_ws(qual,_convo_kernel,_pseudo_cov);
+          _m.set_ws(qual);
 
           init_inside_tables();
           init_outside_tables(true,true);
           _m.compute_inside(InsideFun(this,ws()));
           if (not std::isfinite(_ZL = part_func())) {
-            if (0==_opt.fdfcount()) cry("skipped:", _id);
+            if (0==_cnt) cry("skipped:", _id);
             continue;
           }
           _m.compute_outside(OutsideFun(this,ws(),_ZL,dEHn,dENn));
@@ -699,8 +693,6 @@ namespace iyak {
     int _cnt;
     int _kmer_shuf;
     V _params;
-    V _convo_kernel {1};
-    double _pseudo_cov;
     int _thread;
     double _sum_eff;
     double _lambda_init=1.;
@@ -771,12 +763,6 @@ namespace iyak {
       _qr.set_fq_fname(_fq_name);
       N = _qr.N();
     }
-
-    void set_preprocess(V const& k, double p) {
-      _convo_kernel = k;
-      _pseudo_cov = p;
-    }
-
     void set_conditions(int max_iter, double epsilon, double lambda_init,
                         int kmer_shuf) {
       _max_iter = max_iter;
@@ -834,8 +820,8 @@ namespace iyak {
         _qr.clear();
         ClassThread<RNAelemTrainDP>
         ct(_thread,
-           *_motif,_from,_to,_sum_eff,_mx_input,_mx_update,_qr,_opt,_adam,
-           _pseudo_cov,_convo_kernel,_mode,_cnt,_kmer_shuf);
+           *_motif,_from,_to,_sum_eff,_mx_input,_mx_update,_qr,_mode,_cnt,
+           _kmer_shuf);
         ct(fn, gr);
       }
       if (_mode & TR_MASK) cry(flatten(x,gr)+"fn:"+to_str(fn));

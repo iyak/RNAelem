@@ -59,7 +59,7 @@ namespace iyak {
       L = (int)seq.size();
       W = min(L, em.max_pair());
     }
-    void set_ws(VI const& q,V const& c,double pc) {
+    void set_ws(VI const& q) {
       VI cnt(127-33,0);
       for (int i=0;i<size(q);++i) cnt.at(q[i])+=1;
       int mode=max_index(cnt);

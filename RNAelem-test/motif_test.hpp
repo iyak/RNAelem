@@ -60,7 +60,7 @@ namespace iyak {
       _rss = rss;
       if (debug&DBG_FIX_RSS) _m.em.fix_rss(_rss);
       _m.set_seq(_seq);
-      _m.set_ws(VI(size(seq)+1,1),{1},0);
+      _m.set_ws(VI(size(seq)+1,1));
       _dEH={0.,0.};
       clear_emit_count(_m.mm, _dEN);
       dp();
@@ -77,7 +77,7 @@ namespace iyak {
       _rss = rss;
       if (debug&DBG_FIX_RSS) _m.em.fix_rss(_rss);
       _m.set_seq(_seq);
-      _m.set_ws(_qual,{1},0);
+      _m.set_ws(_qual);
       clear_emit_count(_m.mm, _dEN);
       _dEH={0.,0.};
       dp_fn();

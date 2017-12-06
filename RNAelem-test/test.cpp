@@ -75,7 +75,6 @@ namespace iyak {
       model.set_theta_softmax(false);
       model.set_energy_params("~T2004~", large, large, 0., true);
       model.set_hyper_param(0.,0.,0.,1.,-1.);
-      t.set_preprocess({1}, 0);
       t.set_conditions(-1, 1e-4, 0,2);
     }
   };
@@ -83,7 +82,7 @@ namespace iyak {
   TEST_F(RNAelemDPTest, PATH_COUNT_CASES) {
 
     RNAelemDP f(model,t._from,t._to,t._sum_eff,t._mx_input,t._mx_update, t._qr,
-                t._opt,t._adam,t._pseudo_cov,t._convo_kernel,t._mode,0,2);
+                t._mode,0,2);
 
     //EXPECT_TRUE(debug & DBG_NO_ENE);
     EXPECT_TRUE(debug & DBG_NO_THETA);
@@ -174,7 +173,7 @@ namespace iyak {
   TEST_F(RNAelemDPTest, EMISSION_COUNT_CASES) {
 
     RNAelemDP f(model,t._from,t._to,t._sum_eff,t._mx_input,t._mx_update,t._qr,
-                t._opt,t._adam,t._pseudo_cov,t._convo_kernel,t._mode,0,2);
+                t._mode,0,2);
 
     //EXPECT_TRUE(debug & DBG_NO_ENE);
     EXPECT_TRUE(debug & DBG_NO_THETA);

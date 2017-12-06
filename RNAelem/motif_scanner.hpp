@@ -226,7 +226,7 @@ namespace iyak {
         }
         if (debug&DBG_FIX_RSS) _m.em.fix_rss(_rss);
         _m.set_seq(_seq);
-        _m.set_ws(qual,_convo_kernel,_pseudo_cov);
+        _m.set_ws(qual);
 
         PysL.assign(_m.L, zeroL);
         PyeL.assign(_m.L+1, zeroL);
