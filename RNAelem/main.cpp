@@ -64,17 +64,15 @@ int main(int const argc, char const* argv[]) {
         train.set_fq_name(app.seq_fname);
         train.set_conditions(app.max_iter, app.eps, app.lambda_init,
                              app.kmer_shuf);
-
+        train.set_logo(app.font,2);
         if (app.tr_mode & TR_MASK)
           train.set_train_params(app.param_set);
         if (app.tr_mode & TR_ARRAY)
           train.set_array(app.array, app.sge_opt_fname);
-
         train.train(model);
 
         RNAelemWriter writer;
-        writer.set_logo(app.font);
-        writer.set_out_id(1,2);
+        writer.set_out_id(1);
         writer.write(model);
 
         RNAelemScanner scan(app.thread);
@@ -105,17 +103,14 @@ int main(int const argc, char const* argv[]) {
         train.set_fq_name(app.seq_fname);
         train.set_conditions(app.max_iter, app.eps, app.lambda_init,
                              app.kmer_shuf);
-
+        train.set_logo(app.font,2);
         if (app.tr_mode & TR_MASK)
           train.set_train_params(app.param_set);
         if (app.tr_mode & TR_ARRAY)
           train.set_array(app.array, app.sge_opt_fname);
-
         train.train(model);
 
         RNAelemWriter writer;
-        writer.set_logo(app.font);
-        writer.set_out_id(1,2);
         writer.write(model);
 
         break;
@@ -143,8 +138,7 @@ int main(int const argc, char const* argv[]) {
         reader.read_model(model);
 
         RNAelemWriter writer;
-        writer.set_logo(app.font);
-        writer.set_out_id(-1,1);
+        writer.set_out_id(-1);
         writer.write(model);
 
         break;
@@ -176,7 +170,7 @@ int main(int const argc, char const* argv[]) {
     if (debug&DBG_CORE_FILE) {
       throw e;
     } else {
-      std::cerr << e.what();
+      std::cerr<<e.what()<<std::endl;
       exit(1);
     }
   }

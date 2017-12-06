@@ -117,7 +117,10 @@ namespace iyak {
     _format(c, a...);
   }
   template<class...A>void cry(A const&...a){_format(std::cerr, a...);}
-  template<class...A>void die(A const&...a){cry(a...);throw std::runtime_error("");}
+  template<class...A>void die(A const&...a){
+    cry(a...);
+    throw std::runtime_error("die");
+  }
   template<class...A>void say(A const&...a){if(debug&DBG_VERBOSE){cry(a...);}}
   template<class...A>void check(bool b, A const&...a){if(!b)die(a...);}
   template<class...A>void expect(bool b, A const&...a){if(!b)cry(a...);}
@@ -131,7 +134,8 @@ namespace iyak {
   };
   std::vector<uptr<std::ostream>> _uptr_strm;
   std::vector<std::string> _nam_strm;
-  string const get_ostream(int i) {return _nam_strm[i];}
+  string& get_ostream_str(int i) {return _nam_strm[i];}
+  std::ostream& get_ostream(int i){return *(_map_strm[_nam_strm[i]]);}
 
   void init_ostream(int n) {
     check(1 <= n);

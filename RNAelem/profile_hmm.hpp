@@ -69,6 +69,14 @@ namespace iyak {
     int node(int i) {return _node[i];}
     bool reachable(int s, int s1) {return _reachable[s][s1];}
 
+    void clear_emit_count(VV& e) {
+      e.resize(theta().size(), V{});
+      for (int i=0; i<iyak::size(theta()); ++i) {
+        e[i].resize(theta()[i].size(), 0);
+        for (auto& eij: e[i]) eij = 0;
+      }
+    }
+
     IS n2s(int h, int h1) {
 
       if (debug&DBG_PROOF)

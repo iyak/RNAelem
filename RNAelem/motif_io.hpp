@@ -18,7 +18,6 @@ namespace iyak {
   class RNAelemWriter {
 
     int _out = 1;
-    int _svg = 1;
     string _pic_fname;
 
     RNAelem* _m;
@@ -26,46 +25,7 @@ namespace iyak {
 
   public:
 
-    void set_out_id (int i, int j) {_out=i; _svg=j;}
-    void set_logo(string& font) {
-      if ("~DEFAULT~" != font) {
-        _logo.set_font(font);
-      }
-    }
-
-    void pict(string const& p, VV const& ww) {
-
-      VV w {};
-      VVS alphs {};
-
-      int i=1;
-      for (auto c: p) {
-        if ('.'==c) {
-          alphs.push_back({"A","C","G","U"});
-          w.push_back({});
-          double tot=logsumexp(ww[i]);
-          for (int j=0; j<size(ww[i]); ++j)
-            w.back().push_back(exp(ww[i][j]-tot));
-          ++i;
-        }
-        else if (')'==c) {
-          alphs.push_back({"CG","GC","GU","UG","AU","UA"});
-          double tot=logsumexp(ww[i]);
-          w.push_back({});
-          for (int j=0; j<size(ww[i]); ++j)
-            w.back().push_back(exp(ww[i][j]-tot));
-          ++i;
-        }
-        else {
-          alphs.push_back({});
-          w.push_back({});
-        }
-      }
-
-      _logo.set_x_axis_height(0);
-      dat(_svg, _logo.pict_table_bit(w, alphs, split<string>(p,"")));
-    }
-
+    void set_out_id (int i) {_out=i;}
     void write(RNAelem& m) {
       _m = &m;
 
@@ -93,8 +53,6 @@ namespace iyak {
       dat(_out, "no-rss:", _m->no_rss());
       dat(_out, "no-profile:", _m->no_prf());
       dat(_out, "no-energy:", _m->em.no_ene());
-
-      pict(_m->mm.pattern(), apply(logNL,_m->mm.theta()));
     }
   };
 

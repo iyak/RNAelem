@@ -205,7 +205,7 @@ namespace iyak {
         FT_Outline_Decompose(&o(*f), &callback, &s);
 
         s += "\" fill=\"" + map[utf8(_alph).code(i)] +
-        "\" stroke=\"black\" stroke-width=\"10\"/>\n";
+        "\" stroke=\"black\" stroke-width=\"1\"/>\n";
       }
       return s;
     }
@@ -237,55 +237,45 @@ namespace iyak {
       {'T',"#D21010"}, {'t',"#D21010"},
     };
     string _font = _DFONT;
+    ostream* _out;
+    ostream& out(){return *_out;}
 
     string _title = "";
     VS _meta {};
 
-    int _colw = 1000;
-    int _space = 50;
-    int _rowh = 5000;
-    int _titleh = 500;
-    int _yaxisw = 500;
-    int _yrulerl = 100;
-    int _xaxish = 500;
-    int _metah = 500;
+    int _colw = 100;
+    int _space = 5;
+    int _rowh = 500;
+    int _titleh = 50;
+    int _yaxisw = 50;
+    int _yrulerl = 10;
+    int _xaxish = 50;
+    int _metah = 50;
 
     double _scale;
     double _max_v;
-
-    string _svg_header_footer =
-    "<svg xmlns=\"http://www.w3.org/2000/svg\"\n"
-    "viewBox=\"$VIEWBOX\">\n"
-    "$PATHTAG"
-    "$AXESTAG"
-    "$TITLETAG"
-    "$METATAG"
-    "</svg>\n";
 
     int spaced(int a) {return a;}
     template<class...T>
     int spaced(int a,T...b) {return a + spaced(b...) + (0<a? _space:0);}
 
-    string put_svg_viewbox() {
-      return paste1
+    void put_svg_viewbox() {
+      out()<<paste1
       (0,0,
        spaced(_yaxisw, _yrulerl, (_colw+_space)*size(_table)),
        spaced(_titleh, _rowh, _metah, _xaxish));
     }
 
-    string put_svg_path() {
-      string s = "";
+    void put_svg_path() {
       for (auto& ti: _table)
         for (auto& tij: ti)
-          s += tij.alph.put_svg_path(_color_map);
-      return s;
+          out()<<tij.alph.put_svg_path(_color_map);
     }
 
-    string put_svg_axes() {
-      string s = "";
+    void put_svg_axes() {
       if (0<_yaxisw) {
         /* y axis */
-        s = paste1
+        out()<<paste1
         (
          "<path d=\"M",
          spaced(_yaxisw, _yrulerl),
@@ -293,12 +283,12 @@ namespace iyak {
          "L",
          spaced(_yaxisw, _yrulerl),
          spaced(_titleh, _rowh),
-         "\" stroke=\"black\" stroke-width=\"15\"/>\n"
+         "\" stroke=\"black\" stroke-width=\"1.5\"/>\n"
          );
 
         for (int i=0; i<=_max_v+1e-10; ++i) {
           /* y ruler */
-          s += paste1
+          out()<<paste1
           (
            "<path d=\"M",
            _yaxisw + _space,
@@ -306,10 +296,10 @@ namespace iyak {
            "L",
            spaced(_yaxisw, _yrulerl),
            spaced(_titleh, _rowh-round(_scale*i)),
-           "\" stroke=\"black\" stroke-width=\"40\"/>\n"
+           "\" stroke=\"black\" stroke-width=\"4\"/>\n"
            );
           /* y ruler text */
-          s += paste0
+          out()<<paste0
           (
            "<text text-anchor=\"end\" x=\"", _yaxisw,
            "\" y=\"", spaced(_titleh, _rowh-round(_scale*i)),
@@ -322,7 +312,7 @@ namespace iyak {
       if (0<_xaxish) {
         /* x axis text */
         for (int i=0; i<size(_table); ++i) {
-          s += paste0
+          out()<<paste0
           (
            "<text text-anchor=\"middle\" x=\"",
            spaced(_yaxisw, _yrulerl, (_colw+_space)*i + _colw/2),
@@ -333,13 +323,11 @@ namespace iyak {
            );
         }
       }
-      return s;
     }
 
-    string put_svg_title() {
-      string s = "";
+    void put_svg_title() {
       if (0<_titleh) {
-        s += paste0
+        out()<<paste0
         (
          "<text text-anchor=\"middle\" x=\"",
          spaced(_yaxisw, _yrulerl, ((_colw+_space)*size(_table)-_space)/2),
@@ -349,14 +337,12 @@ namespace iyak {
          "\">", _title, "</text>\n"
          );
       }
-      return s;
     }
 
-    string put_svg_meta() {
-      string s = "";
+    void put_svg_meta() {
       if (0<_metah) {
         for (int i=0; i<size(_table); ++i) {
-          s += paste0
+          out()<<paste0
           (
            "<text text-anchor=\"middle\" x=\"",
            spaced(_yaxisw, _yrulerl, (_colw+_space)*i + _colw/2),
@@ -367,18 +353,29 @@ namespace iyak {
            );
         }
       }
-      return s;
     }
 
-    string put_svg() {
-      string s = _svg_header_footer;
-      size_t i;
-      while (npos != (i=s.find("$VIEWBOX"))) s.replace(i,8,put_svg_viewbox());
-      while (npos != (i=s.find("$PATHTAG"))) s.replace(i,8,put_svg_path());
-      while (npos != (i=s.find("$AXESTAG"))) s.replace(i,8,put_svg_axes());
-      while (npos != (i=s.find("$METATAG"))) s.replace(i,8,put_svg_meta());
-      while (npos != (i=s.find("$TITLETAG"))) s.replace(i,9,put_svg_title());
-      return s;
+    void put_svg() {
+      string s=
+      "<svg xmlns=\"http://www.w3.org/2000/svg\"\n"
+      "viewBox=\"$VIEWBOX\">\n"
+      "$PATHTAG"
+      "$AXESTAG"
+      "$TITLETAG"
+      "$METATAG"
+      "</svg>\n";
+      size_t i=0;
+      while(i<s.size()){
+        if('$'==s[i]){
+            if("$VIEWBOX"==s.substr(i,8)){put_svg_viewbox();i+=8;}
+            else if("$PATHTAG"==s.substr(i,8)){put_svg_path();i+=8;}
+            else if("$AXESTAG"==s.substr(i,8)){put_svg_axes();i+=8;}
+            else if("$METATAG"==s.substr(i,8)){put_svg_meta();i+=8;}
+            else if("$TITLETAG"==s.substr(i,9)){put_svg_title();i+=8;}
+            else{out()<<s[i++];}
+        }
+        else{out()<<s[i++];}
+      }
     }
 
     V v2bit (V const w) {
@@ -394,11 +391,10 @@ namespace iyak {
       return v;
     }
 
-    string pict_logo(VV const& vv,
-                     VVS const& aa,
-                     VS const& meta,
-                     double const max_v) {
-
+    void pict_logo(VV const& vv,
+                   VVS const& aa,
+                   VS const& meta,
+                   double const max_v) {
       _table.clear();
       check(size(vv)==size(aa), "not same dim:", vv, aa);
       for (int i=0; i<size(vv); ++i) {
@@ -424,11 +420,9 @@ namespace iyak {
         }
         x += _colw + _space ;
       }
-
       if (size(vv)==size(meta)) {_meta = meta;}
       else {_metah = 0;}
-
-      return put_svg();
+      put_svg();
     }
 
   public:
@@ -449,20 +443,20 @@ namespace iyak {
       for (auto u: utf) _color_map[u] = c;
     }
 
-    string pict_table_bit(VV const& vv,
+    void set_ostream(ostream& out){_out=&out;}
+    void pict_table_bit(VV const& vv,
                           VVS const& aa,
                           VS const& meta={}) {
-
       int maxd=0;
       VV v(vv);
       for (auto& vi: v) {
         maxd = max(maxd, size(vi));
         vi = v2bit(vi);
       }
-      return pict_logo(v, aa, meta, log2(maxd));
+      pict_logo(v, aa, meta, log2(maxd));
     }
 
-    string pict_table_freq(VV const& vv,
+    void pict_table_freq(VV const& vv,
                            VVS const& aa,
                            VS const& meta={}) {
 
@@ -472,8 +466,7 @@ namespace iyak {
         for (auto vij: vi) sum += vij;
         for (auto& vij: vi) vij /= sum;
       }
-
-      return pict_logo(v, aa, meta, 1.);
+      pict_logo(v, aa, meta, 1.);
     }
   };
 }

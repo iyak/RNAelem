@@ -22,8 +22,8 @@ namespace iyak {
 
     for (int i=1; i<=_n; ++i) {
 
-      ifstream ifs(get_ostream(4) + "-" + to_str(i));
-      check(!!ifs, "cannot open:", get_ostream(4) + "-" + to_str(i));
+      ifstream ifs(get_ostream_str(4)+"-"+to_str(i));
+      check(!!ifs, "cannot open:",get_ostream_str(4)+"-"+to_str(i));
       string line;
 
       unsigned int set = 0;
@@ -66,9 +66,9 @@ namespace iyak {
     _slave_opt = paste1
     (
      "--fastq", _fq_name,
-     "--motif-model", get_ostream(4),
+     "--motif-model", get_ostream_str(4),
      "--array", to_str(n),
-     "--tmp", get_ostream(4)
+     "--tmp", get_ostream_str(4)
      );
   }
 }

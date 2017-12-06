@@ -66,6 +66,7 @@ namespace iyak {
     double _ZwL;
     V _dEH;
     VV _dEN;
+    VV _EN;
     double _fn;
 
     double& inside(int const i,int const j,int const e,IS const& s) {
@@ -119,23 +120,16 @@ namespace iyak {
       return outside_o(0, _m.mm.n2s(0,0));
     }
 
-    void clear_emit_count(ProfileHMM& m,  VV& e) {
-      e.resize(m.theta().size(), V{});
-      for (int i=0; i<size(m.theta()); ++i) {
-        e[i].resize(m.theta()[i].size(), 0);
-        for (auto& eij: e[i]) eij = 0;
-      }
-    }
-
-    void operator() (double& fn, V& gr) {
+    void operator() (double& fn, V& gr,VV& EN) {
       double sum_eff = 0.;
       _fn = 0;
-      clear_emit_count(_m.mm, _dEN);
+      _m.mm.clear_emit_count(_dEN);
+      _m.mm.clear_emit_count(_EN);
       _dEH = {0.,0.};
       while (1) {
         VV dENn{},dENnw{};
-        clear_emit_count(_m.mm,dENn);
-        clear_emit_count(_m.mm,dENnw);
+        _m.mm.clear_emit_count(dENn);
+        _m.mm.clear_emit_count(dENnw);
         V dEHn={0.,0.},dEHnw={0.,0.};
 
         VI qual{};
@@ -164,7 +158,6 @@ namespace iyak {
         /* training set, given by user */
         _m.set_seq(_seq);
         _m.set_ws(qual);
-
         init_inside_tables();
         init_outside_tables(true,true);
         _m.compute_inside(InsideFun(this,ws()));
@@ -182,6 +175,10 @@ namespace iyak {
           init_outside_tables(true,false);
           _ZwL=part_func(true,false);
           _m.compute_outside(OutsideFun(this,ws(),_ZwL,dEHnw,dENnw));
+          /* local update */
+          for(int i=0;i<size(_EN);++i)
+            for(int j=0;j<size(_EN[i]);++j)
+                _EN[i][j]+=dENnw[i][j];
         }
         /* local update */
         _fn += logNL(divL(_ZL,_ZwL));
@@ -206,7 +203,6 @@ namespace iyak {
           /* local update */
           _fn += logNL(divL(_ZL,_ZwL));
         }
-
         /* local update */
         if(_m.theta_softmax()){
           for(int i=0;i<size(_dEN);++i) {
@@ -235,9 +231,12 @@ namespace iyak {
         /* global update */
         fn += _fn;
         int k = 0;
-        for (int i=0; i<size(_dEN); ++i)
-          for (int j=0; j<size(_dEN[i]); ++j)
+        for (int i=0; i<size(_dEN); ++i){
+          for (int j=0; j<size(_dEN[i]); ++j){
             gr[k++]+=_dEN[i][j];
+            EN[i][j]+=_EN[i][j];
+          }
+        }
         for (int i=0; i<size(_dEH); ++i)
           gr[k++] += _dEH[i];
         _sum_eff += sum_eff;
@@ -701,6 +700,11 @@ namespace iyak {
     RNAelemTrainer(unsigned m=TR_NORMAL, int t=1): _mode(m), _thread(t) {}
     RNAelem* model() {return _motif;}
 
+    /* logo */
+    RNAlogo _logo;
+    int _svg=0;
+    VV _EN;
+
     /* eval */
     double _fn;
     V _gr;
@@ -776,6 +780,36 @@ namespace iyak {
       _lambda_init = lambda_init;
     }
 
+    void set_logo(string const& font,int svg){
+      if ("~DEFAULT~"!=font)_logo.set_font(font);
+      _logo.set_ostream(get_ostream(svg));
+    }
+    void pict_logo(){
+      VV w{};
+      VVS alphs{};
+      int i=1;
+      for(auto c:_motif->mm.pattern()){
+        if('.'==c){
+          alphs.push_back({"A","C","G","U"});
+          check(nchar-1==size(_EN[i]),__FUNCTION__);
+          w.push_back(_EN[i]);
+          ++i;
+        }
+        else if(')'==c){
+          check(nchar2-1==size(_EN[i]),__FUNCTION__);
+          alphs.push_back({"CG","GC","GU","UG","AU","UA"});
+          w.push_back(_EN[i]);
+          ++i;
+        }
+        else {
+          alphs.push_back({});
+          w.push_back({});
+        }
+      }
+      _logo.set_x_axis_height(0);
+      _logo.pict_table_bit(w,alphs,split<string>(_motif->mm.pattern(),""));
+    }
+
     void train(RNAelem& model) {
       _motif = &model;
       _motif->set_lambda(_lambda_init);
@@ -801,6 +835,7 @@ namespace iyak {
       if(_motif->theta_softmax())
         _motif->mm.calc_theta();
       double time = lap();
+      pict_logo();
       cry("wall clock time per eval:", time / _cnt);
     }
 
@@ -809,9 +844,10 @@ namespace iyak {
       fn=0.;
       gr.assign(size(x),0.);
       _sum_eff=0.;
+      _motif->mm.clear_emit_count(_EN);
       if (_mode & TR_ARRAY) {
         fclear(4);
-        _writer.set_out_id(4, -1);
+        _writer.set_out_id(4);
         _writer.write(*_motif);
         submit_array_job(paste1("RNAelem","array-eval",_slave_opt),
                          _n, 0==_opt.fdfcount());
@@ -822,7 +858,7 @@ namespace iyak {
         ct(_thread,
            *_motif,_from,_to,_sum_eff,_mx_input,_mx_update,_qr,_mode,_cnt,
            _kmer_shuf);
-        ct(fn, gr);
+        ct(fn,gr,_EN);
       }
       if (_mode & TR_MASK) cry(flatten(x,gr)+"fn:"+to_str(fn));
       if(_mode&TR_NO_SHUFFLE){
