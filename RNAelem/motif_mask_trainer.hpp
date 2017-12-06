@@ -49,8 +49,14 @@ namespace iyak {
       reg.push_back(any(_vary_x,i)?2:0);
       ++ i;
     }
-    if(_mode&TR_NO_SHUFFLE)_opt.set_regularization(reg);
-    _adam.set_regularization(reg);
+
+    int s1=0,s2=size(motif._lambda);
+    for(auto const& wi:motif.mm.theta())s1+=size(wi);
+    double rho=_motif->theta_softmax()?_motif->rho_s():_motif->rho_theta();
+    V rho1(s1,rho),rho2(s2,_motif->rho_lambda());
+    rho1.insert(rho1.end(),rho2.begin(),rho2.end());
+    if(_mode&TR_NO_SHUFFLE)_opt.set_regularization(reg,rho1); //L2 norm
+    else _adam.set_regularization(reg,rho1); //L2 norm
   }
 
   void RNAelemTrainer::set_mask_bounds(RNAelem& motif) {
@@ -70,7 +76,7 @@ namespace iyak {
         } else {
           lower.push_back(wij);
           upper.push_back(wij);
-          type.push_back(2); // fix
+          type.push_back(3); // fix
         }
         ++ i;
       }
@@ -83,7 +89,7 @@ namespace iyak {
       } else {
         lower.push_back(li);
         upper.push_back(li);
-        type.push_back(2); //  fix
+        type.push_back(3); //  fix
       }
       ++ i;
     }
