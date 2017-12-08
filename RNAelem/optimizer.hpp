@@ -96,14 +96,15 @@ namespace iyak {
     }
     void set_regularization(VI const& xr,V const& rho){_xr=xr;_rho=rho;}
     bool converged(V const& gr,double y){
-      return norm2(gr)<(y+1.)*1.e-5;
+      return norm2(gr)<(y+1.)*1.e-8;
     }
     void before_update(double& y,V& gr){
       /* regularize */
+      _rgl_term=0.;
       for(int i=0;i<size(_x);++i){
         if(1==_xr[i]){
           _rgl_term+=_rho[i]*abs(_x[i]);
-          gr[i]+=_rho[i]*0<_x[i]?1:-1;
+          gr[i]+=_rho[i]*(0<_x[i]?1:-1);
         }
         else if(2==_xr[i]){
           _rgl_term+=_rho[i]*_x[i]*_x[i]/2.;

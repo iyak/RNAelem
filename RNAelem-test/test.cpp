@@ -181,7 +181,7 @@ namespace iyak {
     EXPECT_TRUE(debug & DBG_NO_TURN);
 
     f._m.set_motif_pattern(".");
-    auto& ec = f._dEN;
+    auto& ec = f.ENo;
 
     f.eval("A", ".");
     EXPECT_EQ(to_str(ec), to_str(VV{{1,0,0,0},{1,0,0,0}}));

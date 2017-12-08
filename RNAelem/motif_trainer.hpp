@@ -32,6 +32,7 @@ namespace iyak {
     TR_BAL = 1<<3,
     TR_ARRAYEVAL = 1<<4,
     TR_NO_SHUFFLE=1<<5,
+    TR_LIK_RATIO=1<<6,
   };
 
   class RNAelemTrainDP {
@@ -40,7 +41,7 @@ namespace iyak {
     RNAelem* model() {return &_m;}
     int _from;
     int _to;
-    double& _sum_eff;
+    double& _sum_effg;
     mutex& _mx_input;
     mutex& _mx_update;
     FastqReader& _qr;
@@ -50,7 +51,7 @@ namespace iyak {
     RNAelemTrainDP(RNAelem& m, int from, int to, double& sum_eff, mutex& mx_input,
                    mutex& mx_update, FastqReader& qr,unsigned mode,int iter_cnt,
                    int kmer_shuf):
-    _m(m),_from(from),_to(to),_sum_eff(sum_eff),_mx_input(mx_input),
+    _m(m),_from(from),_to(to),_sum_effg(sum_eff),_mx_input(mx_input),
     _mx_update(mx_update),_qr(qr),_mode(mode),_iter_cnt(iter_cnt),
     _kmer_shuf(kmer_shuf){}
     string _id;
@@ -62,12 +63,6 @@ namespace iyak {
     VV _inside_o; /* L+1 S */
     VVVV _outside;
     VV _outside_o;
-    double _ZL;
-    double _ZwL;
-    V _dEH;
-    VV _dEN;
-    VV _EN;
-    double _fn;
 
     double& inside(int const i,int const j,int const e,IS const& s) {
       return (debug&DBG_PROOF)?
@@ -120,21 +115,25 @@ namespace iyak {
       return outside_o(0, _m.mm.n2s(0,0));
     }
 
-    void operator() (double& fn, V& gr,VV& EN) {
-      double sum_eff = 0.;
-      _fn = 0;
-      _m.mm.clear_emit_count(_dEN);
-      _m.mm.clear_emit_count(_EN);
-      _dEH = {0.,0.};
-      while (1) {
-        VV dENn{},dENnw{};
-        _m.mm.clear_emit_count(dENn);
-        _m.mm.clear_emit_count(dENnw);
-        V dEHn={0.,0.},dEHnw={0.,0.};
-
+    /*
+     notes (naming policy)
+     g-suffix: var passed from parent and shared with other threads
+     o-suffix: statistics to be plused
+     x-suffix: statistics to be minused
+     */
+    void operator()(double& fg,V& grg,VV& ENg){
+      double f=0.;
+      double sum_eff=0.;
+      double Zo=0.,Zx=0.;
+      VV EN{},ENo{},ENx{};
+      _m.mm.clear_emit_count(EN);
+      _m.mm.clear_emit_count(ENo);
+      _m.mm.clear_emit_count(ENx);
+      V EHo{0.,0.},EHx{0.,0.};
+      while(1){
         VI qual{};
         VI neg{};
-        /* sync block */ {
+        /* sync block */{
           lock l(_mx_input);
           if (_qr.is_end()) break;
           _qr.read_seq(_id, _seq, qual, _rss);
@@ -155,91 +154,139 @@ namespace iyak {
         }
         if (debug&DBG_FIX_RSS) _m.em.fix_rss(_rss);
 
-        /* training set, given by user */
-        _m.set_seq(_seq);
-        _m.set_ws(qual);
-        init_inside_tables();
-        init_outside_tables(true,true);
-        _m.compute_inside(InsideFun(this,ws()));
-        if (not std::isfinite(_ZL = part_func())) {
-          if (0==_iter_cnt) cry("skipped:", _id);
-          continue;
-        }
-        _m.compute_outside(OutsideFun(this,ws(),_ZL,dEHn,dENn));
-        if(-inf<ws().back()){//seq without motif
-          init_outside_tables(false,true);
-          _ZwL=part_func(false,true);
-          _m.compute_outside(OutsideFun(this,ws(),_ZwL,dEHnw,dENnw));
-        }
-        else{//seq with motif
-          init_outside_tables(true,false);
-          _ZwL=part_func(true,false);
-          _m.compute_outside(OutsideFun(this,ws(),_ZwL,dEHnw,dENnw));
-          /* local update */
-          for(int i=0;i<size(_EN);++i)
-            for(int j=0;j<size(_EN[i]);++j)
-                _EN[i][j]+=dENnw[i][j];
-        }
-        /* local update */
-        _fn += logNL(divL(_ZL,_ZwL));
-
-        if(!(_mode&TR_NO_SHUFFLE)){
-          /* negative example */
-          _m.set_seq(neg);
-          for(auto& q:qual)q=0;
+        if(_mode&TR_LIK_RATIO){
+          /* training set, given by user */
+          _m.set_seq(_seq);
           _m.set_ws(qual);
-
           init_inside_tables();
           init_outside_tables(true,true);
           _m.compute_inside(InsideFun(this,ws()));
-          if (not std::isfinite(_ZL = part_func())) {
+          if(-inf<ws().back()){//seq without motif
+            if(not std::isfinite(Zx=part_func(true,true))){
+              if(0==_iter_cnt)cry("skipped:",_id);
+              continue;
+            }
+            _m.compute_outside(OutsideFun(this,ws(),Zx,EHx,ENx));
+            init_outside_tables(true,false);
+            Zo=part_func(true,false);
+            _m.compute_outside(OutsideFun(this,ws(),Zo,EHo,ENo));
+          }else{//seq with motif
+            if(not std::isfinite(Zo=part_func(true,true))){
+              if(0==_iter_cnt)cry("skipped:",_id);
+              continue;
+            }
+            _m.compute_outside(OutsideFun(this,ws(),Zo,EHo,ENo));
+            init_outside_tables(true,false);
+            Zx=part_func(true,false);
+            VV tmp{};
+            _m.mm.clear_emit_count(tmp);
+            _m.compute_outside(OutsideFun(this,ws(),Zx,EHx,tmp));
+            for(int i=0;i<size(tmp);++i){
+              for(int j=0;j<size(tmp[i]);++j){
+                ENx[i][j]+=tmp[i][j];
+                EN[i][j]+=tmp[i][j];
+              }
+            }
+          }
+          f+=Zo-Zx;
+          sum_eff+=_m.em.bpp_eff();
+          if(!(_mode&TR_NO_SHUFFLE)){
+            /* negative example */
+            _m.set_seq(neg);
+            for(auto& q:qual)q=0;
+            _m.set_ws(qual);
+            init_inside_tables();
+            init_outside_tables(true,true);
+            _m.compute_inside(InsideFun(this,ws()));
+            if(not std::isfinite(Zx=part_func(true,true))){
+              if (0==_iter_cnt) cry("skipped:", _id);
+              continue;
+            }
+            _m.compute_outside(OutsideFun(this,ws(),Zx,EHx,ENx));
+            init_outside_tables(true,false); //without motif
+            Zo=part_func(true,false);
+            _m.compute_outside(OutsideFun(this,ws(),Zo,EHo,ENo));
+            f+=Zo-Zx;
+          }
+        }
+
+        else{
+          /* training set, given by user */
+          _m.set_seq(_seq);
+          _m.set_ws(qual);
+          init_inside_tables();
+          init_outside_tables(true,true);
+          _m.compute_inside(InsideFun(this,ws()));
+          if(not std::isfinite(Zo=part_func(true,true))){
             if (0==_iter_cnt) cry("skipped:", _id);
             continue;
           }
-          _m.compute_outside(OutsideFun(this,ws(),_ZL,dEHn,dENn));
-          init_outside_tables(false,true); //without motif
-          _ZwL=part_func(false,true);
-          _m.compute_outside(OutsideFun(this,ws(),_ZwL,dEHnw,dENnw));
-          /* local update */
-          _fn += logNL(divL(_ZL,_ZwL));
-        }
-        /* local update */
-        if(_m.theta_softmax()){
-          for(int i=0;i<size(_dEN);++i) {
-            double tot=0;
-            for(int j=0;j<size(_dEN[i]);++j)
-              tot+=dENn[i][j]-dENnw[i][j];//the order prevents digit reduction
-            for(int j=0;j<size(_dEN[i]);++j){
-              double tmp=dENn[i][j]-dENnw[i][j];
-              double p=exp(_m.mm.theta()[i][j]);
-              _dEN[i][j]+=(1-p)*tmp-p*(tot-tmp);
+          _m.compute_outside(OutsideFun(this,ws(),Zo,EHo,ENo));
+          if(-inf<ws().back()){//seq without motif
+            init_outside_tables(false,true);
+            Zx=part_func(false,true);
+            _m.compute_outside(OutsideFun(this,ws(),Zx,EHx,ENx));
+          }else{//seq with motif
+            init_outside_tables(true,false);
+            Zx=part_func(true,false);
+            VV tmp{};
+            _m.mm.clear_emit_count(tmp);
+            _m.compute_outside(OutsideFun(this,ws(),Zx,EHx,tmp));
+            for(int i=0;i<size(tmp);++i){
+              for(int j=0;j<size(tmp[i]);++j){
+                ENx[i][j]+=tmp[i][j];
+                EN[i][j]+=tmp[i][j];
+              }
             }
           }
-        }
-        else{
-          for(int i=0;i<size(_dEN);++i)
-            for(int j=0;j<size(_dEN[i]);++j)
-              _dEN[i][j]+=dENn[i][j]-dENnw[i][j];
-        }
-        for (int i=0; i<size(_dEH); ++i)
-          _dEH[i]+=dEHn[i]-dEHnw[i];
-        sum_eff += _m.em.bpp_eff();
-      }
-
-      /* sync block */ {
-        lock l(_mx_update);
-        /* global update */
-        fn += _fn;
-        int k = 0;
-        for (int i=0; i<size(_dEN); ++i){
-          for (int j=0; j<size(_dEN[i]); ++j){
-            gr[k++]+=_dEN[i][j];
-            EN[i][j]+=_EN[i][j];
+          f+=Zo-Zx;
+          sum_eff+=_m.em.bpp_eff();
+          if(!(_mode&TR_NO_SHUFFLE)){
+            /* negative example */
+            _m.set_seq(neg);
+            for(auto& q:qual)q=0;
+            _m.set_ws(qual);
+            init_inside_tables();
+            init_outside_tables(true,true);
+            _m.compute_inside(InsideFun(this,ws()));
+            if(not std::isfinite(Zo=part_func(true,true))){
+              if(0==_iter_cnt)cry("skipped:",_id);
+              continue;
+            }
+            _m.compute_outside(OutsideFun(this,ws(),Zo,EHo,ENo));
+            init_outside_tables(false,true); //without motif
+            Zx=part_func(false,true);
+            _m.compute_outside(OutsideFun(this,ws(),Zx,EHx,ENx));
+            f+=Zo-Zx;
           }
         }
-        for (int i=0; i<size(_dEH); ++i)
-          gr[k++] += _dEH[i];
-        _sum_eff += sum_eff;
+      }
+      /* sync block */{
+        lock l(_mx_update);
+        int k=0;
+        if(_m.theta_softmax()){
+          for(int i=0;i<size(ENo);++i){
+            double tot=0.;
+            for(int j=0;j<size(ENo[i]);++j)
+              tot+=ENo[i][j]-ENx[i][j];//the order prevents digit reduction
+            for(int j=0;j<size(ENo[i]);++j){
+              double tmp=ENo[i][j]-ENx[i][j];
+              double p=exp(_m.mm.theta()[i][j]);
+              grg[k++]+=(1-p)*tmp-p*(tot-tmp);
+            }
+          }
+        }else{
+          for(int i=0;i<size(ENo);++i)
+            for(int j=0;j<size(ENo[i]);++j)
+              grg[k++]+=ENo[i][j]-ENx[i][j];
+        }
+        for(int i=0;i<size(EHo);++i)
+          grg[k++]+=EHo[i]-EHx[i];
+        fg+=f;
+        _sum_effg+=sum_eff;
+        for(int i=0;i<size(EN);++i)
+          for(int j=0;j<size(EN[i]);++j)
+            ENg[i][j]+=EN[i][j];
       }
     }
 

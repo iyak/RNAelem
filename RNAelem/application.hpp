@@ -300,6 +300,12 @@ namespace iyak {
       .set_default(2)
       .metavar("INT");
 
+      _parser
+      .add_option("--lik-ratio")
+      .help("turn on likelihood ratio optimization")
+      .dest("lik_ratio")
+      .action("store_true");
+
       auto const options = _parser.parse_args(argc, argv);
       auto const args = _parser.args();
 
@@ -396,6 +402,7 @@ namespace iyak {
         else if (1 < array) tr_mode |= TR_ARRAY;
       }
       if (options.get("no_shuffle"))tr_mode|=TR_NO_SHUFFLE;
+      if(options.get("lik_ratio"))tr_mode|=TR_LIK_RATIO;
 
       no_rss = options.get("no_rss");
       no_prf = options.get("no_prf");
