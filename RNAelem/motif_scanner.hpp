@@ -23,14 +23,10 @@ namespace iyak {
     mutex& _mx_input;
     mutex& _mx_output;
     FastqReader& _qr;
-    double _pseudo_cov;
-    V _convo_kernel {1};
     int _out;
-    RNAelemScanDP(RNAelem& m, mutex& mx_input, mutex& mx_output,
-                  double pseudo_cov, V const& convo_kernel, FastqReader& qr,
-                  int out):
+    RNAelemScanDP(RNAelem& m, mutex& mx_input, mutex& mx_output, FastqReader& qr,int out):
     _m(m), _mx_input(mx_input), _mx_output(mx_output), _qr(qr),
-    _pseudo_cov(pseudo_cov), _convo_kernel(convo_kernel), _out(out) {}
+    _out(out) {}
 
     string _id;
     VI _seq;
@@ -873,14 +869,9 @@ namespace iyak {
     FastqReader _qr;
     int _out=1;
     int _thread;
-
     RNAelem *_motif;
-    V _convo_kernel {1};
-    double _pseudo_cov;
-
     mutex _mx_input;
     mutex _mx_output;
-
   public:
     RNAelemScanner(int t=1): _thread(t) {}
     RNAelem* model() {return _motif;}
@@ -891,11 +882,7 @@ namespace iyak {
       _qr.set_fq_fname(_fq_name);
     }
     void set_out_id(int _id) {_out = _id;}
-    void set_preprocess(V const& convo_kernel, double pseudo_cov) {
-      _convo_kernel = convo_kernel;
-      _pseudo_cov = pseudo_cov;
-    }
-
+    
     void scan(RNAelem& model) {
 
       say("scan start:");
@@ -903,8 +890,7 @@ namespace iyak {
       _motif = &model;
 
       _qr.clear();
-      ClassThread<RNAelemScanDP> ct(_thread, *_motif, _mx_input, _mx_output,
-                                    _pseudo_cov, _convo_kernel, _qr, _out);
+      ClassThread<RNAelemScanDP> ct(_thread, *_motif, _mx_input, _mx_output,_qr,_out);
       ct();
       say("scan end:", lap());
     }

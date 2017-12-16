@@ -46,8 +46,6 @@ namespace iyak {
     double lambda_init;
     double lambda_prior;
     double min_bpp;
-    V convo_kernel {};
-    double pseudo_cov;
     VI param_set {};
     int kmer_shuf;
 
@@ -206,20 +204,6 @@ namespace iyak {
       .dest("min_bpp")
       .set_default(1e-4)
       .metavar("DOUBLE[0,1]");
-
-      _parser
-      .add_option("--convo-kernel")
-      .help("convolution kernel for pre-processing of coverage.")
-      .dest("convo_kernel")
-      .set_default("1") // identity
-      .metavar("INT,INT,...");
-
-      _parser
-      .add_option("--pseudo-cov")
-      .help("pseudo count for pre-processing of coverage.")
-      .dest("pseudo_cov")
-      .set_default(0.1)
-      .metavar("DOUBLE");
 
       _parser
       .add_option("--param-set")
@@ -381,10 +365,7 @@ namespace iyak {
       lambda_init = (double)options.get("lambda_init");
       lambda_prior = (double)options.get("lambda_prior");
       kmer_shuf=(int)options.get("kmer_shuf");
-
       min_bpp = (double)options.get("min_bpp");
-      convo_kernel = split<double>(options["convo_kernel"], ",");
-      pseudo_cov = (double)options.get("pseudo_cov");
       for (auto r: split<string>(options["param_set"], ",")) {
         auto se = split<int>(r, "-");
         if (1==size(se))
