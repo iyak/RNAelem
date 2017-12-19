@@ -879,11 +879,15 @@ namespace iyak {
         _adam.minimize(*this,_params,_max_iter);
         _motif->unpack_params(_adam.x());
       }
-      if(_motif->theta_softmax())
-        _motif->mm.calc_theta();
-      double time = lap();
-      pict_logo();
-      cry("wall clock time per eval:", time / _cnt);
+      try{/* to keep the program from terminating after training */
+        if(_motif->theta_softmax())
+          _motif->mm.calc_theta();
+        double time=lap();
+        pict_logo();
+        cry("wall clock time per eval:",time/_cnt);
+      }catch(std::runtime_error& e){
+        cry(e.what());
+      }
     }
 
     int operator() (V const& x, double& fn, V& gr) {
