@@ -58,7 +58,7 @@ namespace iyak {
     VVVV _cyk;
     VV _cyk_o;
     string cyk_structure_path;
-    string cyk_state_path;
+    VI cyk_state_path{};
 
     /* getter */
     double& inside(int const i,int const j,int const e,IS const& s) {
@@ -139,7 +139,7 @@ namespace iyak {
       _trace_back.assign(_m.L+1, VVVT(_m.W+1, VVT(_m.E-1, VT(_m.S, Trace({-1,-1,-1,-1,-1})))));
       _trace_back_o.assign(_m.L+1, VT(_m.S, Trace({-1,-1,-1,-1,-1})));
       cyk_structure_path.assign(_m.L, ' ');
-      cyk_state_path.assign(_m.L, ' ');
+      cyk_state_path.assign(_m.L,0);
     }
 
     double part_func(bool ari=true,bool nasi=true) {
@@ -234,17 +234,18 @@ namespace iyak {
         /* sync block */ {
           lock l(_mx_output);
 
+          dat(_out, "id:",_id);
           dat(_out, "start:", apply(logNL, PysL));
           dat(_out, "end:", apply(logNL, PyeL));
           dat(_out, "inner:", apply(logNL, PyiL));
+          dat(_out, "psihat:",cyk_state_path);
           dat(_out, "motif region:", Ys, "-", Ye);
           dat(_out, "exist prob:", expL(sumL(PysL)));
-
-          say("len:", _seq.size());
-          dat(_out, "id:", _id);
           dat(_out, "seq:", seq_itos(_seq));
           dat(_out, "rss:", cyk_structure_path);
-          dat(_out, "mot:", cyk_state_path);
+          string s="";
+          for(int i:cyk_state_path)s+=(0==i or _m.M-1==i?' ':_m.mm.node(i));
+          dat(_out,"mot:",s);
         }
       }
     }
@@ -256,26 +257,37 @@ namespace iyak {
       while (not vt2.empty()) {
         auto t2 = vt2.back();
         vt2.pop_back();
-        Trace& t = (EM::ST_O==t2.e? trace_o(t2.j,t2.s): trace(t2.i,t2.j,t2.e,t2.s));
+        Trace& t=(EM::ST_O==t2.e?
+                  trace_o(t2.j,t2.s):
+                  trace(t2.i,t2.j,t2.e,t2.s));
         IS const& s1 = _m.mm.state()[t.s1_id];
 
         switch (t.t) {
-
-          case EM::TT_L_L:
-          case EM::TT_O_O:
-#if !DBG_NO_MULTI
-          case EM::TT_2_2:
-#endif
-          {
-            if (0!=t2.s.r and _m.M-1!=t2.s.r) {
-              cyk_state_path[t.l] = _m.mm.node(t2.s.r);
-            }
-            cyk_structure_path[t.l] = '.';
+          case EM::TT_L_L:{
+            cyk_state_path[t.l]=t2.s.r;
+            vt2.push_back({t.k,t.l,t.e1,s1});
+            break;
+          }
+          case EM::TT_O_O:{
+            cyk_state_path[t.l]=t2.s.r;
+            cyk_structure_path[t.l]='O';
             vt2.push_back({t.k, t.l, t.e1, s1});
             break;
           }
-
-          case EM::TT_E_H:
+#if !DBG_NO_MULTI
+          case EM::TT_2_2:{
+            cyk_state_path[t.l]=t2.s.r;
+            cyk_structure_path[t.l]='M';
+            vt2.push_back({t.k, t.l, t.e1, s1});
+            break;
+          }
+#endif
+          case EM::TT_E_H:{
+            int const n=t2.j-t2.i;
+            cyk_structure_path.replace(t2.i,n,n,'H');
+            vt2.push_back({t.k,t.l,t.e1,t2.s});
+            break;
+          }
 #if !DBG_NO_MULTI
           case EM::TT_E_M:
           case EM::TT_M_B:
@@ -290,14 +302,10 @@ namespace iyak {
 
           case EM::TT_P_E:
           case EM::TT_P_P: {
-            if (0!=s1.l and _m.M-1!=s1.l) {
-              cyk_state_path[t2.i] = _m.mm.node(s1.l);
-            }
-            cyk_structure_path[t2.i] = '(';
-            if (0!=t2.s.r and _m.M-1!=t2.s.r) {
-              cyk_state_path[t.l] = _m.mm.node(t2.s.r);
-            }
-            cyk_structure_path[t.l] = ')';
+            cyk_state_path[t2.i]=s1.l;
+            cyk_structure_path[t2.i]='L';
+            cyk_state_path[t.l]=t2.s.r;
+            cyk_structure_path[t.l]='R';
             vt2.push_back({t.k, t.l, t.e1, s1});
             break;
           }
@@ -312,6 +320,13 @@ namespace iyak {
           case EM::TT_E_P: {
             IS const& s2 = _m.mm.n2s(t2.s.l, s1.l);
             IS const& s3 = _m.mm.n2s(s1.r, t2.s.r);
+            int const n1=t2.j-t.l,n2=t.k-t2.i;
+            if(0==n1)cyk_structure_path.replace(t2.i,n2,n2,'B');
+            else if(0==n2)cyk_structure_path.replace(t.l,n1,n1,'B');
+            else{
+              cyk_structure_path.replace(t2.i,n2,n2,'I');
+              cyk_structure_path.replace(t.l,n1,n1,'I');
+            }
             vt2.push_back({t.l, t2.j, EM::ST_L, s3});
             vt2.push_back({t2.i, t.k, EM::ST_L, s2});
             vt2.push_back({t.k, t.l, t.e1, s1});
@@ -327,10 +342,8 @@ namespace iyak {
           }
 
           case EM::TT_M_M: {
-            if (0!=s1.l and _m.M-1!=s1.l) {
-              cyk_state_path[t2.i] = _m.mm.node(s1.l);
-            }
-            cyk_structure_path[t2.i] = '.';
+            cyk_state_path[t2.i]=s1.l;
+            cyk_structure_path[t2.i]='M';
             vt2.push_back({t.k, t.l, EM::ST_M, s1});
             break;
           }
