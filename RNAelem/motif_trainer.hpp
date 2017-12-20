@@ -855,6 +855,7 @@ namespace iyak {
       }
       _logo.set_x_axis_height(0);
       _logo.pict_table_bit(w,alphs,split<string>(_motif->mm.pattern(),""));
+      cry("E[N]:",_EN);
     }
 
     void train(RNAelem& model) {
