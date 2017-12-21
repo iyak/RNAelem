@@ -28,8 +28,9 @@ namespace iyak {
     void set_out_id (int i) {_out=i;}
     void write(RNAelem& m) {
       _m = &m;
-
-      dat(_out, "pattern:", _m->mm.pattern());
+      string pattern=_m->mm.pattern();
+      if(_m->no_rss())for(auto& p:pattern)if('.'==p)p='_';
+      dat(_out,"pattern:",pattern);
       if(_m->theta_softmax()){
         dat(_out, "s:", apply(logNL, _m->mm.s()));
         _m->mm.calc_theta();
@@ -210,7 +211,7 @@ namespace iyak {
 
       check((1<<11)-1 == set, "motif file broken:",
             _model_fname, bit_index(((1<<10)-1)^set));
-
+      if(no_rss)for(auto& p:pattern)if('_'==p)p='.';
       _m->set_motif_pattern(pattern, no_rss, no_prf);
       _m->set_theta_softmax(theta_softmax);
       if(theta_softmax){
