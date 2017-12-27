@@ -26,7 +26,7 @@ namespace iyak {
   enum {
     debug = DBG_NONE
   };
-#define DBG_NO_MULTI 1
+#define DBG_NO_MULTI 0
 #define MAX_SEQLEN 9999
 }
 
