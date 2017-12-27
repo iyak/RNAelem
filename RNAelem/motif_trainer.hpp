@@ -162,22 +162,22 @@ namespace iyak {
           init_outside_tables(true,true);
           _m.compute_inside(InsideFun(this,ws()));
           if(-inf<ws().back()){//seq without motif
-            if(not std::isfinite(Zx=part_func(true,true))){
+            if(not(std::isfinite(Zx=part_func(true,true))and
+                   std::isfinite(Zo=part_func(true,false)))){
               if(0==_iter_cnt)cry("skipped:",_id);
               continue;
             }
             _m.compute_outside(OutsideFun(this,ws(),Zx,EHx,ENx));
             init_outside_tables(true,false);
-            Zo=part_func(true,false);
             _m.compute_outside(OutsideFun(this,ws(),Zo,EHo,ENo));
           }else{//seq with motif
-            if(not std::isfinite(Zo=part_func(true,true))){
+            if(not(std::isfinite(Zo=part_func(true,true))and
+                   std::isfinite(Zx=part_func(true,false)))){
               if(0==_iter_cnt)cry("skipped:",_id);
               continue;
             }
             _m.compute_outside(OutsideFun(this,ws(),Zo,EHo,ENo));
             init_outside_tables(true,false);
-            Zx=part_func(true,false);
             VV tmp{};
             _m.mm.clear_emit_count(tmp);
             _m.compute_outside(OutsideFun(this,ws(),Zx,EHx,tmp));
@@ -198,13 +198,13 @@ namespace iyak {
             init_inside_tables();
             init_outside_tables(true,true);
             _m.compute_inside(InsideFun(this,ws()));
-            if(not std::isfinite(Zx=part_func(true,true))){
+            if(not(std::isfinite(Zx=part_func(true,true))and
+                   std::isfinite(Zo=part_func(true,false)))){
               if (0==_iter_cnt) cry("skipped:", _id);
               continue;
             }
             _m.compute_outside(OutsideFun(this,ws(),Zx,EHx,ENx));
             init_outside_tables(true,false); //without motif
-            Zo=part_func(true,false);
             _m.compute_outside(OutsideFun(this,ws(),Zo,EHo,ENo));
             f+=Zo-Zx;
           }
@@ -217,14 +217,15 @@ namespace iyak {
           init_inside_tables();
           init_outside_tables(true,true);
           _m.compute_inside(InsideFun(this,ws()));
-          if(not std::isfinite(Zo=part_func(true,true))){
-            if (0==_iter_cnt) cry("skipped:", _id);
+          if(not(std::isfinite(Zo=part_func(true,true))and
+                 std::isfinite(part_func(true,false)))){
+            if(0==_iter_cnt)cry("skipped:",_id);
             continue;
           }
           _m.compute_outside(OutsideFun(this,ws(),Zo,EHo,ENo));
           if(-inf<ws().back()){//seq without motif
             init_outside_tables(false,true);
-            Zx=part_func(false,true);
+            Zx=part_func(false,true);//never be inf if Zo is not inf
             _m.compute_outside(OutsideFun(this,ws(),Zx,EHx,ENx));
           }else{//seq with motif
             init_outside_tables(true,false);
