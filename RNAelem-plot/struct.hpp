@@ -111,8 +111,13 @@ namespace iyak{
       for(int i=1;i<size(rss);++i)
         if('*'==rss[i-1] and '*'==rss[i]){rss.erase(i,1);seq.erase(i,1);--i;}
       /* triple *s */
-      for(int i=0;i<size(rss);++i)
-        if('*'==rss[i]){rss.insert(i,"**");seq.insert(i,"  ");i+=2;}
+      for(int i=0;i<size(rss);++i){
+        if('*'==rss[i]){
+          rss.insert(i,string(_g-1,'*'));
+          seq.insert(i,string(_g-1,' '));
+          i+=_g-1;
+        }
+      }
     }
   public:
     void set_ostream(ostream& ofs){_ofs=&ofs;}
