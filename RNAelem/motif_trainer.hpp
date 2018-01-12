@@ -18,6 +18,7 @@
 #include"arrayjob_manager.hpp"
 #include"fastq_io.hpp"
 #include"optimizer.hpp"
+#include"logo.hpp"
 namespace ushuffle{extern "C"{
 #include "ushuffle/ushuffle.h"
 }}
