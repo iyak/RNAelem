@@ -62,6 +62,15 @@ def build(bld):
             use="freetype ushuffle",
             lib="pthread")
 
+    bld.program(
+            features="cxx cxxprogram",
+            cxxflags="-std=c++14 -Wall -O3"
+            " -Wno-unknown-pragmas -ffast-math",
+            source="RNAelem-plot/main.cpp",
+            includes="RNAelem RNAelem-plot",
+            target="bin/RNAelem-plot",
+            lib="pthread")
+
     bld(
             features="cxx",
             cxxflags="-pthread -c",
