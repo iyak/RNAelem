@@ -124,9 +124,9 @@ namespace iyak{
     void no_plot(){
       (*_ofs)<<
       "%!PS-Adobe-3.0 EPSF-3.0\n"
-      "%%BoundingBox:-2 -2 60 60\n"
+      "%%BoundingBox:0 0 62 62\n"
       "/Courier findfont 8 scalefont setfont\n"
-      "0 0 moveto (no structure) show showpage\n";
+      "2 28 moveto (no structure) show showpage\n";
     }
     void plot(string seq,string rss){
       set_seq_rss(seq,rss);
