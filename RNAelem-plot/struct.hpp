@@ -124,7 +124,7 @@ namespace iyak{
     void no_plot(){
       (*_ofs)<<
       "%!PS-Adobe-3.0 EPSF-3.0\n"
-      "%%BoundingBox:-2 -2 60 7\n"
+      "%%BoundingBox:-2 -2 60 60\n"
       "/Courier findfont 8 scalefont setfont\n"
       "0 0 moveto (no structure) show showpage\n";
     }
