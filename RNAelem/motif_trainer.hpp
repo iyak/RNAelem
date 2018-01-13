@@ -18,7 +18,6 @@
 #include"arrayjob_manager.hpp"
 #include"fastq_io.hpp"
 #include"optimizer.hpp"
-#include"logo.hpp"
 namespace ushuffle{extern "C"{
 #include "ushuffle/ushuffle.h"
 }}
@@ -122,12 +121,11 @@ namespace iyak {
      o-suffix: statistics to be plused
      x-suffix: statistics to be minused
      */
-    void operator()(double& fg,V& grg,VV& ENg){
+    void operator()(double& fg,V& grg){
       double f=0.;
       double sum_eff=0.;
       double Zo=0.,Zx=0.;
-      VV EN{},ENo{},ENx{};
-      _m.mm.clear_emit_count(EN);
+      VV ENo{},ENx{};
       _m.mm.clear_emit_count(ENo);
       _m.mm.clear_emit_count(ENx);
       V EHo{0.,0.},EHx{0.,0.};
@@ -179,15 +177,7 @@ namespace iyak {
             }
             _m.compute_outside(OutsideFun(this,ws(),Zo,EHo,ENo));
             init_outside_tables(true,false);
-            VV tmp{};
-            _m.mm.clear_emit_count(tmp);
-            _m.compute_outside(OutsideFun(this,ws(),Zx,EHx,tmp));
-            for(int i=0;i<size(tmp);++i){
-              for(int j=0;j<size(tmp[i]);++j){
-                ENx[i][j]+=tmp[i][j];
-                EN[i][j]+=tmp[i][j];
-              }
-            }
+            _m.compute_outside(OutsideFun(this,ws(),Zx,EHx,ENx));
           }
           f+=Zo-Zx;
           sum_eff+=_m.em.bpp_eff();
@@ -231,15 +221,7 @@ namespace iyak {
           }else{//seq with motif
             init_outside_tables(true,false);
             Zx=part_func(true,false);
-            VV tmp{};
-            _m.mm.clear_emit_count(tmp);
-            _m.compute_outside(OutsideFun(this,ws(),Zx,EHx,tmp));
-            for(int i=0;i<size(tmp);++i){
-              for(int j=0;j<size(tmp[i]);++j){
-                ENx[i][j]+=tmp[i][j];
-                EN[i][j]+=tmp[i][j];
-              }
-            }
+            _m.compute_outside(OutsideFun(this,ws(),Zx,EHx,ENx));
           }
           f+=Zo-Zx;
           sum_eff+=_m.em.bpp_eff();
@@ -286,9 +268,6 @@ namespace iyak {
           grg[k++]+=EHo[i]-EHx[i];
         fg+=f;
         _sum_effg+=sum_eff;
-        for(int i=0;i<size(EN);++i)
-          for(int j=0;j<size(EN[i]);++j)
-            ENg[i][j]+=EN[i][j];
       }
     }
 
@@ -503,11 +482,6 @@ namespace iyak {
     RNAelemTrainer(unsigned m=TR_NORMAL, int t=1): _mode(m), _thread(t) {}
     RNAelem* model() {return _motif;}
 
-    /* logo */
-    RNAlogo _logo;
-    int _svg=0;
-    VV _EN;
-
     /* eval */
     double _fn;
     V _gr;
@@ -583,37 +557,6 @@ namespace iyak {
       _lambda_init = lambda_init;
     }
 
-    void set_logo(string const& font,int svg){
-      if ("~DEFAULT~"!=font)_logo.set_font(font);
-      _logo.set_ostream(get_ostream(svg));
-    }
-    void pict_logo(){
-      VV w{};
-      VVS alphs{};
-      int i=1;
-      for(auto c:_motif->mm.pattern()){
-        if('.'==c){
-          alphs.push_back({"A","C","G","U"});
-          check(nchar-1==size(_EN[i]),__FUNCTION__);
-          w.push_back(_EN[i]);
-          ++i;
-        }
-        else if(')'==c){
-          check(nchar2-1==size(_EN[i]),__FUNCTION__);
-          alphs.push_back({"CG","GC","GU","UG","AU","UA"});
-          w.push_back(_EN[i]);
-          ++i;
-        }
-        else {
-          alphs.push_back({});
-          w.push_back({});
-        }
-      }
-      _logo.set_x_axis_height(0);
-      _logo.pict_table_bit(w,alphs,split<string>(_motif->mm.pattern(),""));
-      cry("E[N]:",_EN);
-    }
-
     void train(RNAelem& model) {
       _motif = &model;
       _motif->set_lambda(_lambda_init);
@@ -640,7 +583,6 @@ namespace iyak {
         if(_motif->theta_softmax())
           _motif->mm.calc_theta();
         double time=lap();
-        pict_logo();
         cry("wall clock time per eval:",time/_cnt);
       }catch(std::runtime_error& e){
         cry(e.what());
@@ -652,7 +594,6 @@ namespace iyak {
       fn=0.;
       gr.assign(size(x),0.);
       _sum_eff=0.;
-      _motif->mm.clear_emit_count(_EN);
       if (_mode & TR_ARRAY) {
         fclear(4);
         _writer.set_out_id(4);
@@ -666,7 +607,7 @@ namespace iyak {
         ct(_thread,
            *_motif,_from,_to,_sum_eff,_mx_input,_mx_update,_qr,_mode,_cnt,
            _kmer_shuf);
-        ct(fn,gr,_EN);
+        ct(fn,gr);
       }
       if (_mode & TR_MASK) cry(flatten(x,gr)+"fn:"+to_str(fn));
       if(_mode&TR_NO_SHUFFLE){

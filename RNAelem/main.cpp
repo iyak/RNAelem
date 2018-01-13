@@ -64,7 +64,6 @@ int main(int const argc, char const* argv[]) {
         train.set_fq_name(app.seq_fname);
         train.set_conditions(app.max_iter, app.eps, app.lambda_init,
                              app.kmer_shuf);
-        train.set_logo(app.font,2);
         if (app.tr_mode & TR_MASK)
           train.set_train_params(app.param_set);
         if (app.tr_mode & TR_ARRAY)
@@ -76,6 +75,7 @@ int main(int const argc, char const* argv[]) {
         writer.write(model);
 
         RNAelemScanner scan(app.thread);
+        scan.set_logo(app.font,2);
         scan.set_out_id(3);
         scan.set_fq_name(app.seq_fname);
         scan.scan(model);
@@ -103,7 +103,6 @@ int main(int const argc, char const* argv[]) {
         train.set_fq_name(app.seq_fname);
         train.set_conditions(app.max_iter, app.eps, app.lambda_init,
                              app.kmer_shuf);
-        train.set_logo(app.font,2);
         if (app.tr_mode & TR_MASK)
           train.set_train_params(app.param_set);
         if (app.tr_mode & TR_ARRAY)
@@ -124,6 +123,8 @@ int main(int const argc, char const* argv[]) {
         reader.read_model(model);
 
         RNAelemScanner scan(app.thread);
+        scan.set_logo(app.font,0);
+        scan.set_out_id(1);
         scan.set_fq_name(app.seq_fname);
         scan.scan(model);
 

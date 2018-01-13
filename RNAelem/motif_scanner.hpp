@@ -13,6 +13,7 @@
 #include"motif_model.hpp"
 #include"fastq_io.hpp"
 #include"bio_sequence.hpp"
+#include"logo.hpp"
 
 namespace iyak {
 
@@ -22,11 +23,13 @@ namespace iyak {
     RNAelem* model() {return &_m;}
     mutex& _mx_input;
     mutex& _mx_output;
+    mutex& _mx_update;
     FastqReader& _qr;
     int _out;
-    RNAelemScanDP(RNAelem& m, mutex& mx_input, mutex& mx_output, FastqReader& qr,int out):
-    _m(m), _mx_input(mx_input), _mx_output(mx_output), _qr(qr),
-    _out(out) {}
+    RNAelemScanDP(RNAelem& m,mutex& mx_input,mutex& mx_output,mutex& mx_update,
+                  FastqReader& qr,int out):
+    _m(m),_mx_input(mx_input),_mx_output(mx_output),_mx_update(mx_update),
+    _qr(qr),_out(out){}
 
     string _id;
     VI _seq;
@@ -181,13 +184,13 @@ namespace iyak {
       trace_back(0, _m.L, EM::ST_O, s);
     }
 
-    void calc_motif_start_position() {
+    void calc_motif_start_position(VV& EN) {
       init_inside_tables();
       init_outside_tables();
 
       _m.compute_inside(InsideFun(this,_wsL));
       ZL = part_func();
-      _m.compute_outside(OutsideFun(this,_wsL, ZL, PysL, PyiL));
+      _m.compute_outside(OutsideFun(this,_wsL, ZL, PysL, PyiL,EN));
     }
 
     void calc_motif_end_position(int const s) {
@@ -199,8 +202,8 @@ namespace iyak {
       _m.compute_outside(OutsideEndFun(this,_wsL,s,ZeL,PyeL));
     }
 
-    void calc_motif_positions() {
-      calc_motif_start_position();
+    void calc_motif_positions(VV& EN) {
+      calc_motif_start_position(EN);
       Ys = max_index(PysL);
       PyNL = divL(inside_o(_m.L, _m.mm.n2s(0,0)), ZL);
 
@@ -210,9 +213,10 @@ namespace iyak {
       double s = sumL(sumL(PysL), PyNL);
       expect(double_eq(oneL, s), "log sum:", logNL(s));
     }
-    void operator() () {
+    void operator() (VV& ENg) {
+      VV EN{};
+      _m.mm.clear_emit_count(EN);
       while (1) {
-
         VI qual;
         /* sync block */ {
           lock l(_mx_input);
@@ -228,7 +232,7 @@ namespace iyak {
         PyeL.assign(_m.L+1, zeroL);
         PyiL.assign(_m.L, zeroL);
 
-        calc_motif_positions();
+        calc_motif_positions(EN);
         calc_viterbi_alignment();
 
         /* sync block */ {
@@ -247,6 +251,12 @@ namespace iyak {
           for(int i:cyk_state_path)s+=(0==i or _m.M-1==i?' ':_m.mm.node(i));
           dat(_out,"mot:",s);
         }
+      }
+      /* sync block */{
+        lock l(_mx_update);
+        for(int i=0;i<size(EN);++i)
+          for(int j=0;j<size(EN[i]);++j)
+            ENg[i][j]+=EN[i][j];
       }
     }
 
@@ -414,14 +424,17 @@ namespace iyak {
       double const _ZL;
       V& _PysL;
       V& _PyiL;
+      VV& _EN;
       RNAelem& _m;
+      VI& _seq;
       V const& _wsL;
       double part_func(bool ari=true,bool nasi=true) const {
         return _s->part_func(ari,nasi);
       }
       double part_func_outside() const {return _s->part_func_outside();}
-      OutsideFun(RNAelemScanDP* s,V const& ws,double const ZL,V& PysL,V& PyiL):
-      _s(s), _ZL(ZL), _PysL(PysL), _PyiL(PyiL), _m(*(_s->model())),_wsL(ws) {}
+      OutsideFun(RNAelemScanDP* s,V const& ws,double const ZL,V& PysL,V& PyiL,VV& EN):
+      _s(s),_ZL(ZL),_PysL(PysL),_PyiL(PyiL),_EN(EN),_m(*(_s->model())),
+      _seq(*(_m._seq)),_wsL(ws) {}
 
       template<int e, int e1>
       forceinline
@@ -455,6 +468,31 @@ namespace iyak {
                      _s->outside(k,l,e1,s1))),
                _ZL);
         if (zeroL == z) return;
+
+        switch (e1) {
+          case EM::ST_P: {
+            if (k==i-1 and j==l-1 and not _m.no_prf())
+              _m.mm.add_emit_count(_EN, s.l, s1.r, _seq[k], _seq[j], expL(z));
+            break;
+          }
+#if !DBG_NO_MULTI
+          case EM::ST_2:
+#endif
+          case EM::ST_O:
+          case EM::ST_L: {
+            if (k==i and j==l-1 and not _m.no_prf())
+              _m.mm.add_emit_count(_EN, s1.r, _seq[j], expL(z));
+            break;
+          }
+#if !DBG_NO_MULTI
+          case EM::ST_M: {
+            if (k==i-1 and j==l and not _m.no_prf())
+              _m.mm.add_emit_count(_EN, s.l, _seq[k], expL(z));
+            break;
+          }
+#endif
+          default: {break;}
+        }
 
         if (EM::ST_E==e1 and EM::ST_P==e) {
           addL(_s->outside(i, j, e, s),
@@ -885,7 +923,40 @@ namespace iyak {
     RNAelem *_motif;
     mutex _mx_input;
     mutex _mx_output;
+    mutex _mx_update;
+    VV _EN;
+    RNAlogo _logo;
   public:
+    void set_logo(string const& font,int svg){
+      if ("~DEFAULT~"!=font)_logo.set_font(font);
+      _logo.set_ostream(get_ostream(svg));
+    }
+    void pict_logo(){
+      VV w{};
+      VVS alphs{};
+      int i=1;
+      for(auto c:_motif->mm.pattern()){
+        if('.'==c){
+          alphs.push_back({"A","C","G","U"});
+          check(nchar-1==size(_EN[i]),__FUNCTION__);
+          w.push_back(_EN[i]);
+          ++i;
+        }
+        else if(')'==c){
+          check(nchar2-1==size(_EN[i]),__FUNCTION__);
+          alphs.push_back({"CG","GC","GU","UG","AU","UA"});
+          w.push_back(_EN[i]);
+          ++i;
+        }
+        else {
+          alphs.push_back({});
+          w.push_back({});
+        }
+      }
+      _logo.set_x_axis_height(0);
+      _logo.pict_table_bit(w,alphs,split<string>(_motif->mm.pattern(),""));
+      cry("E[N]:",_EN);
+    }
     RNAelemScanner(int t=1): _thread(t) {}
     RNAelem* model() {return _motif;}
 
@@ -897,15 +968,16 @@ namespace iyak {
     void set_out_id(int _id) {_out = _id;}
     
     void scan(RNAelem& model) {
-
       say("scan start:");
       lap();
       _motif = &model;
-
+      _motif->mm.clear_emit_count(_EN);
       _qr.clear();
-      ClassThread<RNAelemScanDP> ct(_thread, *_motif, _mx_input, _mx_output,_qr,_out);
-      ct();
-      say("scan end:", lap());
+      ClassThread<RNAelemScanDP> ct(_thread,*_motif,_mx_input,_mx_output,
+                                    _mx_update,_qr,_out);
+      ct(_EN);
+      pict_logo();
+      cry("scan end:", lap());
     }
 
   };
