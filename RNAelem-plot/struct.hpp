@@ -169,6 +169,8 @@ namespace iyak{
   "/fxy {exch xy exch get aload pop 3 -1 roll exec} bind def % int proc fxy -\n"
   "/drawbackbone {\n"
   "  gsave newpath 0.2 setgray 0.8 setlinewidth\n"
+  "  0 {moveto} fxy 0 {4 0 360 arc gsave stroke grestore 1 setgray fill} fxy\n"
+  "  gsave newpath 0.2 setgray 0.8 setlinewidth\n"
   "  0 {moveto} fxy -1 gaps aload pop 1 {2 copy eq {3 add {moveto} fxy 4 add}\n"
   "    {dup {lineto} fxy 1 add} ifelse dup xy length ge {exit} if} loop\n"
   "  stroke grestore\n"
@@ -186,8 +188,7 @@ namespace iyak{
   "} bind def\n"
   "/drawbases {\n"
   "  gsave newpath 0 setgray 0.8 setlinewidth\n"
-  "  0 {moveto} fxy 0 {4 0 360 arc gsave stroke grestore fill} fxy\n"
-  "  0 xy {{2.3 sub} mapa aload pop moveto dup seq exch 1 getinterval false charpath\n"
+  "  0 xy {{2.4 sub} mapa aload pop moveto dup seq exch 1 getinterval false charpath\n"
   "    gsave 2.5 setlinewidth 1 setgray stroke grestore fill 1 add} forall\n"
   "  stroke grestore\n"
   "} bind def\n";
