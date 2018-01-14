@@ -175,8 +175,8 @@ namespace iyak{
   "} bind def\n"
   "/drawgaps {\n"
   "  gsave newpath 0.2 setgray 0.8 setlinewidth [1 3] 0 setdash\n"
-  "  gaps {1 sub dup {moveto} fxy 1 add dup {lineto} fxy 1 add dup {moveto} fxy\n"
-  "    1 add dup {moveto} fxy 1 add {lineto} fxy} forall\n"
+  "  gaps {1 sub dup {moveto} fxy 1 add dup {lineto} fxy\n"
+  "    2 add dup {moveto} fxy 1 add {lineto} fxy} forall\n"
   "  stroke grestore\n"
   "} bind def\n"
   "/drawloop {\n"
@@ -186,8 +186,9 @@ namespace iyak{
   "} bind def\n"
   "/drawbases {\n"
   "  gsave newpath 0 setgray 0.8 setlinewidth\n"
-  "  0 xy {{2 sub} mapa aload pop moveto dup seq exch 1 getinterval false charpath\n"
-  "    gsave 2.5 setlinewidth 1 setgray stroke grestore 0 setgray fill 1 add} forall\n"
+  "  0 {moveto} fxy 0 {4 0 360 arc gsave stroke grestore fill} fxy\n"
+  "  0 xy {{2.3 sub} mapa aload pop moveto dup seq exch 1 getinterval false charpath\n"
+  "    gsave 2.5 setlinewidth 1 setgray stroke grestore fill 1 add} forall\n"
   "  stroke grestore\n"
   "} bind def\n";
   string const RNAplot::ps_main=
