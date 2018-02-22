@@ -75,7 +75,6 @@ int main(int const argc, char const* argv[]) {
         writer.write(model);
 
         RNAelemScanner scan(app.thread);
-        scan.set_logo(app.font,2);
         scan.set_out_id(3);
         scan.set_fq_name(app.seq_fname);
         scan.scan(model);
@@ -123,24 +122,9 @@ int main(int const argc, char const* argv[]) {
         reader.read_model(model);
 
         RNAelemScanner scan(app.thread);
-        scan.set_logo(app.font,0);
         scan.set_out_id(1);
         scan.set_fq_name(app.seq_fname);
         scan.scan(model);
-
-        break;
-      }
-
-      case App::PM_LOGO: {
-
-        RNAelem model;
-        RNAelemReader reader;
-        reader.set_model_fname(app.model_fname);
-        reader.read_model(model);
-
-        RNAelemWriter writer;
-        writer.set_out_id(-1);
-        writer.write(model);
 
         break;
       }

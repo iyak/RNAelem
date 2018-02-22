@@ -13,7 +13,6 @@
 #include"motif_model.hpp"
 #include"fastq_io.hpp"
 #include"bio_sequence.hpp"
-#include"logo.hpp"
 
 namespace iyak {
 
@@ -925,38 +924,7 @@ namespace iyak {
     mutex _mx_output;
     mutex _mx_update;
     VV _EN;
-    RNAlogo _logo;
   public:
-    void set_logo(string const& font,int svg){
-      if ("~DEFAULT~"!=font)_logo.set_font(font);
-      _logo.set_ostream(get_ostream(svg));
-    }
-    void pict_logo(){
-      VV w{};
-      VVS alphs{};
-      int i=1;
-      for(auto c:_motif->mm.pattern()){
-        if('.'==c){
-          alphs.push_back({"A","C","G","U"});
-          check(nchar-1==size(_EN[i]),__FUNCTION__);
-          w.push_back(_EN[i]);
-          ++i;
-        }
-        else if(')'==c){
-          check(nchar2-1==size(_EN[i]),__FUNCTION__);
-          alphs.push_back({"CG","GC","GU","UG","AU","UA"});
-          w.push_back(_EN[i]);
-          ++i;
-        }
-        else {
-          alphs.push_back({});
-          w.push_back({});
-        }
-      }
-      _logo.set_x_axis_height(0);
-      _logo.pict_table_bit(w,alphs,split<string>(_motif->mm.pattern(),""));
-      cry("E[N]:",_EN);
-    }
     RNAelemScanner(int t=1): _thread(t) {}
     RNAelem* model() {return _motif;}
 
@@ -976,7 +944,6 @@ namespace iyak {
       ClassThread<RNAelemScanDP> ct(_thread,*_motif,_mx_input,_mx_output,
                                     _mx_update,_qr,_out);
       ct(_EN);
-      pict_logo();
       cry("scan end:", lap());
     }
 

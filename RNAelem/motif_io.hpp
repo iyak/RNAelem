@@ -10,7 +10,6 @@
 #define motif_io_h
 
 #include"util.hpp"
-#include"logo.hpp"
 #include"motif_model.hpp"
 
 namespace iyak {
@@ -21,7 +20,6 @@ namespace iyak {
     string _pic_fname;
 
     RNAelem* _m;
-    RNAlogo _logo;
 
   public:
 

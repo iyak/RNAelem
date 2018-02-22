@@ -27,7 +27,7 @@ def configure(cnf):
         ttfs = exe("find /Library/Fonts -name *.ttf")
         for ttf in ttfs.split("\n"):
             if "gothic" in ttf or "Gothic" in ttf:
-                cnf.env.append_unique("DEFINES", ["_DFONT=\"%s\""%ttf])
+                cnf.env.append_unique("DEFINES", ["DEFAULT_FONT=\"%s\""%ttf])
                 print("set font:", ttf)
                 break
         else:
@@ -37,13 +37,12 @@ def configure(cnf):
         ttfs = exe("find /usr/share/fonts -name *.ttf")
         for ttf in ttfs.split("\n"):
             if "gothic" in ttf or "Gothic" in ttf:
-                cnf.env.append_unique("DEFINES", ["_DFONT=\"%s\""%ttf])
+                cnf.env.append_unique("DEFINES", ["DEFAULT_FONT=\"%s\""%ttf])
                 print("set font:", ttf)
                 break
         else:
             print("could not find font file.")
             print("please set manually")
-
 
 def build(bld):
     bld(
@@ -59,7 +58,7 @@ def build(bld):
             source="RNAelem/main.cpp",
             includes="RNAelem RNAelem/ushuffle",
             target="bin/RNAelem",
-            use="freetype ushuffle",
+            use="ushuffle",
             lib="pthread")
 
     bld.program(
@@ -69,6 +68,16 @@ def build(bld):
             source="RNAelem-plot/main.cpp",
             includes="RNAelem RNAelem-plot",
             target="bin/RNAelem-plot",
+            lib="pthread")
+
+    bld.program(
+            features="cxx cxxprogram",
+            cxxflags="-std=c++14 -Wall -O3"
+            " -Wno-unknown-pragmas -ffast-math",
+            source="RNAelem-logo/main.cpp",
+            includes="RNAelem RNAelem-logo",
+            target="bin/RNAelem-logo",
+            use="freetype",
             lib="pthread")
 
     bld(
@@ -87,7 +96,7 @@ def build(bld):
             includes="RNAelem RNAelem-test"
             " RNAelem-test/gtest/include",
             target="bin/RNAelem-test",
-            use="gtest freetype ushuffle",
+            use="gtest ushuffle",
             lib="pthread")
 
     bld.program(
@@ -98,7 +107,7 @@ def build(bld):
             includes="RNAelem RNAelem-test"
             " RNAelem-test/gtest/include",
             target="bin/RNAelem-test-exact",
-            use="gtest freetype ushuffle",
+            use="gtest ushuffle",
             lib="pthread")
 
 def test(ctx):
