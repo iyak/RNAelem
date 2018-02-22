@@ -1,5 +1,5 @@
 # example
-seq:[[G,AU,C,UU,AC,U],[C,A,G,Ψ],[A,G,C,U]]
+seq:[[G,AU,C,UU,AC,U],[C,A,G,Ψ],[A,G,C,U],]
 val:[[0,0.2,0,10,0,0],[3,6,1,22],[2,0,0,0]]
 color:[[red,[,black],green,[yellow,],[,],],[blue,white,green,red],[,,,]]
 meta:[.,(,*]

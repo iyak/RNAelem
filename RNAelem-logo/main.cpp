@@ -29,13 +29,14 @@ template<class T>vector<vector<T>> parse_table(string const& s){
 }
 
 void foreach(string const& s,std::function<void(string const&,int)>callback){
-  int j0=(int)s.find_first_of("["),j1=(int)s.find_last_of("]");
+  auto j0=s.find_first_of("["),j1=s.find_last_of("]");
   if(npos==j0 and npos==j1){
     callback(s,0);
     return;
   }
-  int from=j0+1,i=0;
-  for(int j=from;j<j1;++j){
+  auto from=j0+1;
+  int i=0;
+  for(auto j=from;j<j1;++j){
     if('['==s[j]){
       ++j;
       for(int nest=1;0<nest and j<j1;++j)nest+=('['==s[j])?1:(']'==s[j])?-1:0;
