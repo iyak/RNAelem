@@ -50,7 +50,7 @@ void foreach(string const& s,std::function<void(string const&,int)>callback){
   callback(s.substr(from,j1-from),i);
 }
 
-void parse_input(RNAlogo& logo,istream& fi){
+void parse_input(RNAlogo& logo,istream& fi,string ttf){
   string seq="",val="",color="",meta="";
   while(not fi.eof()){
     string s;
@@ -68,6 +68,7 @@ void parse_input(RNAlogo& logo,istream& fi){
     logo.data().columns.push_back({});
     foreach(ss,[&](string const& sss,int){
       logo.data().columns.back().blocks.emplace_back(sss);
+      logo.data().columns.back().blocks.back().font=ttf;
     });
   });
   foreach(val,[&](string const& ss,int i){
@@ -85,19 +86,23 @@ void parse_input(RNAlogo& logo,istream& fi){
   });
   foreach(meta,[&](string const& ss,int i){
     logo.data().columns[i].meta=ss;
+    logo.data().columns[i].meta_font=ttf;
   });
 }
 
 int main(int argc,char *argv[]){
   RNAlogo logo;
   logo.set_ostream(std::cout);
+  logo.set_x_axis_height(0);
+  check(1<argc,"usage: RNAelem-logo font.ttf <input>");
+  string ttf=argv[1];
   try{
-    if(1==argc){
-      parse_input(logo,std::cin);
-    }else{
-      ifstream ifs(argv[1]);
-      check(!!ifs,"cannot open:",argv[1]);
-      parse_input(logo,ifs);
+    if(2==argc){
+      parse_input(logo,std::cin,ttf);
+    }else if(2<argc){
+      ifstream ifs(argv[2]);
+      check(!!ifs,"cannot open:",argv[2]);
+      parse_input(logo,ifs,ttf);
     }
     logo.plot();
   }catch(...){

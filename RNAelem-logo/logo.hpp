@@ -213,6 +213,7 @@ namespace iyak {
   struct column{
     vector<block> blocks;
     string meta="";
+    string meta_font=DEFAULT_FONT;
   };
   struct logo_data{
     vector<column> columns;
@@ -330,7 +331,7 @@ namespace iyak {
             RNAlogoAlph(utf.str(j),
                         spaced(_yaxisw,_yrulerl,(_colw+_space)*i)+(w*j)+w*0.1,
                         spaced(_titleh,_rowh)+_space+_metah*0.1,
-                        w*0.8,_metah*0.8,"black");
+                        w*0.8,_metah*0.8,"black",_data.columns[i].meta_font);
           }
         }
       }
