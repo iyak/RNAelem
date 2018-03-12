@@ -88,7 +88,7 @@ namespace iyak {
       if (no_rss){
         check(not any(split<string>(pattern), (string)")"),
               "search pattern must not include pair when no-rss mode");
-        cry("motif pattern:",string(size(pattern),'_'));
+        cry("motif pattern:",replace(pattern,".","_"));
       }else{
         cry("motif pattern:", pattern);
       }

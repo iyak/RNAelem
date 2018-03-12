@@ -30,6 +30,11 @@ namespace iyak {
 
     EXPECT_EQ((VS{"A","B"}), split<string>("AB", ""));
 
+    EXPECT_EQ("ABC",replace("BBC","B","A",1));
+    EXPECT_EQ("AAC",replace("BBC","B","A"));
+    EXPECT_EQ("ABBC",replace("BBC","B","AB",1));
+    EXPECT_EQ("ABABC",replace("BBC","B","AB"));
+
     EXPECT_DOUBLE_EQ(0.1, iss_cast<double>("1e-1"));
     EXPECT_DOUBLE_EQ(0.1, iss_cast<double>("1e-1 "));
     EXPECT_DOUBLE_EQ(0.1, iss_cast<double>("1.00E-001"));

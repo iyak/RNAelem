@@ -339,6 +339,14 @@ namespace iyak {
     return to_str(b) + paste0(a...);
   }
 
+  string replace(string const& s,string const& f,string const& t,size_t n=large){
+    string r(s);
+    for(size_t i=0,j=0,c=0;npos!=(i=r.find(f,j)) and c<n;++c,j+=i+size(t)){
+      r.replace(i,size(f),t);
+    }
+    return r;
+  }
+
   template<class C> class ClassThread {
   private:
     std::vector<uptr<C>> _c;

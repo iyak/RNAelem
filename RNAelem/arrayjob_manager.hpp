@@ -122,16 +122,11 @@ namespace iyak {
                           int const n,
                           bool const show=false) {
       check(all_set());
-
-      size_t i;
-
-      string array(_array);
-      while (npos != (i=array.find("$from"))) array.replace(i,5,"1");
-      while (npos != (i=array.find("$to"))) array.replace(i,3,to_str(n));
-
+      _array=replace(_array,"$from","1");
+      _array=replace(_array,"$to",to_str(n));
       string total = paste1(
         _command,
-        array,
+        _array,
         _binary,
         _sync,
         _cwd,
