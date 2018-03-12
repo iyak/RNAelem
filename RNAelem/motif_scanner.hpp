@@ -944,6 +944,7 @@ namespace iyak {
       ClassThread<RNAelemScanDP> ct(_thread,*_motif,_mx_input,_mx_output,
                                     _mx_update,_qr,_out);
       ct(_EN);
+      cry("E[N]:",_EN);
       cry("scan end:", lap());
     }
 

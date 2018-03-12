@@ -85,11 +85,13 @@ namespace iyak {
             "no-rss, no-profile are exclusive.");
       _no_rss = no_rss;
       _no_prf = no_prf;
-      if (no_rss)
+      if (no_rss){
         check(not any(split<string>(pattern), (string)")"),
               "search pattern must not include pair when no-rss mode");
-      cry("motif pattern:", pattern);
-
+        cry("motif pattern:",string(size(pattern),'_'));
+      }else{
+        cry("motif pattern:", pattern);
+      }
       M = (int)mm.size();
       S = (int)mm.state().size();
     }
