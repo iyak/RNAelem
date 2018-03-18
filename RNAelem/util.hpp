@@ -341,8 +341,9 @@ namespace iyak {
 
   string replace(string const& s,string const& f,string const& t,size_t n=large){
     string r(s);
-    for(size_t i=0,j=0,c=0;npos!=(i=r.find(f,j)) and c<n;++c,j+=i+size(t)){
+    for(size_t i=0,j=0,c=0;npos!=(i=r.find(f,j)) and c++<n;){
       r.replace(i,size(f),t);
+      j=i+size(t);
     }
     return r;
   }
