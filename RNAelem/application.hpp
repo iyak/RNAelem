@@ -37,6 +37,7 @@ namespace iyak {
     int max_iter;
     int max_span;
     int max_iloop;
+    int batch_size;
 
     double eps;
     double rho_s;
@@ -290,6 +291,14 @@ namespace iyak {
       .dest("lik_ratio")
       .action("store_true");
 
+      _parser
+      .add_option("--batch-size")
+      .help("size of mini-batch applied in stochastin optimizatin\n"
+            "minus value turns off mini-batch mode")
+      .dest("batch_size")
+      .set_default(100)
+      .metavar("INT");
+
       auto const options = _parser.parse_args(argc, argv);
       auto const args = _parser.args();
 
@@ -355,6 +364,7 @@ namespace iyak {
       max_iter = (int)options.get("max_iter");
       max_span = (int)options.get("max_span");
       max_iloop = (int)options.get("max_iloop");
+      batch_size=(int)options.get("batch_size");
 
       eps = (double)options.get("eps");
       rho_s = (double)options.get("rho_s");
