@@ -34,6 +34,7 @@ namespace iyak {
     EXPECT_EQ("AAC",replace("BBC","B","A"));
     EXPECT_EQ("ABBC",replace("BBC","B","AB",1));
     EXPECT_EQ("ABABC",replace("BBC","B","AB"));
+    EXPECT_EQ("__*__",replace("..*..",".","_"));
 
     EXPECT_DOUBLE_EQ(0.1, iss_cast<double>("1e-1"));
     EXPECT_DOUBLE_EQ(0.1, iss_cast<double>("1e-1 "));
