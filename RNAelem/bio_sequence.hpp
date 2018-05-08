@@ -25,7 +25,7 @@ namespace iyak {
       /* G */{0,0,2,0,3},
       /* U */{0,6,0,4,0}};
 
-  void seq_stoi(string const& s, VI& seq) {
+  void seq_str2int(string const& s, VI& seq) {
     seq.resize(size(s));
     for (int i=0; i < size(s); ++ i) {
       switch (s[i]) {
@@ -38,14 +38,14 @@ namespace iyak {
     }
   }
 
-  void seq_itos(VI const& seq, string& s) {
+  void seq_int2str(VI const& seq, string& s) {
     s.resize(size(seq));
     for (int i=0; i < size(seq); ++ i) {
       s[i] = nacgu[seq[i]];
     }
   }
 
-  string seq_itos(VI const& seq) {
+  string seq_int2str(VI const& seq) {
     string s = "";
     for (int i=0; i < size(seq); ++ i) {
       s += nacgu[seq[i]];

@@ -63,7 +63,7 @@ int main(int const argc, char const* argv[]) {
         RNAelemTrainer train(app.tr_mode, app.thread);
         train.set_fq_name(app.seq_fname);
         train.set_conditions(app.max_iter, app.eps, app.lambda_init,
-                             app.kmer_shuf);
+                             app.kmer_shuf,app.batch_size,app.out1);
         if (app.tr_mode & TR_MASK)
           train.set_train_params(app.param_set);
         if (app.tr_mode & TR_ARRAY)
@@ -101,7 +101,7 @@ int main(int const argc, char const* argv[]) {
         RNAelemTrainer train(app.tr_mode, app.thread);
         train.set_fq_name(app.seq_fname);
         train.set_conditions(app.max_iter, app.eps, app.lambda_init,
-                             app.kmer_shuf);
+                             app.kmer_shuf,app.batch_size,app.out1);
         if (app.tr_mode & TR_MASK)
           train.set_train_params(app.param_set);
         if (app.tr_mode & TR_ARRAY)
@@ -137,13 +137,13 @@ int main(int const argc, char const* argv[]) {
           while(not qr.is_end()){
             string id,rss;
             VI seq,qual,neg;
-            qr.read_seq(id,seq,qual,rss);
-            string s;seq_itos(seq,s);
+            qr.get_read(id,seq,qual,rss);
+            string s;seq_int2str(seq,s);
             srand((int)std::count(s.begin(),s.end(),s[0])+i);
             ushuffle::set_randfunc(long_rand);
             char neg_s[MAX_SEQLEN]="";
             ushuffle::shuffle(s.c_str(),neg_s,size(s),app.kmer_shuf);
-            seq_stoi(string(neg_s),neg);
+            seq_str2int(string(neg_s),neg);
             dat(1,">iter:"+to_str(i)+";seq:"+to_str(qr.cnt())+";orig:\""+id+"\"");
             dat(1,neg_s);
           }

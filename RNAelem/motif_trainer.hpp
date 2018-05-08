@@ -44,12 +44,12 @@ namespace iyak {
     double& _sum_effg;
     mutex& _mx_input;
     mutex& _mx_update;
-    FastqReader& _qr;
+    FastqBatchReader& _qr;
     unsigned _mode;
     int _iter_cnt;
     int _kmer_shuf;
     RNAelemTrainDP(RNAelem& m, int from, int to, double& sum_eff, mutex& mx_input,
-                   mutex& mx_update, FastqReader& qr,unsigned mode,int iter_cnt,
+                   mutex& mx_update, FastqBatchReader& qr,unsigned mode,int iter_cnt,
                    int kmer_shuf):
     _m(m),_from(from),_to(to),_sum_effg(sum_eff),_mx_input(mx_input),
     _mx_update(mx_update),_qr(qr),_mode(mode),_iter_cnt(iter_cnt),
@@ -135,7 +135,7 @@ namespace iyak {
         /* sync block */{
           lock l(_mx_input);
           if (_qr.is_end()) break;
-          _qr.read_seq(_id, _seq, qual, _rss);
+          _qr.get_read(_id, _seq, qual, _rss);
           check(size(_seq)+1 == size(qual),
                 "bad seq format.", _id, size(_seq), size(qual));
           if (_mode & TR_ARRAYEVAL) {
@@ -143,12 +143,12 @@ namespace iyak {
             if (_to+1 <= _qr.cnt()) break;
           }
           if(!(_mode&TR_NO_SHUFFLE)){
-            string s;seq_itos(_seq,s);
+            string s;seq_int2str(_seq,s);
             srand((int)count(s.begin(),s.end(),s[0])+_iter_cnt);
             ushuffle::set_randfunc(long_rand);
             char neg_s[MAX_SEQLEN]="";
             ushuffle::shuffle(s.c_str(),neg_s,size(s),_kmer_shuf);
-            seq_stoi(neg_s,neg);
+            seq_str2int(neg_s,neg);
           }
         }
         if (debug&DBG_FIX_RSS) _m.em.fix_rss(_rss);
@@ -463,14 +463,14 @@ namespace iyak {
 
     /* general */
     unsigned _mode=TR_NORMAL;
-    string _fq_name;
-    FastqReader _qr;
+    string _fq_name,_model_fname;
+    FastqBatchReader _qr;
     Lbfgsb _opt;
     Adam _adam;
     RNAelem *_motif;
+    RNAelemWriter _writer;
     int _max_iter = 30;
     int L; /* seq size */
-    int N; /* num of seqs */
     int _cnt;
     int _kmer_shuf;
     V _params;
@@ -490,9 +490,7 @@ namespace iyak {
 
     /* array-job */
     int _n;
-    string _model_fname;
     string _slave_opt;
-    RNAelemWriter _writer;
     void collect_fn_gr_eff(double& fn, V& gr, double& eff);
     void set_array(int n, string const& sge_opt_file);
 
@@ -541,11 +539,10 @@ namespace iyak {
     /* setter */
     void set_fq_name(string const& s) {
       _fq_name = s;
-      _qr.set_fq_fname(_fq_name);
-      N = _qr.N();
+      _qr.set_fq_name(_fq_name);
     }
     void set_conditions(int max_iter, double epsilon, double lambda_init,
-                        int kmer_shuf) {
+                        int kmer_shuf,int batch_size,string out1) {
       _max_iter = max_iter;
       _kmer_shuf=kmer_shuf;
       if(_mode&TR_NO_SHUFFLE){
@@ -555,6 +552,8 @@ namespace iyak {
       }
       else _adam.set_hp(0,0,0.1,0.9,0.999,1.e-8);
       _lambda_init = lambda_init;
+      _qr.set_batch_size(batch_size);
+      _model_fname=out1;
     }
 
     void train(RNAelem& model) {
@@ -591,6 +590,18 @@ namespace iyak {
 
     int operator() (V const& x, double& fn, V& gr) {
       _motif->unpack_params(x);
+      if(_qr.is_end_epoc()){
+        /* output motif model for every epoc
+         * with the file name <model_fname>-<epoc_count> */
+        init_ostream(nstream());
+        string new_name=
+        "~NULL~"==_model_fname?"~NULL~":
+        "~COUT~"==_model_fname?"~COUT~":
+        paste0(_model_fname,"-",_qr.cnt_epoc());
+        set_ostream(nstream()-1,new_name);
+        _writer.set_out_id(nstream()-1);
+        _writer.write(*_motif);
+      }
       fn=0.;
       gr.assign(size(x),0.);
       _sum_eff=0.;
@@ -612,9 +623,9 @@ namespace iyak {
       if (_mode & TR_MASK) cry(flatten(x,gr)+"fn:"+to_str(fn));
       if(_mode&TR_NO_SHUFFLE){
         if(0==_opt.fdfcount())
-          cry("considered BP:", _sum_eff / N);
+          cry("considered BP:",_sum_eff/_qr.cnt());
       }
-      else if (0==_adam.itercount()) cry("considered BP:", _sum_eff / N);
+      else if(0==_adam.itercount())cry("considered BP:",_sum_eff/_qr.cnt());
       ++_cnt;
       return 0;
     }
@@ -624,4 +635,4 @@ namespace iyak {
 #include"motif_mask_trainer.hpp"
 #include"motif_eval.hpp"
 
- #endif /* motif_trainer_h */
+#endif /* motif_trainer_h */

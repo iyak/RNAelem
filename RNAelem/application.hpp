@@ -338,7 +338,7 @@ namespace iyak {
         tmp += "-" + to_str(tid());
       }
 
-      init_ostream(5);
+      init_ostream(4);
       set_ostream(1, out1);
       set_ostream(2, out2);
       set_ostream(3, out3);

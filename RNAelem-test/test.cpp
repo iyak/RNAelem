@@ -81,7 +81,7 @@ namespace iyak {
       model.set_theta_softmax(false);
       model.set_energy_params("~T2004~", large, large, 0., true);
       model.set_hyper_param(0.,0.,0.,1.,-1.);
-      t.set_conditions(-1, 1e-4, 0,2);
+      t.set_conditions(-1,1e-4,0,2,-1,"~NULL~");
     }
   };
 

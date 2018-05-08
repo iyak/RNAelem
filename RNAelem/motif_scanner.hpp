@@ -221,7 +221,7 @@ namespace iyak {
           lock l(_mx_input);
           if (_qr.is_end()) break;
           /* read one record */
-          _qr.read_seq(_id, _seq, qual, _rss);
+          _qr.get_read(_id, _seq, qual, _rss);
         }
         if (debug&DBG_FIX_RSS) _m.em.fix_rss(_rss);
         _m.set_seq(_seq);
@@ -244,7 +244,7 @@ namespace iyak {
           dat(_out, "psihat:",cyk_state_path);
           dat(_out, "motif region:", Ys, "-", Ye);
           dat(_out, "exist prob:", expL(sumL(PysL)));
-          dat(_out, "seq:", seq_itos(_seq));
+          dat(_out, "seq:", seq_int2str(_seq));
           dat(_out, "rss:", cyk_structure_path);
           string s="";
           for(int i:cyk_state_path)s+=(0==i or _m.M-1==i?' ':_m.mm.node(i));

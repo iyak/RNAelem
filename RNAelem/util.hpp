@@ -136,11 +136,12 @@ namespace iyak {
   std::vector<std::string> _nam_strm;
   string& get_ostream_str(int i) {return _nam_strm[i];}
   std::ostream& get_ostream(int i){return *(_map_strm[_nam_strm[i]]);}
+  int nstream(){return size(_uptr_strm);}
 
   void init_ostream(int n) {
-    check(1 <= n);
-    _nam_strm.assign(n, "~NULL~");
-    _uptr_strm.resize(n);
+    check(1<=n,"ostream id <1:",n);
+    _nam_strm.resize(n+1,"~NULL~");
+    _uptr_strm.resize(n+1);
   }
 
   void set_ostream(int i, std::string s) {

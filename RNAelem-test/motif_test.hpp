@@ -38,7 +38,7 @@ namespace iyak {
               string const& rss,
               int base = 33
               ) {
-      seq_stoi(seq, _seq);
+      seq_str2int(seq, _seq);
       _rss = rss;
       if (debug&DBG_FIX_RSS) _m.em.fix_rss(_rss);
       _m.set_seq(_seq);

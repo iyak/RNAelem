@@ -35,6 +35,22 @@ namespace iyak {
     }
   };
 
+  TEST_F(RNAelemExactTest,FastqIOTest){
+    _qr.set_fq_fname(_dir+"/0.fq");
+    EXPECT_EQ(2,_qr.N());
+    _qr.clear();
+    EXPECT_EQ(0,_qr.cnt());
+    _qr.skip();
+    EXPECT_EQ(false,_qr.is_end());
+    EXPECT_EQ(1,_qr.cnt());
+    VI seq,qual;
+    string id,rss;
+    _qr.get_read(id,seq,qual,rss);
+    EXPECT_EQ("@1",id);
+    EXPECT_EQ(2,_qr.cnt());
+    EXPECT_EQ(true,_qr.is_end());
+  }
+
   TEST_F(RNAelemExactTest, MACHINE_DIFF_GR) {
 
     double fp, fm, d=1e-5;
@@ -85,7 +101,7 @@ namespace iyak {
     while (not _qr.is_end()) {
       string id, rss;
       VI seq, qual;
-      _qr.read_seq(id, seq, qual, rss);
+      _qr.get_read(id, seq, qual, rss);
       int L=size(seq);
 
       _model.set_seq(seq);
