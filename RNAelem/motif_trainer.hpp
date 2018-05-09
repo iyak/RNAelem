@@ -553,6 +553,7 @@ namespace iyak {
       else _adam.set_hp(0,0,0.1,0.9,0.999,1.e-8);
       _lambda_init = lambda_init;
       _qr.set_batch_size(batch_size);
+      cry("batch size:",batch_size);
       _model_fname=out1;
     }
 
