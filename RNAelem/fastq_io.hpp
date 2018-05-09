@@ -58,7 +58,7 @@ namespace iyak {
     void qual_region(int from,int len,VI& dest){
       dest.resize(len);
       for(int i=0;i<len;++i)
-        dest[i]=int(_qual_cat[i])-_base;
+        dest[i]=int(_qual_cat[from+i])-_base;
     }
   public:
     void set_fq_fname(string const& fname,string const& encoding="sanger"){
