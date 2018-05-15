@@ -154,11 +154,19 @@ namespace iyak {
           _x[i]-=_alpha*mhat/(sqrt(vhat)+_epsilon);
         }
         after_update(y,gr);
-        cry("iter:",_t,", y:",y,", |gr|:",norm2(gr),", p|x|:",_rgl_term);
       }while(not converged(gr,y) and _t<max_iter);
     }
     V& x(){return _x;}
     int itercount(){return _t-1;}
+    double rgl_term(V const& x){
+      double r=0.;
+      for(int i=0;i<size(x);++i)
+        if(1==_xr[i])
+          r+=_rho[i]*abs(x[i]);
+        else if(2==_xr[i])
+          r+=_rho[i]*x[i]*x[i]/2.;
+      return r;
+    }
   };
 
   class Lbfgsb {
