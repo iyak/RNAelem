@@ -94,7 +94,8 @@ namespace iyak {
     void set_bounds(V& lower,V& upper,VI& xb){
       _xl=lower;_xu=upper;_xb=xb;
     }
-    void set_regularization(VI const& xr,V const& rho){_xr=xr;_rho=rho;}
+    void set_rgl_type(VI const& xr){_xr=xr;}
+    void set_rgl_coef(V const& rho){_rho=rho;}
     bool converged(V const& gr,double y){
       return norm2(gr)<(y+1.)*1.e-8;
     }
@@ -224,7 +225,8 @@ namespace iyak {
       void set_initial_point(const V& x) {_x = x; _n = (int)x.size();}
       void set_num_corrections(int m) {_m = m;}
       // type of bound. nbd[i] = {0=none, 1=l, 2=l&u, 3=u}
-      void set_regularization(VI const& xr,V const& rho){_xr=xr;_rho=rho;}
+      void set_rgl_type(VI const& xr){_xr=xr;}
+      void set_rgl_coef(V const& rho){_rho=rho;}
       void set_bounds(const V& l, const V& u, 
           const VI& nbd) { _l = l; _u = u; _nbd = nbd;}
       void set_eps(double eps) { _pgtol = eps;}

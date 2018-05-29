@@ -530,10 +530,13 @@ namespace iyak {
       double rho=_motif->theta_softmax()?_motif->rho_s():_motif->rho_theta();
       V rho1(s1,rho),rho2(s2,_motif->rho_lambda());
       rho1.insert(rho1.end(),rho2.begin(),rho2.end());
-      if(_mode&TR_NO_SHUFFLE)
-        _opt.set_regularization(VI(s1+s2,2),rho1); //L2 norm
-      else
-        _adam.set_regularization(VI(s1+s2,2),rho1); //L2 norm
+      if(_mode&TR_NO_SHUFFLE){
+        _opt.set_rgl_type(VI(s1+s2,2));
+        _opt.set_rgl_coef(rho1); //L2 norm
+      }else{
+        _adam.set_rgl_type(VI(s1+s2,2));
+        _adam.set_rgl_coef(rho1); //L2 norm
+      }
     }
 
     /* setter */
@@ -590,6 +593,8 @@ namespace iyak {
     }
 
     int operator() (V const& x, double& fn, V& gr) {
+      if(_qr.N()-_qr.orig().cnt()<_qr.N_batch())
+        _qr.skip(_qr.N()-_qr.orig().cnt());
       _motif->unpack_params(x);
       if(_qr.is_end_epoc()){
         /* output motif model for every epoc

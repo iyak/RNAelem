@@ -55,8 +55,13 @@ namespace iyak {
     double rho=_motif->theta_softmax()?_motif->rho_s():_motif->rho_theta();
     V rho1(s1,rho),rho2(s2,_motif->rho_lambda());
     rho1.insert(rho1.end(),rho2.begin(),rho2.end());
-    if(_mode&TR_NO_SHUFFLE)_opt.set_regularization(reg,rho1); //L2 norm
-    else _adam.set_regularization(reg,rho1); //L2 norm
+    if(_mode&TR_NO_SHUFFLE){
+      _opt.set_rgl_type(reg);
+      _opt.set_rgl_coef(rho1); //L2 norm
+    }else{
+      _adam.set_rgl_type(reg);
+      _adam.set_rgl_coef(rho1); //L2 norm
+    }
   }
 
   void RNAelemTrainer::set_mask_bounds(RNAelem& motif) {
