@@ -634,7 +634,7 @@ namespace iyak {
       else if(0==_adam.itercount())cry("considered BP:",_sum_eff/_qr.cnt());
       ++_cnt;
       cry("iter:",_adam.itercount(),", y:",fn,", |gr|:",norm2(gr),
-          ", p|x|:",_adam.rgl_term(x),", n:",_qr.cnt());
+          ", p|x|:",_adam.rgl_term(x));
       return 0;
     }
   };
