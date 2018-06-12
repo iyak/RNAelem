@@ -118,6 +118,11 @@ namespace iyak{
           i+=_g-1;
         }
       }
+      /* add 5/3 ends */
+      seq.insert(0,"5");
+      seq.append("3");
+      rss.insert(0,".");
+      rss.append(".");
     }
   public:
     void set_ostream(ostream& ofs){_ofs=&ofs;}
@@ -169,10 +174,8 @@ namespace iyak{
   "/fxy {exch xy exch get aload pop 3 -1 roll exec} bind def % int proc fxy -\n"
   "/drawbackbone {\n"
   "  gsave newpath 0.2 setgray 0.8 setlinewidth\n"
-  "  0 {moveto} fxy 0 {4 0 360 arc gsave stroke grestore 1 setgray fill} fxy\n"
-  "  gsave newpath 0.2 setgray 0.8 setlinewidth\n"
-  "  0 {moveto} fxy -1 gaps aload pop 1 {2 copy eq {3 add {moveto} fxy 4 add}\n"
-  "    {dup {lineto} fxy 1 add} ifelse dup xy length ge {exit} if} loop\n"
+  "  1 {moveto} fxy -1 gaps aload pop 1 {2 copy eq {3 add {moveto} fxy 4 add}\n"
+  "    {dup {lineto} fxy 1 add} ifelse dup xy length 1 sub ge {exit} if} loop\n"
   "  stroke grestore\n"
   "} bind def\n"
   "/drawgaps {\n"
@@ -181,8 +184,14 @@ namespace iyak{
   "    2 add dup {moveto} fxy 1 add {lineto} fxy} forall\n"
   "  stroke grestore\n"
   "} bind def\n"
+  "/drawends {\n"
+  "  gsave newpath 0.2 setgray 0.8 setlinewidth [1 3] 0 setdash\n"
+  "  0 {moveto} fxy 1 {lineto} fxy\n"
+  "  xy length 2 sub {moveto} fxy xy length 1 sub {lineto} fxy\n"
+  "  stroke grestore\n"
+  "} bind def\n"
   "/drawloop {\n"
-  "  gsave newpath 0 setgray 0.8 setlinewidth\n"
+  "  gsave newpath 0 setgray 1.5 setlinewidth\n"
   "  unpairs {xy exch get aload pop 2 copy moveto 0.5 0 360 arc} forall\n"
   "  stroke grestore\n"
   "} bind def\n"
@@ -194,7 +203,7 @@ namespace iyak{
   "} bind def\n";
   string const RNAplot::ps_main=
   "/Courier findfont 8 scalefont setfont 1 setlinejoin 1 setlinecap\n"
-  "drawbackbone drawgaps drawpairs drawloop drawbases showpage\n";
+  "drawbackbone drawgaps drawpairs drawends drawloop drawbases showpage\n";
 }
 
 #endif
