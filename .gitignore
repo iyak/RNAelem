@@ -6,5 +6,9 @@ bench*
 **.DS_store
 .gitconfig
 .Rproj.user
-script
+script/*
+!script/elem
+!script/dishuffle.py
+!script/kmer-psp.py
+!script/draw_motif.py
 paper

@@ -1,0 +1,555 @@
+#!/usr/bin/env python
+#usage: elem -h
+from random import seed,shuffle
+from re import compile
+from numpy import mean,log,unique,max,sum,transpose,exp,fromiter,float64
+from os.path import exists
+from sys import stdout,stderr
+from subprocess import Popen,PIPE
+from argparse import ArgumentParser
+from itertools import groupby
+from textwrap import dedent
+from math import isnan
+inf,nan=float("inf"),float("nan")
+
+### Setting for grid engine
+ge=dict({
+    "cmd":"qsub",# command to submit a job
+    "array":"-t 1-:N:",# :N: represents number of array-jobs
+    "cwd":"-cwd",# option to set cwd as working directory
+    "envvar":"-V",# option to pass environment variables
+    "stdout":"-o :file:",# :file: is the file to write stdout
+    "stderr":"-e :file:",# :file: is the file to write stderr
+    "shell":"-S $SHELL",# option to set current shell as interpreter
+    "memory":"-l mem_req=:mem:G,s_vmem=:mem:G",# :mem: is memory to use
+    "cpu":"-pe def_slot :cpu:",# :cpu: is num of cpu to use
+    "task_id":"SGE_TASK_ID",# env var to store task ID
+    "sync":"-sync y",# option to wait until job terminates
+    "other":"",# any other options you want to specify
+    })
+
+### Util
+def cry(*x):
+    stderr.write(" ".join(map(str,x))+'\n')
+def die(*x):
+    cry(*x)
+    exit()
+def _run(cmd,stdin=None):
+    cry("sh:",dedent(cmd))
+    if not None==stdin:cry(dedent(stdin))
+    p=Popen(cmd,shell=True,stdout=PIPE,stderr=PIPE,stdin=PIPE)
+    o,e=p.communicate(stdin.encode("utf-8") if not None==stdin else None)
+    return o.decode("utf-8"),e.decode("utf-8")
+def run(cmd,stdin=None):
+    o,e=_run(cmd,stdin)
+    stdout.write(o)
+    stderr.write(e)
+    return o,e
+def nlines(fname):
+    count=0
+    for _ in open(fname):count+=1
+    return count
+def n_fa(faname):
+    count=0
+    for l in open(faname):count+=1 if '>'==l[0] else 0
+    return count
+def chunk(x,n):
+    j,r=0,[]
+    for w in [len(x)//n+int(i<len(x)%n) for i in range(n)]:
+        r+=[x[j:j+w]]
+        j+=w
+    return r
+def parse_fasta(fasta_name):
+    fh=open(fasta_name)
+    faiter=(x[1] for x in groupby(fh,lambda l:'>'==l[0]))
+    for header in faiter:
+        header=header.__next__()[1:].strip()
+        seq="".join(s.strip() for s in faiter.__next__())
+        yield header,seq
+def parse_raw(raw):
+    with open(raw) as fi:
+        while True:
+            try:yield dict(fi.readline().strip().split(": ",1) for _ in range(10))
+            except:return
+def aggregate(LL,fns,key=0,val=None):
+    if None==val:val=list(range(1,len(LL)))
+    if len(LL)!=(len(fns)+1):raise RuntimeError("%d!=%d"%(len(LL),len(fns)+1))
+    res=[[] for _ in range(len(LL))]
+    for k in unique(LL[key]):
+        res[0]+=[k]
+        vals=[[] for _ in val]
+        for i in range(len(LL[key])):
+            if LL[key][i]==k:
+                for j,v in enumerate(val):
+                    vals[j]+=[LL[v][i]]
+        for i,val_fn in enumerate(zip(vals,fns),start=1):
+            v,fn=val_fn
+            if"mean"==fn:res[i]+=[mean(fromiter(v,dtype=float))]
+            elif"comma"==fn:res[i]+=[','.join(map(str,v))]
+            elif"sum"==fn:res[i]+=[sum(fromiter(v,dtype=float))]
+            elif"max"==fn:res[i]+=[max(fromiter(v,dtype=float))]
+            elif"min"==fn:res[i]+=[min(fromiter(v,dtype=float))]
+            elif"logsumexp"==fn:res[i]+=[sum(exp(fromiter(v,dtype=float)))/len(v)]
+    return res
+def calc_AUC(ox,score):
+    if len(ox)!=len(score):
+        raise RuntimeError("%d!=%d"%(len(ox),len(score)))
+    score,o,n=aggregate([score,ox,[1]*len(ox)],["sum","sum"])
+    tp,fp,tn,fn=sum(o),sum(n)-sum(o),0,0
+    x,y,AUC=1.,1.,0.
+    for si,oi,ni in sorted(zip(score,o,n)):
+        if isnan(si): continue
+        tp,fn,fp,tn=tp-oi,fn+oi,fp-(ni-oi),tn+(ni-oi)
+        FPR,TPR=float64(fp)/(tn+fp),float64(tp)/(tp+fn)
+        AUC+=(x-FPR)*(y+TPR)/2.
+        x,y=FPR,TPR
+    return AUC+x*y/2.
+
+### Application
+parser=ArgumentParser(description="Tool to discover RNA structural motif element")
+sub_parser=parser.add_subparsers(dest="subcommand",help="subcommand")
+sub_parser.required=True
+parser_train=sub_parser.add_parser("train",help="train the motif model by dataset")
+parser_scan=sub_parser.add_parser("scan",help="scan the motif model over dataset")
+parser_summary=sub_parser.add_parser("summary",help="summary the best pattern")
+parser_refine=sub_parser.add_parser("refine",help="train the motif model for more iterations")
+### options for train
+parser_train.add_argument("-p","--positive",metavar="FASTA",default=None,
+        help="positive sequence set",required=True)
+parser_train.add_argument("-n","--negative",metavar="FASTA",default=None,
+        help="negative sequence set")
+parser_train.add_argument("-m","--pattern-list",metavar="FILE",default=None,
+        help="pattern list to search; one per line",required=True)
+parser_train.add_argument("-w","--max-span",metavar="INT",default=50,
+        help="max distance for bases to make a pair")
+parser_train.add_argument("-i","--max-iter",metavar="INT",default=300,
+        help="max iteration count")
+parser_train.add_argument("-o","--outdir",metavar="DIR",default="elem_out",
+        help="directory name to save outputs to")
+parser_train.add_argument("-t","--thread",metavar="INT",default=1,
+        help="number of threads")
+parser_train.add_argument("-a","--array",action="store_true",
+        help="enable array job")
+parser_train.add_argument("-F","--force_overwrite",action="store_true",
+        help="force overwrite if outdir already exists")
+parser_train.add_argument("-k","--kfold-cv",metavar="INT",default=2,type=int,
+        help="k of k-fold cross validation")
+parser_train.add_argument("-b","--batch-size",metavar="INT",default=64,type=int,
+        help="size of mini-batch")
+parser_train.add_argument("-N","--num-motifs",metavar="INT",default=3,type=int,
+        help="number of motif candidates")
+### option for scan
+parser_scan.add_argument("-s","--sequence",metavar="FASTA",default=None,
+        help="sequence set to search motifs",required=True)
+model=parser_scan.add_mutually_exclusive_group(required=True)
+model.add_argument("-m","--model",metavar="FILE",default=None,
+        help="motif model file")
+model.add_argument("-M","--elem-out",metavar="DIR",default=None,
+        help="elem output dir that includes multiple motif model files in it")
+parser_scan.add_argument("-o","--outdir",metavar="DIR",default="scan_out",
+        help="directory name to save outputs to")
+parser_scan.add_argument("-t","--thread",metavar="INT",default=1,
+        help="number of threads")
+parser_scan.add_argument("-a","--array",action="store_true",
+        help="enable array job")
+parser_scan.add_argument("-F","--force_overwrite",action="store_true",
+        help="force overwrite if outdir already exists")
+### option for summary
+parser_summary.add_argument("-M","--elem-out",metavar="DIR",default=None,
+        help="elem output dir that includes multiple motif model files in it",
+        required=True)
+parser_summary.add_argument("-N","--num-motifs",metavar="INT",default=3,type=int,
+        help="number of motif candidates")
+### option for refine
+parser_refine.add_argument("-M","--elem-out",metavar="DIR",default=None,
+        help="elem output dir to be refined",required=True)
+parser_refine.add_argument("-i","--max-iter",metavar="INT",default=300,
+        help="max iteration count")
+parser_refine.add_argument("-t","--thread",metavar="INT",default=1,
+        help="number of threads")
+parser_refine.add_argument("-a","--array",action="store_true",
+        help="enable array job")
+parser_refine.add_argument("-b","--batch-size",metavar="INT",default=64,type=int,
+        help="size of mini-batch")
+parser_refine.add_argument("-o","--outdir",metavar="DIR",default="refine_out",
+        help="directory name to save outputs to")
+parser_refine.add_argument("-F","--force_overwrite",action="store_true",
+        help="force overwrite if outdir already exists")
+parser_refine.add_argument("-N","--num-motifs",metavar="INT",default=3,type=int,
+        help="number of motif candidates")
+options=vars(parser.parse_args())
+if "outdir" in options:
+    if exists(options["outdir"]) and not options["force_overwrite"]:
+        die("already exists:",options["outdir"])
+if "kfold_cv" in options:
+    if options["kfold_cv"]<2:
+        die("kfold_cv must be greater than 1:",options["kfold_cv"])
+if "num_motifs" in options:
+    nl=nlines(options["pattern_list"]) if "train"==options["subcommand"] else\
+            nlines(options["elem_out"]+"/pattern_list")
+    if nl<options["num_motifs"]:
+        cry("num-motifs cannot be larger than number of patterns:",options["num_motifs"])
+        cry("set to number of patterns:",nl)
+        options["num_motifs"]=nl
+
+### RNAelem callers
+def get_folds_patterns(elem_out):
+    o,e=_run("find {elem_out} -name cv-* -type d".format(**locals()))
+    folds=[k.split('cv-')[-1].strip('/') for k in o.strip().split('\n')]
+    o,e=_run("find {elem_out}/cv-{k}/train -name pattern-* -type d".format(k=folds[0],**locals()))
+    patterns=[p.split('pattern-')[-1].strip('/') for p in o.strip().split('\n')]
+    return [folds,patterns]
+def cross_divide_inputs(positive,negative,kfold_cv,outdir):
+    for k in range(kfold_cv):run("mkdir -p {outdir}/cv-{k}".format(**locals()))
+    seed(positive)
+    folds_posi=list(range(n_fa(positive)))
+    folds_nega=list(range(n_fa(negative))) if negative else None
+    shuffle(folds_posi)
+    if negative:shuffle(folds_nega)
+    fasta={"posi":positive,"nega":negative}
+    folds={
+            "posi":list(map(sorted,chunk(folds_posi,kfold_cv))),
+            "nega":list(map(sorted,chunk(folds_nega,kfold_cv))) if negative else None
+            }
+    fps=[{
+        "posi":{
+            "train":open("{outdir}/cv-{k}/train.positive.fa".format(outdir=outdir,k=k),'w'),
+            "test":open("{outdir}/cv-{k}/test.positive.fa".format(outdir=outdir,k=k),'w')},
+        "nega":None if None==negative else{
+            "train":open("{outdir}/cv-{k}/train.negative.fa".format(outdir=outdir,k=k),'w'),
+            "test":open("{outdir}/cv-{k}/test.negative.fa".format(outdir=outdir,k=k),'w')}
+        }for k in range(kfold_cv)]
+    for pn in ["posi","nega"] if negative else ["posi"]:
+        ii=[0 for _ in range(kfold_cv)]
+        for i,record in enumerate(parse_fasta(fasta[pn])):
+            for kk,fold in enumerate(folds[pn]):
+                if i==fold[ii[kk]]:
+                    fps[kk][pn]["test"].write(">{}\n{}\n".format(*record))
+                    if ii[kk]<len(folds[pn][kk])-1:ii[kk]+=1
+                    else:# reach end of fold
+                        fps[kk][pn]["test"].close()
+                else:
+                    fps[kk][pn]["train"].write(">{}\n{}\n".format(*record))
+        for kk,_ in enumerate(folds[pn]):
+            fps[kk][pn]["train"].close()
+def gen_cv_summary(elem_out):
+    folds,patterns=get_folds_patterns(elem_out)
+    with open("{elem_out}/cv".format(**locals()),'w') as cv:
+        for k in folds:
+            for tid in patterns:
+                llik=0.
+                AUC,ox,score=0.5,[],[]
+                try:
+                    llik+=sum(log(float(r["exist prob"])) for r in 
+                            parse_raw("{elem_out}/cv-{k}/test/pattern-{tid}/positive.raw".
+                                format(**locals())))
+                    if exists("{elem_out}/cv-{k}/test/negative.raw".format(**locals())):
+                        llik+=sum(log(1-float(r["exist prob"])) for r in 
+                                parse_raw("{elem_out}/cv-{k}/test/pattern-{tid}/negative.raw".
+                                    format(**locals())))
+                    AUC=calc_AUC_raw(
+                            "{elem_out}/cv-{k}/test/pattern-{tid}/positive.raw".format(**locals()),
+                            "{elem_out}/cv-{k}/test/pattern-{tid}/negative.raw".format(**locals()))
+                except Exception as e:
+                    cry("k_fold,pattern:",k,tid)
+                    cry("error:",e)
+                cv.write("{k}\t{tid}\t{llik}\t{AUC}\n".format(**locals()))
+    cry("written:","{elem_out}/cv".format(**locals()))
+def run_rnaelem_train_cv(pattern_list,positive,negative,max_span,
+        thread,max_iter,outdir,kfold_cv,batch_size,**_):
+    run("mkdir -p {outdir}".format(**locals()))
+    if None==negative:
+        cry("info: generate negative sequence by 2mer shuffling")
+        run("dishuffle.py {positive} >{outdir}/negative.fa".format(**locals()))
+        negative="{outdir}/negative.fa".format(**locals())
+    cross_divide_inputs(positive,negative,kfold_cv,outdir)
+    run("cp {pattern_list} {outdir}/pattern_list".format(**locals()))
+    for k in range(kfold_cv):
+        run("mkdir -p {outdir}/cv-{k}/train {outdir}/cv-{k}/test".format(**locals()))
+        run(' '.join(["kmer-psp.py","{outdir}/cv-{k}/train.positive.fa".format(outdir=outdir,k=k),
+            "" if None==negative else "{outdir}/cv-{k}/train.negative.fa".format(outdir=outdir,k=k),
+            ">","{outdir}/cv-{k}/train/train.fq".format(outdir=outdir,k=k),"2>>",outdir+"/log",
+            ]))
+        run(' '.join(["kmer-psp.py","{outdir}/cv-{k}/test.positive.fa".format(outdir=outdir,k=k),
+            ">","{outdir}/cv-{k}/test/positive.fq".format(outdir=outdir,k=k),"2>>",outdir+"/log",
+            ]))
+        run(' '.join(["kmer-psp.py","{outdir}/cv-{k}/test.negative.fa".format(outdir=outdir,k=k),
+            ">","{outdir}/cv-{k}/test/negative.fq".format(outdir=outdir,k=k),"2>>",outdir+"/log",
+            ]))
+    if not options["array"]:
+        for k in range(kfold_cv):
+            cry("k_fold:",k)
+            for i_motif in range(1,1+nlines(pattern_list)):
+                cry("pattern:",i_motif)
+                _run("""
+motif=`sed "{i_motif} q;d" '{outdir}/pattern_list'`
+mkdir -p {outdir}/cv-{k}/train/pattern-{i_motif}
+mkdir -p {outdir}/cv-{k}/test/pattern-{i_motif}
+RNAelem --fastq {outdir}/cv-{k}/train/train.fq\
+        --max-span {max_span}\
+        --motif-pattern $motif\
+        --thread {thread}\
+        --max-iter {max_iter}\
+        --batch-size {batch_size}\
+        --out1 {outdir}/cv-{k}/train/pattern-{i_motif}/train.model\
+        --out2 {outdir}/cv-{k}/train/pattern-{i_motif}/train.raw\
+        2>> {outdir}/cv-{k}/train/pattern-{i_motif}/log
+RNAelem scan\
+        --fastq {outdir}/cv-{k}/test/positive.fq\
+        --motif-model {outdir}/cv-{k}/train/pattern-{i_motif}/train.model\
+        --thread {thread}\
+        --out1 {outdir}/cv-{k}/test/pattern-{i_motif}/positive.raw\
+        2>> {outdir}/cv-{k}/test/pattern-{i_motif}/log
+RNAelem scan\
+        --fastq {outdir}/cv-{k}/test/negative.fq\
+        --motif-model {outdir}/cv-{k}/train/pattern-{i_motif}/train.model\
+        --thread {thread}\
+        --out1 {outdir}/cv-{k}/test/pattern-{i_motif}/negative.raw\
+        2>> {outdir}/cv-{k}/test/pattern-{i_motif}/log
+            """.format(**locals()))
+    else:
+        _run(' '.join([ge["cmd"],
+            ge["cwd"],ge["envvar"],ge["shell"],ge["sync"],ge["other"],
+            ge["array"].replace(":N:",str(nlines(outdir+"/pattern_list")*options["kfold_cv"])),
+            ge["stdout"].replace(":file:",outdir+"/grid.stdout"),
+            ge["stderr"].replace(":file:",outdir+"/grid.stderr"),
+            ge["memory"].replace(":mem:",str(1)),
+            ge["cpu"].replace(":cpu:",str(thread)),
+            ]),
+            stdin="""
+tid=${task_id}
+i_motif=`expr '(' $tid '-' 1 ')' '/' {kfold_cv} '+' 1`
+k=`expr '(' $tid - 1 ')' % {kfold_cv}`
+motif=`sed "$i_motif q;d" '{outdir}/pattern_list'`
+mkdir -p {outdir}/cv-$k/train/pattern-$i_motif
+mkdir -p {outdir}/cv-$k/test/pattern-$i_motif
+RNAelem --fastq {outdir}/cv-$k/train/train.fq\
+        --max-span {max_span}\
+        --motif-pattern $motif\
+        --thread {thread}\
+        --max-iter {max_iter}\
+        --batch-size {batch_size}\
+        --out1 {outdir}/cv-$k/train/pattern-$i_motif/train.model\
+        --out2 {outdir}/cv-$k/train/pattern-$i_motif/train.raw\
+        2>> {outdir}/cv-$k/train/pattern-$i_motif/log
+RNAelem scan\
+        --fastq {outdir}/cv-$k/test/positive.fq\
+        --motif-model {outdir}/cv-$k/train/pattern-$i_motif/train.model\
+        --thread {thread}\
+        --out1 {outdir}/cv-$k/test/pattern-$i_motif/positive.raw\
+        2>> {outdir}/cv-$k/test/pattern-$i_motif/log
+RNAelem scan\
+        --fastq {outdir}/cv-$k/test/negative.fq\
+        --motif-model {outdir}/cv-$k/train/pattern-$i_motif/train.model\
+        --thread {thread}\
+        --out1 {outdir}/cv-$k/test/pattern-$i_motif/negative.raw\
+        2>> {outdir}/cv-$k/test/pattern-$i_motif/log
+                """.format(task_id=ge["task_id"],**locals()))
+    gen_cv_summary(outdir)
+def run_rnaelem_refine(elem_out,outdir,thread,batch_size,max_iter,**_):
+    run("cp {elem_out}/pattern_list {outdir}/pattern_list".format(**locals()))
+    run("mkdir -p {outdir}".format(**locals()))
+    folds,patterns=get_folds_patterns(elem_out)
+    cry(folds,patterns)
+    if not options["array"]:
+        for k in folds:
+            cry("k_fold:",k)
+            for i_motif in patterns:
+                cry("pattern:",i_motif)
+                _run("""
+motif=`sed "{i_motif} q;d" '{outdir}/pattern_list'`
+mkdir -p {outdir}/cv-{k}/train/pattern-{i_motif}
+mkdir -p {outdir}/cv-{k}/test/pattern-{i_motif}
+cp {elem_out}/cv-$k/train/*.fq {outdir}/cv-$k/train
+cp {elem_out}/cv-$k/test/*.fq {outdir}/cv-$k/test
+RNAelem --fastq {outdir}/cv-{k}/train/train.fq\
+        --motif-model {elem_out}/cv-$k/train/pattern-$i_motif/train.model\
+        --max-iter {max_iter}\
+        --batch-size {batch_size}\
+        --thread {thread}\
+        --out1 {outdir}/cv-{k}/train/pattern-{i_motif}/train.model\
+        --out2 {outdir}/cv-{k}/train/pattern-{i_motif}/train.raw\
+        2>> {outdir}/cv-{k}/train/pattern-{i_motif}/log
+RNAelem scan\
+        --fastq {outdir}/cv-{k}/test/positive.fq\
+        --motif-model {outdir}/cv-{k}/train/pattern-{i_motif}/train.model\
+        --thread {thread}\
+        --out1 {outdir}/cv-{k}/test/pattern-{i_motif}/positive.raw\
+        2>> {outdir}/cv-{k}/test/pattern-{i_motif}/log
+RNAelem scan\
+        --fastq {outdir}/cv-{k}/test/negative.fq\
+        --motif-model {outdir}/cv-{k}/train/pattern-{i_motif}/train.model\
+        --thread {thread}\
+        --out1 {outdir}/cv-{k}/test/pattern-{i_motif}/negative.raw\
+        2>> {outdir}/cv-{k}/test/pattern-{i_motif}/log
+            """.format(**locals()))
+    else:
+        join_patterns=' '.join(patterns)
+        join_folds=' '.join(folds)
+        nfolds=len(folds)
+        npatterns=len(patterns)
+        _run(' '.join([ge["cmd"],
+            ge["cwd"],ge["envvar"],ge["shell"],ge["sync"],ge["other"],
+            ge["array"].replace(":N:",str(nfolds*npatterns)),
+            ge["stdout"].replace(":file:",outdir+"/grid.stdout"),
+            ge["stderr"].replace(":file:",outdir+"/grid.stderr"),
+            ge["memory"].replace(":mem:",str(1)),
+            ge["cpu"].replace(":cpu:",str(thread)),
+            ]),
+            stdin="""
+tid=${task_id}
+i_motifs=(0 {join_patterns})
+ks=({join_folds})
+i_motif=`expr '(' $tid '-' 1 ')' '/' {nfolds} '+' 1`
+k=`expr '(' $tid - 1 ')' % {nfolds}`
+i_motif=${{i_motifs[i_motif]]}}
+k=${{ks[k]}}
+mkdir -p {outdir}/cv-$k/train/pattern-$i_motif
+mkdir -p {outdir}/cv-$k/test/pattern-$i_motif
+cp {elem_out}/cv-$k/train/*.fq {outdir}/cv-$k/train
+cp {elem_out}/cv-$k/test/*.fq {outdir}/cv-$k/test
+RNAelem --fastq {outdir}/cv-$k/train/train.fq\
+        --motif-model {elem_out}/cv-$k/train/pattern-$i_motif/train.model\
+        --max-iter {max_iter}\
+        --batch-size {batch_size}\
+        --thread {thread}\
+        --out1 {outdir}/cv-$k/train/pattern-$i_motif/train.model\
+        --out2 {outdir}/cv-$k/train/pattern-$i_motif/train.raw\
+        2>>{outdir}/cv-$k/train/pattern-$i_motif/log
+RNAelem scan\
+        --fastq {outdir}/cv-$k/test/positive.fq\
+        --motif-model {outdir}/cv-$k/train/pattern-$i_motif/train.model\
+        --thread {thread}\
+        --out1 {outdir}/cv-$k/test/pattern-$i_motif/positive.raw\
+        2>> {outdir}/cv-$k/test/pattern-$i_motif/log
+RNAelem scan\
+        --fastq {outdir}/cv-$k/test/negative.fq\
+        --motif-model {outdir}/cv-$k/train/pattern-$i_motif/train.model\
+        --thread {thread}\
+        --out1 {outdir}/cv-$k/test/pattern-$i_motif/negative.raw\
+        2>> {outdir}/cv-$k/test/pattern-$i_motif/log
+            """.format(task_id=ge["task_id"],**locals()))
+    gen_cv_summary(outdir)
+    
+def run_rnaelem_scan(model,elem_out,sequence,outdir,thread,**_):
+    run("mkdir -p {outdir}".format(**locals()))
+    run(" ".join(["kmer-psp.py",sequence,
+        ">",outdir+"/scan.fq","2>>",outdir+"/log"]))
+    folds,patterns=get_folds_patterns(elem_out)
+    if None==model:#directory was given
+        d=_run(" ".join([
+            "find",elem_out+"/pattern-*",
+            "-name","train.model"]))[0].strip().split('\n')
+        tids=" ".join(patterns)
+        if not options["array"]:
+            _run("""
+            for tid in {tids}
+            do
+                mkdir -p {outdir}/pattern-$tid
+                RNAelem scan\
+                        --fastq {outdir}/scan.fq\
+                        --motif-model {elem_out}/pattern-$tid/train.model\
+                        --thread {thread}\
+                        --out1 {outdir}/pattern-$tid/scan.raw\
+                        2> {outdir}/pattern-$tid/log
+            done
+                """.format(**locals()))
+            return
+        _run(" ".join([ge["cmd"],
+            ge["array"].replace(":N:",patterns),
+            ge["cwd"],ge["envvar"],ge["shell"],ge["sync"],ge["other"],
+            ge["stdout"].replace(":file:",outdir+"/grid.stdout"),
+            ge["stderr"].replace(":file:",outdir+"/grid.stderr"),
+            ge["memory"].replace(":mem:",str(1)),
+            ge["cpu"].replace(":cpu:",str(thread)),
+            ]),
+            stdin="""
+                tids=(0 {tids}) #0 is to make a margin
+                tid=${{tids[{task_id}]}}
+                mkdir -p {outdir}/pattern-$tid
+                RNAelem scan\
+                        --fastq {outdir}/scan.fq\
+                        --motif-model {elem_out}/pattern-$tid/train.model\
+                        --thread {thread}\
+                        --out1 {outdir}/pattern-$tid/scan.raw\
+                        2> {outdir}/pattern-$tid/log
+                """.format(task_id=ge["task_id"],**locals()))
+    elif None==elem_out:#file was given
+        _run("""
+        RNAelem scan\
+                --fastq {outdir}/scan.fq\
+                --motif-model {model}\
+                --thread {thread}\
+                --out1 {outdir}/scan.raw\
+                2>> {outdir}/log
+            """.format(**locals()))
+        pass
+    else:raise RuntimeError("unknown model format")
+def calc_AUC_raw(positive,negative):
+    ox,score=zip(*[[1,float(r["exist prob"])] for r in parse_raw(positive)]
+            +[[0,float(r["exist prob"])] for r in parse_raw(negative)])
+    return calc_AUC(ox,score)
+
+### Post-processes
+def calc_model_features(model):
+    flds=dict(map(lambda x:x.strip(),l.split(':',1)) for l in open(model))
+    return flds["pattern"]
+def calc_log_features(log):
+    n,f,gr,n=0,0,0,0
+    p=compile("iter: (.+) , y: (.+) , \|gr\|: (.+) , p\|x\|: (.+), n: (.+)")
+    try:l=[l for l in open(log) if l.startswith("iter:")][-10:]
+    except FileNotFoundError as e:
+        cry(e)
+        return nan,nan
+    ll=[p.match(li).groups() for li in l]
+    cnt=int(ll[-1][0])
+    y=mean([float(lli[1])/lli[4] for lli in ll])
+    return cnt,y
+def summary_results(elem_out,num_motifs):
+    if not exists(elem_out+"/cv"):
+        try:gen_cv_summary(elem_out)
+        except Exception as e:
+            die("cannot find nor generate:",elem_out+"/cv")
+            cry("error:",e)
+    o,_=_run(' '.join(["awk '$3<0&&\"nan\"!=$3'",elem_out+"/cv"]))
+    d_orig=[l.strip().split('\t') for l in o.strip().split('\n')]
+    d_aggr=aggregate(transpose(d_orig),fns=["comma","logsumexp","mean"],key=1,val=[0,2,3])
+    p_rank=sorted(transpose(d_aggr),key=lambda x:float(x[3]),reverse=True)[:num_motifs]
+    for i,p in enumerate(p_rank):
+        k_best=sorted([d for d in d_orig if d[1]==p[0]],key=lambda x:float(x[3]))[-1][0]
+        cry("model:","{elem_out}/cv-{k_best}/train/pattern-{p[0]}/train.model"
+                .format(**locals()))
+        run("mkdir -p {elem_out}/summary".format(**locals()))
+        run("""
+        cp\
+                {elem_out}/cv-{k_best}/train/pattern-{p[0]}/train.model\
+                {elem_out}/summary/train-{i}.model
+        cp\
+                {elem_out}/cv-{k_best}/train/pattern-{p[0]}/log\
+                {elem_out}/summary/log-{i}
+        draw_motif.py\
+                {elem_out}/cv-{k_best}/train/pattern-{p[0]}\
+                {elem_out}/summary/rss-{i}.eps\
+                {elem_out}/summary/prf-{i}.svg
+        rsvg-convert\
+                -f png --background-color=white\
+                -o {elem_out}/summary/prf-{i}.png\
+                {elem_out}/summary/prf-{i}.svg
+        convert\
+                -density 320\
+                {elem_out}/summary/rss-{i}.eps\
+                {elem_out}/summary/rss-{i}.png
+                """.format(**locals()))
+
+### Main
+if "train"==options["subcommand"]:
+    run_rnaelem_train_cv(**options)
+    summary_results(options["outdir"],options["num_motifs"])
+elif "scan"==options["subcommand"]:
+    run_rnaelem_scan(**options)
+elif "summary"==options["subcommand"]:
+    summary_results(options["elem_out"],options["num_motifs"])
+elif "refine"==options["subcommand"]:
+    run_rnaelem_refine(**options)
+    summary_results(options["outdir"],options["num_motifs"])
+else:die("unknown subcommand:",options["subcommand"])
