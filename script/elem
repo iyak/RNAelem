@@ -13,7 +13,7 @@ from math import isnan
 inf,nan=float("inf"),float("nan")
 
 ### Setting for grid engine
-ge=dict({
+ge={
     "cmd":"qsub",# command to submit a job
     "array":"-t 1-:N:",# :N: represents number of array-jobs
     "cwd":"-cwd",# option to set cwd as working directory
@@ -26,7 +26,7 @@ ge=dict({
     "task_id":"SGE_TASK_ID",# env var to store task ID
     "sync":"-sync y",# option to wait until job terminates
     "other":"",# any other options you want to specify
-    })
+    }
 
 ### Util
 def cry(*x):
@@ -185,8 +185,9 @@ if "kfold_cv" in options:
     if options["kfold_cv"]<2:
         die("kfold_cv must be greater than 1:",options["kfold_cv"])
 if "num_motifs" in options:
-    nl=nlines(options["pattern_list"]) if "train"==options["subcommand"] else\
-            nlines(options["elem_out"]+"/pattern_list")
+    fname=options["pattern_list"] if "train"==options["subcommand"] else\
+            options["elem_out"]+"/pattern_list"
+    nl=len([p.strip() for p in open(fname) if p.strip()])
     if nl<options["num_motifs"]:
         cry("num-motifs cannot be larger than number of patterns:",options["num_motifs"])
         cry("set to number of patterns:",nl)
@@ -198,7 +199,7 @@ def get_folds_patterns(elem_out):
     folds=[k.split('cv-')[-1].strip('/') for k in o.strip().split('\n')]
     o,e=_run("find {elem_out}/cv-{k}/train -name pattern-* -type d".format(k=folds[0],**locals()))
     patterns=[p.split('pattern-')[-1].strip('/') for p in o.strip().split('\n')]
-    return [folds,patterns]
+    return folds,patterns
 def cross_divide_inputs(positive,negative,kfold_cv,outdir):
     for k in range(kfold_cv):run("mkdir -p {outdir}/cv-{k}".format(**locals()))
     seed(positive)
@@ -443,17 +444,17 @@ def run_rnaelem_scan(model,elem_out,sequence,outdir,thread,**_):
         tids=" ".join(patterns)
         if not options["array"]:
             _run("""
-            for tid in {tids}
-            do
-                mkdir -p {outdir}/pattern-$tid
-                RNAelem scan\
-                        --fastq {outdir}/scan.fq\
-                        --motif-model {elem_out}/pattern-$tid/train.model\
-                        --thread {thread}\
-                        --out1 {outdir}/pattern-$tid/scan.raw\
-                        2> {outdir}/pattern-$tid/log
-            done
-                """.format(**locals()))
+for tid in {tids}
+do
+mkdir -p {outdir}/pattern-$tid
+RNAelem scan\
+        --fastq {outdir}/scan.fq\
+        --motif-model {elem_out}/pattern-$tid/train.model\
+        --thread {thread}\
+        --out1 {outdir}/pattern-$tid/scan.raw\
+        2> {outdir}/pattern-$tid/log
+done
+            """.format(**locals()))
             return
         _run(" ".join([ge["cmd"],
             ge["array"].replace(":N:",patterns),
@@ -464,24 +465,24 @@ def run_rnaelem_scan(model,elem_out,sequence,outdir,thread,**_):
             ge["cpu"].replace(":cpu:",str(thread)),
             ]),
             stdin="""
-                tids=(0 {tids}) #0 is to make a margin
-                tid=${{tids[{task_id}]}}
-                mkdir -p {outdir}/pattern-$tid
-                RNAelem scan\
-                        --fastq {outdir}/scan.fq\
-                        --motif-model {elem_out}/pattern-$tid/train.model\
-                        --thread {thread}\
-                        --out1 {outdir}/pattern-$tid/scan.raw\
-                        2> {outdir}/pattern-$tid/log
+tids=(0 {tids}) #0 is to make a margin
+tid=${{tids[{task_id}]}}
+mkdir -p {outdir}/pattern-$tid
+RNAelem scan\
+        --fastq {outdir}/scan.fq\
+        --motif-model {elem_out}/pattern-$tid/train.model\
+        --thread {thread}\
+        --out1 {outdir}/pattern-$tid/scan.raw\
+        2> {outdir}/pattern-$tid/log
                 """.format(task_id=ge["task_id"],**locals()))
     elif None==elem_out:#file was given
         _run("""
-        RNAelem scan\
-                --fastq {outdir}/scan.fq\
-                --motif-model {model}\
-                --thread {thread}\
-                --out1 {outdir}/scan.raw\
-                2>> {outdir}/log
+RNAelem scan\
+        --fastq {outdir}/scan.fq\
+        --motif-model {model}\
+        --thread {thread}\
+        --out1 {outdir}/scan.raw\
+        2>> {outdir}/log
             """.format(**locals()))
         pass
     else:raise RuntimeError("unknown model format")
@@ -506,6 +507,9 @@ def calc_log_features(log):
     y=mean([float(lli[1])/lli[4] for lli in ll])
     return cnt,y
 def summary_results(elem_out,num_motifs):
+    run("mkdir -p {elem_out}/summary".format(**locals()))
+    fname=elem_out+"/pattern_list"
+    patterns=["#margin to make 1-origin"]+[p.strip() for p in open(fname)]
     if not exists(elem_out+"/cv"):
         try:gen_cv_summary(elem_out)
         except Exception as e:
@@ -513,33 +517,45 @@ def summary_results(elem_out,num_motifs):
             cry("error:",e)
     o,_=_run(' '.join(["awk '$3<0&&\"nan\"!=$3'",elem_out+"/cv"]))
     d_orig=[l.strip().split('\t') for l in o.strip().split('\n')]
-    d_aggr=aggregate(transpose(d_orig),fns=["comma","logsumexp","mean"],key=1,val=[0,2,3])
-    p_rank=sorted(transpose(d_aggr),key=lambda x:float(x[3]),reverse=True)[:num_motifs]
-    for i,p in enumerate(p_rank):
-        k_best=sorted([d for d in d_orig if d[1]==p[0]],key=lambda x:float(x[3]))[-1][0]
-        cry("model:","{elem_out}/cv-{k_best}/train/pattern-{p[0]}/train.model"
-                .format(**locals()))
-        run("mkdir -p {elem_out}/summary".format(**locals()))
+    #columns of d_orig: (0)CV ID / (1)pattern id / (2)log likelihood / (3)AUC
+    d_aggr=aggregate(transpose(d_orig),fns=["comma","sum","mean"],key=1,val=[0,2,3])
+    #columns of d_aggr: (0)pattern id / (1)CV IDs / (2)log likelihood / (3)AUC
+    p_prim=[d for d in transpose(d_aggr) if '_' in patterns[int(d[0])]]
+    if 0<len(p_prim):
+        p0=sorted(p_prim,key=lambda x:float(x[3]),reverse=True)[0]
+        cv_best=sorted([d for d in d_orig if d[1]==p0[0]],key=lambda x:float(x[3]))[-1][0]
         run("""
-        cp\
-                {elem_out}/cv-{k_best}/train/pattern-{p[0]}/train.model\
-                {elem_out}/summary/train-{i}.model
-        cp\
-                {elem_out}/cv-{k_best}/train/pattern-{p[0]}/log\
-                {elem_out}/summary/log-{i}
-        draw_motif.py\
-                {elem_out}/cv-{k_best}/train/pattern-{p[0]}\
-                {elem_out}/summary/rss-{i}.eps\
-                {elem_out}/summary/prf-{i}.svg
-        rsvg-convert\
-                -f png --background-color=white\
-                -o {elem_out}/summary/prf-{i}.png\
-                {elem_out}/summary/prf-{i}.svg
-        convert\
-                -density 320\
-                {elem_out}/summary/rss-{i}.eps\
-                {elem_out}/summary/rss-{i}.png
-                """.format(**locals()))
+cp\
+        {elem_out}/cv-{cv_best}/train/pattern-{p0[0]}/train.model\
+        {elem_out}/summary/model-prim.txt
+cp\
+        {elem_out}/cv-{cv_best}/train/pattern-{p0[0]}/log\
+        {elem_out}/summary/log-prim.txt
+        """.format(**locals()))
+    p_scnd=[d for d in transpose(d_aggr) if not '_' in patterns[int(d[0])]]
+    p_rank=sorted(p_scnd,key=lambda x:float(x[3]),reverse=True)[:num_motifs]
+    for i,p in enumerate(p_rank):
+        cv_best=sorted([d for d in d_orig if d[1]==p[0]],key=lambda x:float(x[3]))[-1][0]
+        run("""
+cp\
+        {elem_out}/cv-{cv_best}/train/pattern-{p[0]}/train.model\
+        {elem_out}/summary/model-{i}.txt
+cp\
+        {elem_out}/cv-{cv_best}/train/pattern-{p[0]}/log\
+        {elem_out}/summary/log-{i}.txt
+draw_motif.py\
+        {elem_out}/cv-{cv_best}/train/pattern-{p[0]}\
+        {elem_out}/summary/rss-{i}.eps\
+        {elem_out}/summary/prf-{i}.svg
+rsvg-convert\
+        -f png --background-color=white\
+        -o {elem_out}/summary/prf-{i}.png\
+        {elem_out}/summary/prf-{i}.svg
+convert\
+        -density 320\
+        {elem_out}/summary/rss-{i}.eps\
+        {elem_out}/summary/rss-{i}.png
+            """.format(**locals()))
 
 ### Main
 if "train"==options["subcommand"]:
