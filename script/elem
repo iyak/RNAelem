@@ -4,7 +4,7 @@ from random import seed,shuffle
 from re import compile
 from numpy import mean,log,unique,max,sum,transpose,exp,fromiter,float64
 from os.path import exists
-from sys import stdout,stderr
+from sys import stdout,stderr,version_info
 from subprocess import Popen,PIPE
 from argparse import ArgumentParser
 from itertools import groupby
@@ -440,8 +440,8 @@ def run_rnaelem_scan(model,elem_out,sequence,outdir,thread,**_):
     run("mkdir -p {outdir}".format(**locals()))
     run(" ".join(["kmer-psp.py",sequence,
         ">",outdir+"/scan.fq","2>>",outdir+"/log"]))
-    folds,patterns=get_folds_patterns(elem_out)
     if None==model:#directory was given
+        folds,patterns=get_folds_patterns(elem_out)
         d=_run(" ".join([
             "find",elem_out+"/pattern-*",
             "-name","train.model"]))[0].strip().split('\n')
@@ -450,13 +450,13 @@ def run_rnaelem_scan(model,elem_out,sequence,outdir,thread,**_):
             _run("""
 for tid in {tids}
 do
-mkdir -p {outdir}/pattern-$tid
-RNAelem scan\
-        --fastq {outdir}/scan.fq\
-        --motif-model {elem_out}/pattern-$tid/train.model\
-        --thread {thread}\
-        --out1 {outdir}/pattern-$tid/scan.raw\
-        2> {outdir}/pattern-$tid/log
+    mkdir -p {outdir}/pattern-$tid
+    RNAelem scan\
+            --fastq {outdir}/scan.fq\
+            --motif-model {elem_out}/pattern-$tid/train.model\
+            --thread {thread}\
+            --out1 {outdir}/pattern-$tid/scan.raw\
+            2> {outdir}/pattern-$tid/log
 done
             """.format(**locals()))
             return
