@@ -599,14 +599,8 @@ namespace iyak {
       if(_qr.is_end_epoc()){
         /* output motif model for every epoc
          * with the file name <model_fname>-<epoc_count> */
-        init_ostream(nstream());
-        string new_name=
-        "~NULL~"==_model_fname?"~NULL~":
-        "~COUT~"==_model_fname?"~COUT~":
-        paste0(_model_fname,"-",_qr.cnt_epoc());
-        set_ostream(nstream()-1,new_name);
-        _writer.set_out_id(nstream()-1);
-        _writer.write(*_motif);
+        _writer.set_out_linear_id(3);
+        _writer.write_linear(*_motif);
       }
       fn=0.;
       gr.assign(size(x),0.);

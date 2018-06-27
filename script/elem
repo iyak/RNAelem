@@ -294,6 +294,7 @@ RNAelem --fastq {outdir}/cv-{k}/train/train.fq\
         --batch-size {batch_size}\
         --out1 {outdir}/cv-{k}/train/pattern-{i_motif}/train.model\
         --out2 {outdir}/cv-{k}/train/pattern-{i_motif}/train.raw\
+        --out3 {outdir}/cv-{k}/train/pattern-{i_motif}/train.interim\
         2>> {outdir}/cv-{k}/train/pattern-{i_motif}/log
 RNAelem scan\
         --fastq {outdir}/cv-{k}/test/positive.fq\
@@ -332,6 +333,7 @@ RNAelem --fastq {outdir}/cv-$k/train/train.fq\
         --batch-size {batch_size}\
         --out1 {outdir}/cv-$k/train/pattern-$i_motif/train.model\
         --out2 {outdir}/cv-$k/train/pattern-$i_motif/train.raw\
+        --out3 {outdir}/cv-$k/train/pattern-$i_motif/train.interim\
         2>> {outdir}/cv-$k/train/pattern-$i_motif/log
 RNAelem scan\
         --fastq {outdir}/cv-$k/test/positive.fq\
@@ -370,6 +372,7 @@ RNAelem --fastq {outdir}/cv-{k}/train/train.fq\
         --thread {thread}\
         --out1 {outdir}/cv-{k}/train/pattern-{i_motif}/train.model\
         --out2 {outdir}/cv-{k}/train/pattern-{i_motif}/train.raw\
+        --out3 {outdir}/cv-{k}/train/pattern-{i_motif}/train.interim\
         2>> {outdir}/cv-{k}/train/pattern-{i_motif}/log
 RNAelem scan\
         --fastq {outdir}/cv-{k}/test/positive.fq\
@@ -416,6 +419,7 @@ RNAelem --fastq {outdir}/cv-$k/train/train.fq\
         --thread {thread}\
         --out1 {outdir}/cv-$k/train/pattern-$i_motif/train.model\
         --out2 {outdir}/cv-$k/train/pattern-$i_motif/train.raw\
+        --out3 {outdir}/cv-$k/train/pattern-$i_motif/train.raw\
         2>>{outdir}/cv-$k/train/pattern-$i_motif/log
 RNAelem scan\
         --fastq {outdir}/cv-$k/test/positive.fq\

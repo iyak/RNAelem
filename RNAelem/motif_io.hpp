@@ -16,7 +16,8 @@ namespace iyak {
 
   class RNAelemWriter {
 
-    int _out = 1;
+    int _out=0;
+    int _out_linear=0;
     string _pic_fname;
 
     RNAelem* _m;
@@ -24,6 +25,7 @@ namespace iyak {
   public:
 
     void set_out_id (int i) {_out=i;}
+    void set_out_linear_id(int i){_out_linear=i;}
     void write(RNAelem& m) {
       _m = &m;
       string pattern=_m->mm.pattern();
@@ -52,6 +54,36 @@ namespace iyak {
       dat(_out, "no-rss:", _m->no_rss());
       dat(_out, "no-profile:", _m->no_prf());
       dat(_out, "no-energy:", _m->em.no_ene());
+    }
+    void write_linear(RNAelem& m) {
+      _m = &m;
+      string pattern=_m->mm.pattern();
+      if(_m->no_rss())for(auto& p:pattern)if('.'==p)p='_';
+      if(_m->theta_softmax())_m->mm.calc_theta();
+      VV exp_theta=apply(expL,_m->mm.theta());
+      dat(_out_linear,"interim:",
+          paste1(
+                paste0("pattern:",pattern),
+                (_m->theta_softmax()?
+                 paste0("s:",apply(logNL,_m->mm.s()))
+                 :paste0("theta:",apply(logNL,_m->mm.theta()))),
+                paste0("exp-theta:",exp_theta),
+                paste0("ene-param:",_m->em.param_fname),
+                paste0("max-span:",_m->em.max_pair()),
+                paste0("max-internal-loop:",_m->em.max_iloop()),
+                paste0("theta-softmax:",_m->theta_softmax()),
+                (_m->theta_softmax()?
+                 paste0("rho-s:",_m->rho_s())
+                 :paste0("rho-theta:",_m->rho_theta())),
+                paste0("rho-lambda:",_m->rho_lambda()),
+                paste0("tau:",_m->tau()),
+                paste0("lambda:",_m->_lambda),
+                paste0("lambda-prior:",_m->lambda_prior()),
+                paste0("min-bpp:",_m->em.min_BPP()),
+                paste0("no-rss:",_m->no_rss()),
+                paste0("no-profile:",_m->no_prf()),
+                paste0("no-energy:",_m->em.no_ene())
+                ));
     }
   };
 
