@@ -565,6 +565,8 @@ convert\
             """.format(**locals()))
 
 ### Main
+if version_info[0]<3:
+    die("must be using Python 3")
 if "train"==options["subcommand"]:
     run_rnaelem_train_cv(**options)
     summary_results(options["outdir"],options["num_motifs"])
