@@ -103,11 +103,11 @@ namespace iyak {
     int _h = 0;
     int _w = 0;
 
-    void load_glyph(ft_face& f, FT_ULong u) {
+    void load_glyph(ft_face& f, FT_ULong u, int bold=25) {
       auto i = FT_Get_Char_Index(f.get(), u);
       auto err = FT_Load_Glyph(f.get(), i, FT_LOAD_NO_SCALE|FT_LOAD_NO_BITMAP);
       check(!err, "fail load glyph", u);
-      err = FT_Outline_Embolden(&o(f), 50);
+      err = FT_Outline_Embolden(&o(f), bold);
       check(!err, "fail embolden:", _alph);
       mapply(f, {{1,0},{0,-1}}); /* flip */
       double rx = double(m(f).horiBearingX) / m(f).width;
@@ -147,7 +147,8 @@ namespace iyak {
     FT_Glyph_Metrics& m(ft_face& f) {return f.get()->glyph->metrics;}
   public:
     RNAlogoAlph(string const& a,double x,double y,double w,double h,
-                string const& color="black",string const& font=DEFAULT_FONT)
+                string const& color="black",string const& font=DEFAULT_FONT,
+                int bold=25)
     :_alph(a),_font(font),_color(color){
       auto utf = utf8(_alph).codes();
       _h=0;
@@ -155,7 +156,7 @@ namespace iyak {
       for (int i=0; i<size(utf); ++i) {
         _faces.push_back(uptrize(new ft_face(_font)));
         auto& f = _faces.back();
-        load_glyph(*f, utf[i]);
+        load_glyph(*f, utf[i], bold);
         auto bb = calc_bb(*f);
         mapply(*f, {{999./bb.w,0.},{0.,1.}});
         _h = max(_h, bb.h);
@@ -201,8 +202,7 @@ namespace iyak {
         }
       };
       FT_Outline_Decompose(&(f->get()->glyph->outline), &callback,&os);
-      os<<"\" fill=\""+alph._color+
-      "\" stroke=\"black\" stroke-width=\"1\"/>\n";
+      os<<"\" fill=\""+alph._color+"\" />\n";
     }
     return os;
   }
@@ -414,7 +414,8 @@ namespace iyak {
           auto utf=utf8(b.chrs);
           for(int k=0;k<utf.len();++k){
             double w=_colw/utf.len();
-            b.chr_paths.emplace_back(utf.str(k),x+k*w,y,w,b.val*_scale,b.colors[k],b.font);
+            b.chr_paths.emplace_back(utf.str(k),x+k*w,y,w,b.val*_scale,
+                                     b.colors[k],b.font,100);
           }
         }
         x+=_colw+_space;
