@@ -548,6 +548,9 @@ cp\
         {elem_out}/cv-{cv_best}/train/pattern-{p[0]}/train.interim\
         {elem_out}/summary/model-{i}-interim.txt
 cp\
+        {elem_out}/cv-{cv_best}/train/pattern-{p[0]}/train.raw\
+        {elem_out}/summary/raw-{i}.txt
+cp\
         {elem_out}/cv-{cv_best}/train/pattern-{p[0]}/log\
         {elem_out}/summary/log-{i}.txt
 draw_motif.py\
