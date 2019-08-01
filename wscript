@@ -1,7 +1,11 @@
 from subprocess import Popen,PIPE
+from waflib import Logs
 import sys
 
 out="./build"
+NORMAL='\033[0m'
+RED = '\033[91m'
+GREEN='\033[;92m'
 
 def exe(cmd):
     return Popen(cmd.split(), stdout=PIPE).stdout.read().decode("utf8").strip()
@@ -90,11 +94,16 @@ def build(bld):
             lib="pthread")
 
     if 0!=bld.is_install:
-        scripts=["elem","kmer-psp.py","draw_motif.py","dishuffle.py"]
-        exe("cp {scripts} {bindir}".format(
-            scripts=' '.join(["script/"+f for f in scripts]),
-            bindir=bld.env.BINDIR))
-        print("- install utility scripts")
+        try:
+            scripts=["elem","kmer-psp.py","draw_motif.py","dishuffle.py"]
+            exe("mkdir -p {bindir}".format(bindir=bld.env.BINDIR))
+            exe("cp {scripts} {bindir}".format(
+                scripts=' '.join(["script/"+f for f in scripts]),
+                bindir=bld.env.BINDIR))
+            print(GREEN+"- install utility scripts"+NORMAL)
+        except:
+            print(RED+"- failed installing utility scripts"+NORMAL)
+            raise
 
 def test(ctx):
     ctx.exec_command("build/bin/RNAelem-test --gtest_color=yes")
