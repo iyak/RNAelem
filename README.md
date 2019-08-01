@@ -56,9 +56,10 @@ As a result, you will obtain the following motifs.
 ----|---- 
 |![tRNA profile](https://github.com/iyak/RNAelem/blob/master/material/prf-0.png)|![tRNA secondary structure](https://github.com/iyak/RNAelem/blob/master/material/rss-0.png)|
 
-The Sequence logo shows both the conserved sequential profile and the stable local secondary structure at the same time.
+The sequence logo shows both the conserved sequential profile and the stable local secondary structure at the same time.
 In addition to the normal base composition, the base pair composition is also displayed.
 For base pairs, the same compositions are displayed, and the partner's column is grayed-out.
+The y axis indicates the information in bit, which ranges from 0 to 2 for base composition, and 0 to log 6 for base pair.
 The column index shows the base pairs and the average number of repeats for each secondary structural context.
 Interpreting the results based on the above, the anticodon arm has been extracted that contains an anticodon 'CAU' and the conserved 'U' and 'A' on both sides.
 
