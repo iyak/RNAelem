@@ -8,7 +8,7 @@ The motifs are extracted and reported in the sequence logo and graph diagram.
 ## Installation
 
 ```bash
-$ git clone htpps://github.com/iyak/RNAlogo.git
+$ git clone htpps://github.com/iyak/RNAelem.git
 $ cd RNAelem
 $ ./waf configure --prefix=$HOME/local # for example
 $ ./waf build test
