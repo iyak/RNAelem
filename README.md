@@ -48,7 +48,7 @@ $ cat pattern
 ```
 Run RNAelem to train a motif.
 ```bash
-$ elem -p positive.fa -m patterns
+$ elem -p positive.fa -m pattern
 ```
 As a result, you will obtain the following motifs.
 
@@ -76,7 +76,7 @@ log-*.txt             # log file
 `*` is replaced by a number between 0 and 2 by default, and a lower number corresponds to a search pattern with a higher fitness.
 
 You can also align the trained model to the new data.
-For example, if you want to align the best model to a sequence set `sequences.fa`, you can do the following:
+For example, if you want to align the best model to a sequence set `sequences.fa`, the following command will do that:
 ```bash
 $ elem scan -s sequences.fa -m elem_out/summary/model-0.txt
 ```
