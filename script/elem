@@ -15,18 +15,18 @@ inf,nan=float("inf"),float("nan")
 
 ### Setting for grid engine
 ge={
-    "cmd":"qsub",# command to submit a job
-    "array":"-t 1-:N:",# :N: represents number of array-jobs
-    "cwd":"-cwd",# option to set cwd as working directory
-    "envvar":"-V",# option to pass environment variables
-    "stdout":"-o :file:",# :file: is the file to write stdout
-    "stderr":"-e :file:",# :file: is the file to write stderr
-    "shell":"-S $SHELL",# option to set current shell as interpreter
-    "memory":"-l mem_req=:mem:G,s_vmem=:mem:G",# :mem: is memory to use
-    "cpu":"-pe def_slot :cpu:",# :cpu: is num of cpu to use
-    "task_id":"SGE_TASK_ID",# env var to store task ID
-    "sync":"-sync y",# option to wait until job terminates
-    "other":"",# any other options you want to specify
+    "cmd"    :"qsub",                            # command to submit a job
+    "array"  :"-t 1-:N:",                        # :N: represents number of array-jobs
+    "cwd"    :"-cwd",                            # option to set cwd as working directory
+    "envvar" :"-V",                              # option to pass environment variables
+    "stdout" :"-o :file:",                       # :file: is the file to write stdout
+    "stderr" :"-e :file:",                       # :file: is the file to write stderr
+    "shell"  :"-S $SHELL",                       # option to set current shell as interpreter
+    "memory" :"-l mem_req=:mem:G,s_vmem=:mem:G", # :mem: is memory to use
+    "cpu"    :"-pe def_slot :cpu:",              # :cpu: is num of cpu to use
+    "task_id":"SGE_TASK_ID",                     # env var to store task ID
+    "sync"   :"-sync y",                         # option to wait until job terminates
+    "other"  :"",                                # any other options you want to specify
     }
 
 ### Util
