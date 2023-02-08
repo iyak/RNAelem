@@ -7,6 +7,7 @@
 //
 #include<iostream>
 #include<type_traits>
+#include<functional>
 #include"util.hpp"
 #include"logo.hpp"
 using namespace iyak;
