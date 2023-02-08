@@ -24,6 +24,12 @@ def run(cmd,stdin=None):
     stdout.write(o)
     stderr.write(e)
     return o,e
+def is_suitable_font(ttf):
+    if "Italic" in ttf or "italic" in ttf:
+        return False
+    if "Bold" in ttf or "bold" in ttf:
+        return False
+    return True
 def get_gothic_ttf():
     if platform.startswith("win") or platform.startswith("cygwin"):
         print("for windows, I don't get path for fonts.")
@@ -32,8 +38,7 @@ def get_gothic_ttf():
         ttfs,e=_run("find /Library/Fonts -name *.ttf")
         stderr.write(e)
         for ttf in ttfs.strip().split("\n"):
-            if "gothic" in ttf or "Gothic" in ttf:
-                cry("set font:",ttf)
+            if is_suitable_font(ttf):
                 return ttf
         else:
             cry("could not find .ttf file.")
@@ -42,8 +47,7 @@ def get_gothic_ttf():
         ttfs,e=_run("find /usr/share/fonts -name *.ttf")
         stderr.write(e)
         for ttf in ttfs.strip().split("\n"):
-            if "gothic" in ttf or "Gothic" in ttf:
-                cry("set font:", ttf)
+            if is_suitable_font(ttf):
                 return ttf
         else:
             cry("could not find font file.")

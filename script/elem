@@ -1,15 +1,16 @@
 #!/usr/bin/env python
 #usage: elem -h
-from random import seed,shuffle
-from re import compile
-from numpy import mean,log,unique,max,sum,transpose,exp,fromiter,float64
-from os.path import exists
-from sys import stdout,stderr,version_info
-from subprocess import Popen,PIPE
 from argparse import ArgumentParser
 from itertools import groupby
-from textwrap import dedent
 from math import isnan
+from numpy import mean,log,unique,max,sum,transpose,exp,fromiter,float64
+from os.path import exists
+from pathlib import Path
+from random import seed,shuffle
+from re import compile
+from subprocess import Popen,PIPE
+from sys import stdout,stderr,version_info
+from textwrap import dedent
 inf,nan=float("inf"),float("nan")
 
 ### Setting for grid engine
@@ -142,6 +143,8 @@ parser_train.add_argument("-P","--plot-base-threshold",metavar="FLOAT",default=1
         help="When plotting 2D diagram of a motif, bases are specified for the loci with less sequential entropy with this threshold")
 parser_train.add_argument("--no-shuffle",action="store_true",
         help="Train without generating shuffled negative sequences.")
+parser_train.add_argument("--no-merge",action="store_true",
+        help="Do not refine the selected model with full dataset after cv")
 ### option for scan
 parser_scan.add_argument("-s","--sequence",metavar="FASTA",default=None,
         help="sequence set to search motifs",required=True)
@@ -185,6 +188,8 @@ parser_refine.add_argument("-N","--num-motifs",metavar="INT",default=3,type=int,
         help="number of motif candidates")
 parser_refine.add_argument("-P","--plot-base-threshold",metavar="FLOAT",default=1.5,type=float,
         help="When plotting 2D diagram of a motif, bases are specified for the loci with less sequential entropy with this threshold")
+parser_refine.add_argument("--no-shuffle",action="store_true",
+        help="Train without generating shuffled negative sequences.")
 options=vars(parser.parse_args())
 if "outdir" in options:
     if exists(options["outdir"]) and not options["force_overwrite"]:
@@ -264,6 +269,83 @@ def gen_cv_summary(elem_out):
                     cry("error:",e)
                 cv.write("{k}\t{tid}\t{llik}\t{AUC}\n".format(**locals()))
     cry("written:","{elem_out}/cv".format(**locals()))
+def run_rnaelem_refine_nocv(models, positive, negative, thread, max_iter,
+        outdir, batch_size, no_shuffle, array, plot_base_threshold):
+    no_shuffle = "--no-shuffle" if no_shuffle else ""
+    if not negative:
+        cry("info: generate negative sequence by 2mer shuffling")
+        run(f"dishuffle.py {positive} >{outdir}/negative.fa")
+        negative=f"{outdir}/negative.fa"
+    _run(f"kmer-psp.py {positive} {negative} > {outdir}/train.fq 2>> {outdir}/log")
+    if not array:
+        for model in models:
+            cry("model: ", model)
+            _run(f"""
+mkdir -p {outdir}/{Path(model).stem}
+RNAelem --fastq {outdir}/train.fq\
+        --motif-model {model}\
+        --max-iter {max_iter}\
+        --batch-size {batch_size}\
+        --thread {thread}\
+        {no_shuffle}\
+        --out1 {outdir}/{Path(model).stem}/train.model\
+        --out2 {outdir}/{Path(model).stem}/train.raw\
+        --out3 {outdir}/{Path(model).stem}/train.interim\
+        2>> {outdir}/{Path(model).stem}/log
+draw_motif.py\
+        {outdir}/{Path(model).stem}\
+        {outdir}/{Path(model).stem}/rss.eps\
+        {outdir}/{Path(model).stem}/prf.svg\
+        {plot_base_threshold}
+rsvg-convert\
+        -f png --background-color=white\
+        -o {outdir}/{Path(model).stem}/prf.png\
+        {outdir}/{Path(model).stem}/prf.svg
+convert\
+        -density 320\
+        {outdir}/{Path(model).stem}/rss.eps\
+        {outdir}/{Path(model).stem}/rss.png
+        """)
+    else:
+        _run(" ".join([ge["cmd"],
+            ge["cwd"],ge["envvar"],ge["shell"],ge["sync"],ge["other"],
+            ge["array"].replace(":N:",str(len(models))),
+            ge["stdout"].replace(":file:",outdir+"/grid.stdout"),
+            ge["stderr"].replace(":file:",outdir+"/grid.stderr"),
+            ge["memory"].replace(":mem:",str(4)),
+            ge["cpu"].replace(":cpu:",str(thread)),
+            ]),
+            stdin=f"""
+tid=${ge["task_id"]}
+models=({" ".join(["padding"] + models)})
+model=${{models[tid]}}
+tmp=$(basename -- "$model")
+model_base="${{tmp%.*}}"
+mkdir -p {outdir}/${{model_base}}
+RNAelem --fastq {outdir}/train.fq\
+        --motif-model ${{model}}\
+        --max-iter {max_iter}\
+        --batch-size {batch_size}\
+        --thread {thread}\
+        {no_shuffle}\
+        --out1 {outdir}/${{model_base}}/train.model\
+        --out2 {outdir}/${{model_base}}/train.raw\
+        --out3 {outdir}/${{model_base}}/train.interim\
+        2>> {outdir}/${{model_base}}/log
+draw_motif.py\
+        {outdir}/${{model_base}}\
+        {outdir}/${{model_base}}/rss.eps\
+        {outdir}/${{model_base}}/prf.svg\
+        {plot_base_threshold}
+rsvg-convert\
+        -f png --background-color=white\
+        -o {outdir}/${{model_base}}/prf.png\
+        {outdir}/${{model_base}}/prf.svg
+convert\
+        -density 320\
+        {outdir}/${{model_base}}/rss.eps\
+        {outdir}/${{model_base}}/rss.png
+            """)
 def run_rnaelem_train_cv(pattern_list,positive,negative,max_span,
         thread,max_iter,outdir,kfold_cv,batch_size,no_shuffle,**_):
     run("mkdir -p {outdir}".format(**locals()))
@@ -360,11 +442,12 @@ RNAelem scan\
         2>> {outdir}/cv-$k/test/pattern-$i_motif/log
                 """.format(task_id=ge["task_id"],**locals()))
     gen_cv_summary(outdir)
-def run_rnaelem_refine(elem_out,outdir,thread,batch_size,max_iter,**_):
+def run_rnaelem_refine_cv(elem_out,outdir,thread,batch_size,max_iter,no_shuffle,**_):
     run("cp {elem_out}/pattern_list {outdir}/pattern_list".format(**locals()))
     run("mkdir -p {outdir}".format(**locals()))
     folds,patterns=get_folds_patterns(elem_out)
     cry(folds,patterns)
+    no_shuffle = "--no-shuffle" if no_shuffle else ""
     if not options["array"]:
         for k in folds:
             cry("k_fold:",k)
@@ -381,6 +464,7 @@ RNAelem --fastq {outdir}/cv-{k}/train/train.fq\
         --max-iter {max_iter}\
         --batch-size {batch_size}\
         --thread {thread}\
+        {no_shuffle}\
         --out1 {outdir}/cv-{k}/train/pattern-{i_motif}/train.model\
         --out2 {outdir}/cv-{k}/train/pattern-{i_motif}/train.raw\
         --out3 {outdir}/cv-{k}/train/pattern-{i_motif}/train.interim\
@@ -428,6 +512,7 @@ RNAelem --fastq {outdir}/cv-$k/train/train.fq\
         --max-iter {max_iter}\
         --batch-size {batch_size}\
         --thread {thread}\
+        {no_shuffle}\
         --out1 {outdir}/cv-$k/train/pattern-$i_motif/train.model\
         --out2 {outdir}/cv-$k/train/pattern-$i_motif/train.raw\
         --out3 {outdir}/cv-$k/train/pattern-$i_motif/train.raw\
@@ -546,6 +631,25 @@ cp\
 cp\
         {elem_out}/cv-{cv_best}/train/pattern-{p0[0]}/log\
         {elem_out}/summary/log-prim.txt
+cp\
+        {elem_out}/cv-{cv_best}/train/pattern-{p0[0]}/train.raw\
+        {elem_out}/summary/raw-prim.txt
+cp\
+        {elem_out}/cv-{cv_best}/train/pattern-{p0[0]}/log\
+        {elem_out}/summary/log-prim.txt
+draw_motif.py\
+        {elem_out}/cv-{cv_best}/train/pattern-{p0[0]}\
+        {elem_out}/summary/rss-prim.eps\
+        {elem_out}/summary/prf-prim.svg\
+        {plot_base_threshold}
+rsvg-convert\
+        -f png --background-color=white\
+        -o {elem_out}/summary/prf-prim.png\
+        {elem_out}/summary/prf-prim.svg
+convert\
+        -density 320\
+        {elem_out}/summary/rss-prim.eps\
+        {elem_out}/summary/rss-prim.png
         """.format(**locals()))
     p_scnd=[d for d in transpose(d_aggr) if not '_' in patterns[int(d[0])]]
     p_rank=sorted(p_scnd,key=lambda x:float(x[3]),reverse=True)[:num_motifs]
@@ -585,11 +689,18 @@ if version_info[0]<3:
 if "train"==options["subcommand"]:
     run_rnaelem_train_cv(**options)
     summary_results(options["outdir"],options["num_motifs"],options["plot_base_threshold"])
+    if not options["no_merge"]:
+        models=[str(p) for p in Path(options["outdir"]+"/summary").glob("model-*.txt") if not str(p).endswith("-interim.txt")]
+        outdir=options["outdir"]
+        run_rnaelem_refine_nocv(models, options["positive"],
+                options["negative"], options["thread"], options["max_iter"],
+                outdir,options["batch_size"], options["no_shuffle"],
+                options["array"], options["plot_base_threshold"])
 elif "scan"==options["subcommand"]:
     run_rnaelem_scan(**options)
 elif "summary"==options["subcommand"]:
     summary_results(options["elem_out"],options["num_motifs"],options["plot_base_threshold"])
 elif "refine"==options["subcommand"]:
-    run_rnaelem_refine(**options)
+    run_rnaelem_refine_cv(**options)
     summary_results(options["outdir"],options["num_motifs"],options["plot_base_threshold"])
 else:die("unknown subcommand:",options["subcommand"])
