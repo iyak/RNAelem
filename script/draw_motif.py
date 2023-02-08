@@ -129,6 +129,12 @@ else:
 # gen seq logo
 stack,logo_seq,logo_color,logo_val,logo_meta=[],[],[],[],[]
 k=1
+if not p.startswith("*"):
+    p = "*" + p
+    loop += [1] + loop
+if not p.endswith("*"):
+    p = p + "*"
+    loop += loop + [1]
 for j in range(len(p)):
     if'('==p[j]:
         stack+=[j]
@@ -148,12 +154,18 @@ for j in range(len(p)):
         logo_seq+=["[A,C,G,U]"]
         logo_color+=["[,,,]"]
         logo_val+=['['+','.join(map(str,N[k]))+']']
+        logo_meta+=[' . ']
+        k+=1
+    elif'_'==p[j]:
+        logo_seq+=["[A,C,G,U]"]
+        logo_color+=["[,,,]"]
+        logo_val+=['['+','.join(map(str,N[k]))+']']
         logo_meta+=['']
         k+=1
     elif'*'==p[j]:
-        logo_seq+=["[]"]
-        logo_color+=["[]"]
-        logo_val+=["[]"]
+        logo_seq+=["[A,C,G,U]"]
+        logo_color+=["[,,,]"]
+        logo_val+=["["+",".join(map(str,N[0]))+"]"]
         logo_meta+=['*']
     else:raise die("unknown pattern:",p[j])
 stdin="""
