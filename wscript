@@ -1,17 +1,24 @@
 from subprocess import Popen,PIPE
+from waflib import Logs
 import sys
 
 out="./build"
+NORMAL='\033[0m'
+RED = '\033[91m'
+GREEN='\033[;92m'
 
 def exe(cmd):
     return Popen(cmd.split(), stdout=PIPE).stdout.read().decode("utf8").strip()
 
 def options(opt):
-    opt.load("compiler_cxx compiler_c waf_unit_test")
+    opt.load("compiler_cxx compiler_c waf_unit_test python")
 
 def configure(cnf):
-    cnf.load("compiler_cxx compiler_c waf_unit_test")
-    cnf.find_program("freetype-config", var="FTCNF")
+    cnf.load("compiler_cxx compiler_c waf_unit_test python")
+    cnf.find_program("freetype-config",var="FTCNF",mandatory=False)
+    cnf.find_program("convert",mandatory=False)
+    cnf.find_program("rsvg-convert",mandatory=False)
+    cnf.check_python_version((3,))
 
     cnf.check_cfg(
             path="freetype-config",
@@ -19,30 +26,6 @@ def configure(cnf):
             package="",
             uselib_store="freetype"
             )
-
-    if sys.platform.startswith("win") or sys.platform.startswith("cygwin"):
-        print("for windows, I don't get path for fonts.")
-        pass
-    elif sys.platform.startswith("darwin"):
-        ttfs = exe("find /Library/Fonts -name *.ttf")
-        for ttf in ttfs.split("\n"):
-            if "gothic" in ttf or "Gothic" in ttf:
-                cnf.env.append_unique("DEFINES", ["DEFAULT_FONT=\"%s\""%ttf])
-                print("set font:", ttf)
-                break
-        else:
-            print("could not find font file.")
-            print("please set manually")
-    else:
-        ttfs = exe("find /usr/share/fonts -name *.ttf")
-        for ttf in ttfs.split("\n"):
-            if "gothic" in ttf or "Gothic" in ttf:
-                cnf.env.append_unique("DEFINES", ["DEFAULT_FONT=\"%s\""%ttf])
-                print("set font:", ttf)
-                break
-        else:
-            print("could not find font file.")
-            print("please set manually")
 
 def build(bld):
     bld(
@@ -109,6 +92,18 @@ def build(bld):
             target="bin/RNAelem-test-exact",
             use="gtest ushuffle",
             lib="pthread")
+
+    if 0!=bld.is_install:
+        try:
+            scripts=["elem","kmer-psp.py","draw_motif.py","dishuffle.py"]
+            exe("mkdir -p {bindir}".format(bindir=bld.env.BINDIR))
+            exe("cp {scripts} {bindir}".format(
+                scripts=' '.join(["script/"+f for f in scripts]),
+                bindir=bld.env.BINDIR))
+            print(GREEN+"- install utility scripts"+NORMAL)
+        except:
+            print(RED+"- failed installing utility scripts"+NORMAL)
+            raise
 
 def test(ctx):
     ctx.exec_command("build/bin/RNAelem-test --gtest_color=yes")

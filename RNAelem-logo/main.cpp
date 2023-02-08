@@ -7,6 +7,7 @@
 //
 #include<iostream>
 #include<type_traits>
+#include<functional>
 #include"util.hpp"
 #include"logo.hpp"
 using namespace iyak;
@@ -94,6 +95,7 @@ int main(int argc,char *argv[]){
   RNAlogo logo;
   logo.set_ostream(std::cout);
   logo.set_x_axis_height(0);
+  logo.set_meta_height(70);
   check(1<argc,"usage: RNAelem-logo font.ttf <input>");
   string ttf=argv[1];
   try{

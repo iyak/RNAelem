@@ -530,10 +530,13 @@ namespace iyak {
       double rho=_motif->theta_softmax()?_motif->rho_s():_motif->rho_theta();
       V rho1(s1,rho),rho2(s2,_motif->rho_lambda());
       rho1.insert(rho1.end(),rho2.begin(),rho2.end());
-      if(_mode&TR_NO_SHUFFLE)
-        _opt.set_regularization(VI(s1+s2,2),rho1); //L2 norm
-      else
-        _adam.set_regularization(VI(s1+s2,2),rho1); //L2 norm
+      if(_mode&TR_NO_SHUFFLE){
+        _opt.set_rgl_type(VI(s1+s2,2));
+        _opt.set_rgl_coef(rho1); //L2 norm
+      }else{
+        _adam.set_rgl_type(VI(s1+s2,2));
+        _adam.set_rgl_coef(rho1); //L2 norm
+      }
     }
 
     /* setter */
@@ -553,6 +556,7 @@ namespace iyak {
       else _adam.set_hp(0,0,0.1,0.9,0.999,1.e-8);
       _lambda_init = lambda_init;
       _qr.set_batch_size(batch_size);
+      cry("batch size:",batch_size);
       _model_fname=out1;
     }
 
@@ -589,18 +593,14 @@ namespace iyak {
     }
 
     int operator() (V const& x, double& fn, V& gr) {
+      if(_qr.N()-_qr.orig().cnt()<_qr.N_batch())
+        _qr.skip(_qr.N()-_qr.orig().cnt());
       _motif->unpack_params(x);
       if(_qr.is_end_epoc()){
         /* output motif model for every epoc
          * with the file name <model_fname>-<epoc_count> */
-        init_ostream(nstream());
-        string new_name=
-        "~NULL~"==_model_fname?"~NULL~":
-        "~COUT~"==_model_fname?"~COUT~":
-        paste0(_model_fname,"-",_qr.cnt_epoc());
-        set_ostream(nstream()-1,new_name);
-        _writer.set_out_id(nstream()-1);
-        _writer.write(*_motif);
+        _writer.set_out_linear_id(3);
+        _writer.write_linear(*_motif);
       }
       fn=0.;
       gr.assign(size(x),0.);
@@ -627,6 +627,8 @@ namespace iyak {
       }
       else if(0==_adam.itercount())cry("considered BP:",_sum_eff/_qr.cnt());
       ++_cnt;
+      cry("iter:",_adam.itercount(),", y:",fn,", |gr|:",norm2(gr),
+          ", p|x|:",_adam.rgl_term(x));
       return 0;
     }
   };

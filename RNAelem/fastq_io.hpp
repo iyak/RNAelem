@@ -58,7 +58,7 @@ namespace iyak {
     void qual_region(int from,int len,VI& dest){
       dest.resize(len);
       for(int i=0;i<len;++i)
-        dest[i]=int(_qual_cat[i])-_base;
+        dest[i]=int(_qual_cat[from+i])-_base;
     }
   public:
     void set_fq_fname(string const& fname,string const& encoding="sanger"){
@@ -123,7 +123,7 @@ namespace iyak {
       ++_cnt_shf;
     }
     bool is_end(){return _cnt==_N;}
-    void skip(){++_cnt;}
+    void skip(int n=1){_cnt+=n;}
     void clear(){_cnt=0;}
     int cnt(){return _cnt;}
     int N(){return _N;}
@@ -158,10 +158,12 @@ namespace iyak {
       }
       _cnt=0;
     }
-    void skip(){++_cnt;_qr.skip();}
+    void skip(int n=1){_cnt+=n;_qr.skip(n);}
     int cnt(){return _cnt;}
     int cnt_epoc(){return _cnt_epoc;}
     int N(){return _qr.N();}
+    int N_batch(){return _N_batch;}
+    FastqReader& orig(){return _qr;}
   };
 }
 
