@@ -162,10 +162,12 @@ namespace iyak {
     double rgl_term(V const& x){
       double r=0.;
       for(int i=0;i<size(x);++i)
-        if(1==_xr[i])
-          r+=_rho[i]*abs(x[i]);
-        else if(2==_xr[i])
-          r+=_rho[i]*x[i]*x[i]/2.;
+        if (i < size(_xr)) {
+            if(1==_xr[i])
+              r+=_rho[i]*abs(x[i]);
+            else if(2==_xr[i])
+              r+=_rho[i]*x[i]*x[i]/2.;
+        }
       return r;
     }
   };
