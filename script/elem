@@ -169,6 +169,8 @@ parser_summary.add_argument("-N","--num-motifs",metavar="INT",default=3,type=int
         help="number of motif candidates")
 parser_summary.add_argument("-P","--plot-base-threshold",metavar="FLOAT",default=1.5,type=float,
         help="When plotting 2D diagram of a motif, bases are specified for the loci with less sequential entropy with this threshold")
+parser_summary.add_argument("--no-motif-draw",action="store_true",
+        help="summary without motif output")
 ### option for refine
 parser_refine.add_argument("-M","--elem-out",metavar="DIR",default=None,
         help="elem output dir to be refined",required=True)
@@ -606,7 +608,7 @@ def calc_log_features(log):
     cnt=int(ll[-1][0])
     y=mean([float(lli[1])/lli[4] for lli in ll])
     return cnt,y
-def summary_results(elem_out,num_motifs,plot_base_threshold):
+def summary_results(elem_out,num_motifs,plot_base_threshold,no_motif_draw=False):
     run("mkdir -p {elem_out}/summary".format(**locals()))
     fname=elem_out+"/pattern_list"
     patterns=["#margin to make 1-origin"]+[p.strip() for p in open(fname)]
@@ -637,6 +639,9 @@ cp\
 cp\
         {elem_out}/cv-{cv_best}/train/pattern-{p0[0]}/log\
         {elem_out}/summary/log-prim.txt
+        """.format(**locals()))
+        if not no_motif_draw:
+            run("""
 draw_motif.py\
         {elem_out}/cv-{cv_best}/train/pattern-{p0[0]}\
         {elem_out}/summary/rss-prim.eps\
@@ -650,7 +655,7 @@ convert\
         -density 320\
         {elem_out}/summary/rss-prim.eps\
         {elem_out}/summary/rss-prim.png
-        """.format(**locals()))
+            """.format(**locals()))
     p_scnd=[d for d in transpose(d_aggr) if not '_' in patterns[int(d[0])]]
     p_rank=sorted(p_scnd,key=lambda x:float(x[3]),reverse=True)[:num_motifs]
     for i,p in enumerate(p_rank):
@@ -668,6 +673,9 @@ cp\
 cp\
         {elem_out}/cv-{cv_best}/train/pattern-{p[0]}/log\
         {elem_out}/summary/log-{i}.txt
+        """.format(**locals()))
+        if not no_motif_draw:
+            run("""
 draw_motif.py\
         {elem_out}/cv-{cv_best}/train/pattern-{p[0]}\
         {elem_out}/summary/rss-{i}.eps\
@@ -699,7 +707,7 @@ if "train"==options["subcommand"]:
 elif "scan"==options["subcommand"]:
     run_rnaelem_scan(**options)
 elif "summary"==options["subcommand"]:
-    summary_results(options["elem_out"],options["num_motifs"],options["plot_base_threshold"])
+    summary_results(options["elem_out"],options["num_motifs"],options["plot_base_threshold"],options["no_motif_draw"])
 elif "refine"==options["subcommand"]:
     run_rnaelem_refine_cv(**options)
     summary_results(options["outdir"],options["num_motifs"],options["plot_base_threshold"])
