@@ -28,7 +28,7 @@ namespace iyak {
     void set_out_linear_id(int i){_out_linear=i;}
     void write(RNAelem& m) {
       _m = &m;
-      string pattern=_m->mm.pattern();
+      string pattern=_m->mm.reg_pattern();
       if(_m->no_rss())for(auto& p:pattern)if('.'==p)p='_';
       dat(_out,"pattern:",pattern);
       if(_m->theta_softmax()){

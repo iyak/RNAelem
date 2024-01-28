@@ -12,6 +12,9 @@
 #include"util.hpp"
 #include"bio_sequence.hpp"
 
+#include <string>
+#include <algorithm>
+
 namespace iyak {
 
   /* hidden state */
@@ -37,6 +40,7 @@ namespace iyak {
     int M;
 
     string _pattern;
+    string _reg_pattern;
     VI _node;
     VI _pair;
     VVI _edge_to;
@@ -58,6 +62,7 @@ namespace iyak {
 
     /* getter */
     string const& pattern() {return _pattern;}
+    string const& reg_pattern() {return _reg_pattern;}
     VIS const& state() {return _state;}
     VIS const& loop_state() {return _loop_state;}
     VIS const& loop_right_trans(int s) {return _loop_right_trans[s];}
@@ -180,12 +185,31 @@ namespace iyak {
       }
     }
 
+    void set_reg_pattern(string const& str) {
+      _reg_pattern = "";
+      for (char ch : str) {
+        if (ch == '*' || ch == '.' || ch == '_' || ch == '(' || ch == ')') {
+          _reg_pattern += ch;
+        }
+      }
+      _reg_pattern = str;
+      auto new_end = std::unique(_reg_pattern.begin(), _reg_pattern.end(),
+                                [](char a, char b) { return a == '*' && b == '*'; });
+      _reg_pattern.erase(new_end, _reg_pattern.end());
+      _reg_pattern.erase(0, _reg_pattern.find_first_not_of('*'));
+      size_t last_not_asterisk = _reg_pattern.find_last_not_of('*');
+      if (last_not_asterisk != std::string::npos) {
+        _reg_pattern.erase(last_not_asterisk + 1);
+      }
+    }
+
     void build(string const& str) {
       _pattern = str;
 
       check(!str.empty(), "empty motif");
 
-      set_node(str);
+      set_reg_pattern(str);
+      set_node(_reg_pattern);
       M = (int)_node.size();
 
       set_pair();
@@ -204,7 +228,7 @@ namespace iyak {
     void set_node(string str) {
       _node = VI{'z'};
       _node.insert(_node.end(), str.begin(), str.end());
-      _node.insert(_node.end(), {'o'}); 
+      _node.insert(_node.end(), {'o'});
     }
 
     /* recognize paired brackets */
