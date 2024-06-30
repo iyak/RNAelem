@@ -9,32 +9,33 @@
 #ifndef util_h
 #define util_h
 
-#include<vector>
-#include<string>
-#include<iostream>
-#include<fstream>
-#include<sstream>
-#include<istream>
-#include<ostream>
-#include<iomanip>
-#include<sstream>
 #include<algorithm>
-#include<stdexcept>
-#include<limits>
-#include<numeric>
-#include<random>
-#include<thread>
-#include<mutex>
+#include<cfloat>
+#include<cmath>
+#include<cstdarg>
+#include<cstdio>
 #include<cstdlib>
 #include<cstring>
-#include<cstdio>
 #include<ctime>
-#include<cfloat>
-#include<cstdarg>
-#include<cmath>
-#include<unordered_map>
+#include<fstream>
+#include<iomanip>
+#include<iostream>
+#include<istream>
+#include<limits>
+#include<memory>
+#include<mutex>
+#include<numeric>
+#include<ostream>
+#include<random>
+#include<sstream>
+#include<sstream>
+#include<stdexcept>
+#include<string>
 #include<sys/types.h>
+#include<thread>
 #include<unistd.h>
+#include<unordered_map>
+#include<vector>
 #include"const_options.hpp"
 #define forceinline inline __attribute__((always_inline))
 
