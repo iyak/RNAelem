@@ -15,15 +15,14 @@ def options(opt):
 
 def configure(cnf):
     cnf.load("compiler_cxx compiler_c waf_unit_test python")
-    cnf.find_program("freetype-config",var="FTCNF",mandatory=False)
     cnf.find_program("convert",mandatory=False)
     cnf.find_program("rsvg-convert",mandatory=False)
     cnf.check_python_version((3,))
 
     cnf.check_cfg(
-            path="freetype-config",
-            args="--cflags --libs",
-            package="",
+            path="pkg-config",
+            args="freetype2 --cflags --libs",
+            package="freetype2",
             uselib_store="freetype"
             )
 
