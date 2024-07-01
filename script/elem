@@ -144,7 +144,7 @@ parser_train.add_argument("-P","--plot-base-threshold",metavar="FLOAT",default=1
 parser_train.add_argument("--no-shuffle",action="store_true",
         help="Train without generating shuffled negative sequences.")
 parser_train.add_argument("--no-merge",action="store_true",
-        help="Do not refine the selected model with full dataset after cv")
+        help="Do not refine the selected model with full dataset after cross validation")
 ### option for scan
 parser_scan.add_argument("-s","--sequence",metavar="FASTA",default=None,
         help="sequence set to search motifs",required=True)
@@ -256,11 +256,11 @@ def gen_cv_summary(elem_out):
                 llik=0.
                 AUC,ox,score=0.5,[],[]
                 try:
-                    llik+=sum(log(float(r["exist prob"])) for r in 
+                    llik+=sum(log(float(r["exist prob"])) for r in
                             parse_raw("{elem_out}/cv-{k}/test/pattern-{tid}/positive.raw".
                                 format(**locals())))
                     if exists("{elem_out}/cv-{k}/test/negative.raw".format(**locals())):
-                        llik+=sum(log(1-float(r["exist prob"])) for r in 
+                        llik+=sum(log(1-float(r["exist prob"])) for r in
                                 parse_raw("{elem_out}/cv-{k}/test/pattern-{tid}/negative.raw".
                                     format(**locals())))
                     AUC=calc_AUC_raw(
@@ -533,7 +533,7 @@ RNAelem scan\
         2>> {outdir}/cv-$k/test/pattern-$i_motif/log
             """.format(task_id=ge["task_id"],**locals()))
     gen_cv_summary(outdir)
-    
+
 def run_rnaelem_scan(model,elem_out,sequence,outdir,thread,**_):
     run("mkdir -p {outdir}".format(**locals()))
     run(" ".join(["kmer-psp.py",sequence,
