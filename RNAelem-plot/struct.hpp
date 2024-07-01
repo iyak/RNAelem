@@ -121,8 +121,8 @@ namespace iyak{
       /* add 5/3 ends */
       seq.insert(0,"5");
       seq.append("3");
-      rss.insert(0,".");
-      rss.append(".");
+      rss.insert(0,"*");
+      rss.append("*");
     }
   public:
     void set_ostream(ostream& ofs){_ofs=&ofs;}
@@ -153,7 +153,7 @@ namespace iyak{
       for(int i=0;i<size(_ct);++i)(*_ofs)<<(i==_ct[i]?to_str(i)+" ":"");
       (*_ofs)<<"] def\n";
       (*_ofs)<<"/gaps [";
-      for(int i=size(_ct)-1;0<=i;--i)if(-1==_ct[i]){(*_ofs)<<i-2<<" ";i-=2;}
+      for(int i=size(_ct)-2;1<=i;--i)if(-1==_ct[i]){(*_ofs)<<i-2<<" ";i-=2;}
       (*_ofs)<<"] def\n";
       (*_ofs)<<"/seq ("<<seq<<") def\n";
       (*_ofs)<<ps_main;
