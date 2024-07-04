@@ -109,42 +109,94 @@ def calc_AUC(ox,score):
 ### Application
 parser=ArgumentParser(description="Tool to discover RNA structural motif element")
 sub_parser=parser.add_subparsers(dest="subcommand",help="subcommand")
-sub_parser.required=True
+parser_init=sub_parser.add_parser("init",help="initialize training")
 parser_train=sub_parser.add_parser("train",help="train the motif model by dataset")
+parser_select=sub_parser.add_parser("select",help="select the best pattern")
+parser_refine=sub_parser.add_parser("refine",help="train the motif model for more data and iterations")
 parser_scan=sub_parser.add_parser("scan",help="scan the motif model over dataset")
-parser_summary=sub_parser.add_parser("summary",help="summary the best pattern")
-parser_refine=sub_parser.add_parser("refine",help="train the motif model for more iterations")
-### options for train
-parser_train.add_argument("-p","--positive",metavar="FASTA",default=None,
+### pipeline
+parser.add_argument("-p","--positive",metavar="FASTA",default=None,
         help="positive sequence set",required=True)
-parser_train.add_argument("-n","--negative",metavar="FASTA",default=None,
+parser.add_argument("-n","--negative",metavar="FASTA",default=None,
         help="negative sequence set")
-parser_train.add_argument("-m","--pattern-list",metavar="FILE",default=None,
+parser.add_argument("-m","--pattern-list",metavar="FILE",default=None,
         help="pattern list to search; one per line",required=True)
+parser.add_argument("-o","--outdir",metavar="DIR",default="elem_out",
+        help="directory name to save outputs to")
+parser.add_argument("-F","--force-overwrite",action="store_true",
+        help="force overwrite if outdir already exists")
+parser.add_argument("-k","--kfold-cv",metavar="INT",default=2,type=int,
+        help="k of k-fold cross validation")
+parser.add_argument("-w","--max-span",metavar="INT",default=50,
+        help="max distance for bases to make a pair")
+parser.add_argument("-i","--max-iter",metavar="INT",default=300,
+        help="max iteration count")
+parser.add_argument("-t","--thread",metavar="INT",default=1,
+        help="number of threads")
+parser.add_argument("-a","--array",action="store_true",
+        help="enable array job")
+parser.add_argument("-b","--batch-size",metavar="INT",default=64,type=int,
+        help="size of mini-batch")
+parser.add_argument("--no-shuffle",action="store_true",
+        help="Train without generating shuffled negative sequences.")
+parser.add_argument("-N","--num-motifs",metavar="INT",default=3,type=int,
+        help="number of motif candidates")
+parser.add_argument("-P","--plot-base-threshold",metavar="FLOAT",default=1.5,type=float,
+        help="When plotting 2D diagram of a motif, bases are specified for the loci with less sequential entropy with this threshold")
+### options for init
+parser_init.add_argument("-p","--positive",metavar="FASTA",default=None,
+        help="positive sequence set",required=True)
+parser_init.add_argument("-n","--negative",metavar="FASTA",default=None,
+        help="negative sequence set")
+parser_init.add_argument("-m","--pattern-list",metavar="FILE",default=None,
+        help="pattern list to search; one per line",required=True)
+parser_init.add_argument("-o","--outdir",metavar="DIR",default="elem_out",
+        help="directory name to save outputs to")
+parser_init.add_argument("-F","--force-overwrite",action="store_true",
+        help="force overwrite if outdir already exists")
+parser_init.add_argument("-k","--kfold-cv",metavar="INT",default=2,type=int,
+        help="k of k-fold cross validation")
+### options for train
+parser_train.add_argument("-M","--elem-out",metavar="DIR",default=None,
+        help="elem output dir",
+        required=True)
+parser_train.add_argument("--pattern-index",metavar="INT",default=None,type=int,
+        help="set to perform training only for specific search pattern in the list (1-origin)")
 parser_train.add_argument("-w","--max-span",metavar="INT",default=50,
         help="max distance for bases to make a pair")
 parser_train.add_argument("-i","--max-iter",metavar="INT",default=300,
         help="max iteration count")
-parser_train.add_argument("-o","--outdir",metavar="DIR",default="elem_out",
-        help="directory name to save outputs to")
 parser_train.add_argument("-t","--thread",metavar="INT",default=1,
         help="number of threads")
 parser_train.add_argument("-a","--array",action="store_true",
         help="enable array job")
-parser_train.add_argument("-F","--force_overwrite",action="store_true",
-        help="force overwrite if outdir already exists")
-parser_train.add_argument("-k","--kfold-cv",metavar="INT",default=2,type=int,
-        help="k of k-fold cross validation")
 parser_train.add_argument("-b","--batch-size",metavar="INT",default=64,type=int,
         help="size of mini-batch")
-parser_train.add_argument("-N","--num-motifs",metavar="INT",default=3,type=int,
-        help="number of motif candidates")
-parser_train.add_argument("-P","--plot-base-threshold",metavar="FLOAT",default=1.5,type=float,
-        help="When plotting 2D diagram of a motif, bases are specified for the loci with less sequential entropy with this threshold")
 parser_train.add_argument("--no-shuffle",action="store_true",
         help="Train without generating shuffled negative sequences.")
-parser_train.add_argument("--no-merge",action="store_true",
-        help="Do not refine the selected model with full dataset after cross validation")
+### option for select
+parser_select.add_argument("-M","--elem-out",metavar="DIR",default=None,
+        help="elem output dir that includes multiple motif model files in it",
+        required=True)
+parser_select.add_argument("-N","--num-motifs",metavar="INT",default=3,type=int,
+        help="number of motif candidates")
+### option for refine
+parser_refine.add_argument("-M","--elem-out",metavar="DIR",default=None,
+        help="elem output dir",required=True)
+parser_refine.add_argument("--pattern-index",metavar="INT",default=None,
+        help="index of motif model to be refined")
+parser_refine.add_argument("-i","--max-iter",metavar="INT",default=300,
+        help="max iteration count")
+parser_refine.add_argument("-a","--array",action="store_true",
+        help="enable array job")
+parser_refine.add_argument("-t","--thread",metavar="INT",default=1,
+        help="number of threads")
+parser_refine.add_argument("--no-shuffle",action="store_true",
+        help="refine without generating shuffled negative sequences")
+parser_refine.add_argument("-b","--batch-size",metavar="INT",default=64,type=int,
+        help="size of mini-batch")
+parser_refine.add_argument("-P","--plot-base-threshold",metavar="FLOAT",default=1.5,type=float,
+        help="When plotting 2D diagram of a motif, bases are specified for the loci with less sequential entropy with this threshold")
 ### option for scan
 parser_scan.add_argument("-s","--sequence",metavar="FASTA",default=None,
         help="sequence set to search motifs",required=True)
@@ -159,39 +211,8 @@ parser_scan.add_argument("-t","--thread",metavar="INT",default=1,
         help="number of threads")
 parser_scan.add_argument("-a","--array",action="store_true",
         help="enable array job")
-parser_scan.add_argument("-F","--force_overwrite",action="store_true",
+parser_scan.add_argument("-F","--force-overwrite",action="store_true",
         help="force overwrite if outdir already exists")
-### option for summary
-parser_summary.add_argument("-M","--elem-out",metavar="DIR",default=None,
-        help="elem output dir that includes multiple motif model files in it",
-        required=True)
-parser_summary.add_argument("-N","--num-motifs",metavar="INT",default=3,type=int,
-        help="number of motif candidates")
-parser_summary.add_argument("-P","--plot-base-threshold",metavar="FLOAT",default=1.5,type=float,
-        help="When plotting 2D diagram of a motif, bases are specified for the loci with less sequential entropy with this threshold")
-parser_summary.add_argument("--no-motif-draw",action="store_true",
-        help="summary without motif output")
-### option for refine
-parser_refine.add_argument("-M","--elem-out",metavar="DIR",default=None,
-        help="elem output dir to be refined",required=True)
-parser_refine.add_argument("-i","--max-iter",metavar="INT",default=300,
-        help="max iteration count")
-parser_refine.add_argument("-t","--thread",metavar="INT",default=1,
-        help="number of threads")
-parser_refine.add_argument("-a","--array",action="store_true",
-        help="enable array job")
-parser_refine.add_argument("-b","--batch-size",metavar="INT",default=64,type=int,
-        help="size of mini-batch")
-parser_refine.add_argument("-o","--outdir",metavar="DIR",default="refine_out",
-        help="directory name to save outputs to")
-parser_refine.add_argument("-F","--force_overwrite",action="store_true",
-        help="force overwrite if outdir already exists")
-parser_refine.add_argument("-N","--num-motifs",metavar="INT",default=3,type=int,
-        help="number of motif candidates")
-parser_refine.add_argument("-P","--plot-base-threshold",metavar="FLOAT",default=1.5,type=float,
-        help="When plotting 2D diagram of a motif, bases are specified for the loci with less sequential entropy with this threshold")
-parser_refine.add_argument("--no-shuffle",action="store_true",
-        help="Train without generating shuffled negative sequences.")
 options=vars(parser.parse_args())
 if "outdir" in options:
     if exists(options["outdir"]) and not options["force_overwrite"]:
@@ -200,8 +221,10 @@ if "kfold_cv" in options:
     if options["kfold_cv"]<2:
         die("kfold_cv must be greater than 1:",options["kfold_cv"])
 if "num_motifs" in options:
-    fname=options["pattern_list"] if "train"==options["subcommand"] else\
-            options["elem_out"]+"/pattern_list"
+    if "pattern_list" in options:
+        fname=options["pattern_list"]
+    else:
+        fname=f"{options['elem_out']}/pattern_list"
     nl=len([p.strip() for p in open(fname) if p.strip()])
     if nl<options["num_motifs"]:
         cry("num-motifs cannot be larger than number of patterns:",options["num_motifs"])
@@ -250,70 +273,166 @@ def cross_divide_inputs(positive,negative,kfold_cv,outdir):
             fps[kk][pn]["train"].close()
 def gen_cv_summary(elem_out):
     folds,patterns=get_folds_patterns(elem_out)
-    with open("{elem_out}/cv".format(**locals()),'w') as cv:
+    with open(f"{elem_out}/cv","w") as cv:
         for k in folds:
             for tid in patterns:
                 llik=0.
-                AUC,ox,score=0.5,[],[]
+                AUC=0.5
                 try:
-                    llik+=sum(log(float(r["exist prob"])) for r in
-                            parse_raw("{elem_out}/cv-{k}/test/pattern-{tid}/positive.raw".
-                                format(**locals())))
+                    llik+=sum([log(float(r["exist prob"])) for r in
+                            parse_raw(f"{elem_out}/cv-{k}/test/pattern-{tid}/positive.raw")])
                     if exists("{elem_out}/cv-{k}/test/negative.raw".format(**locals())):
-                        llik+=sum(log(1-float(r["exist prob"])) for r in
-                                parse_raw("{elem_out}/cv-{k}/test/pattern-{tid}/negative.raw".
-                                    format(**locals())))
+                        llik+=sum([log(1-float(r["exist prob"])) for r in
+                                parse_raw(f"{elem_out}/cv-{k}/test/pattern-{tid}/negative.raw")])
                     AUC=calc_AUC_raw(
-                            "{elem_out}/cv-{k}/test/pattern-{tid}/positive.raw".format(**locals()),
-                            "{elem_out}/cv-{k}/test/pattern-{tid}/negative.raw".format(**locals()))
+                            f"{elem_out}/cv-{k}/test/pattern-{tid}/positive.raw",
+                            f"{elem_out}/cv-{k}/test/pattern-{tid}/negative.raw")
                 except Exception as e:
                     cry("k_fold,pattern:",k,tid)
                     cry("error:",e)
-                cv.write("{k}\t{tid}\t{llik}\t{AUC}\n".format(**locals()))
+                cv.write(f"{k}\t{tid}\t{llik}\t{AUC}\n")
     cry("written:","{elem_out}/cv".format(**locals()))
-def run_rnaelem_refine_nocv(models, positive, negative, thread, max_iter,
-        outdir, batch_size, no_shuffle, array, plot_base_threshold):
-    no_shuffle = "--no-shuffle" if no_shuffle else ""
-    if not negative:
+def calc_AUC_raw(positive,negative):
+    ox,score=zip(*[[1,float(r["exist prob"])] for r in parse_raw(positive)]
+            +[[0,float(r["exist prob"])] for r in parse_raw(negative)])
+    return calc_AUC(ox,score)
+
+def run_rnaelem_init(positive, negative, pattern_list, outdir, kfold_cv, **_):
+    run(f"mkdir -p {outdir}")
+    if None==negative:
         cry("info: generate negative sequence by 2mer shuffling")
         run(f"dishuffle.py {positive} >{outdir}/negative.fa")
         negative=f"{outdir}/negative.fa"
     _run(f"kmer-psp.py {positive} {negative} > {outdir}/train.fq 2>> {outdir}/log")
-    if not array:
-        for model in models:
-            cry("model: ", model)
-            _run(f"""
-mkdir -p {outdir}/{Path(model).stem}
-RNAelem --fastq {outdir}/train.fq\
-        --motif-model {model}\
+    cross_divide_inputs(positive,negative,kfold_cv,outdir)
+    run(f"cp {pattern_list} {outdir}/pattern_list")
+    for k in range(kfold_cv):
+        run(f"mkdir -p {outdir}/cv-{k}/train {outdir}/cv-{k}/test")
+        run(' '.join(["kmer-psp.py",f"{outdir}/cv-{k}/train.positive.fa",
+            "" if None==negative else f"{outdir}/cv-{k}/train.negative.fa",
+            ">",f"{outdir}/cv-{k}/train/train.fq","2>>",outdir+"/log",
+            ]))
+        run(' '.join(["kmer-psp.py",f"{outdir}/cv-{k}/test.positive.fa",
+            ">",f"{outdir}/cv-{k}/test/positive.fq","2>>",outdir+"/log",
+            ]))
+        run(' '.join(["kmer-psp.py",f"{outdir}/cv-{k}/test.negative.fa",
+            ">",f"{outdir}/cv-{k}/test/negative.fq","2>>",outdir+"/log",
+            ]))
+def run_rnaelem_train(elem_out, max_span, max_iter, batch_size, thread, array, pattern_index, no_shuffle, **_):
+    kfold_cv=len(get_folds_patterns(elem_out)[0])
+    pattern_list=f"{elem_out}/pattern_list"
+    no_shuffle = "--no-shuffle" if no_shuffle else ""
+    if array:
+        _run(' '.join([ge["cmd"],
+            ge["cwd"],ge["envvar"],ge["shell"],ge["sync"],ge["other"],
+            ge["array"].replace(":N:",str(nlines(elem_out+"/pattern_list")*kfold_cv)),
+            ge["stdout"].replace(":file:",elem_out+"/grid.stdout"),
+            ge["stderr"].replace(":file:",elem_out+"/grid.stderr"),
+            ge["memory"].replace(":mem:",str(4)),
+            ge["cpu"].replace(":cpu:",str(thread)),
+            ]),
+            stdin=f"""
+tid=${ge["task_id"]}
+i_motif=`expr '(' $tid '-' 1 ')' '/' {kfold_cv} '+' 1`
+k=`expr '(' $tid - 1 ')' % {kfold_cv}`
+motif=`sed "$i_motif q;d" '{elem_out}/pattern_list'`
+mkdir -p {elem_out}/cv-$k/train/pattern-$i_motif
+mkdir -p {elem_out}/cv-$k/test/pattern-$i_motif
+RNAelem --fastq {elem_out}/cv-$k/train/train.fq\
+        --max-span {max_span}\
+        --motif-pattern $motif\
+        --thread {thread}\
         --max-iter {max_iter}\
         --batch-size {batch_size}\
-        --thread {thread}\
         {no_shuffle}\
-        --out1 {outdir}/{Path(model).stem}/train.model\
-        --out2 {outdir}/{Path(model).stem}/train.raw\
-        --out3 {outdir}/{Path(model).stem}/train.interim\
-        2>> {outdir}/{Path(model).stem}/log
-draw_motif.py\
-        {outdir}/{Path(model).stem}\
-        {outdir}/{Path(model).stem}/rss.eps\
-        {outdir}/{Path(model).stem}/prf.svg\
-        {plot_base_threshold}
-rsvg-convert\
-        -f png --background-color=white\
-        -o {outdir}/{Path(model).stem}/prf.png\
-        {outdir}/{Path(model).stem}/prf.svg
-convert\
-        -density 320\
-        {outdir}/{Path(model).stem}/rss.eps\
-        {outdir}/{Path(model).stem}/rss.png
-        """)
+        --out1 {elem_out}/cv-$k/train/pattern-$i_motif/train.model\
+        --out2 {elem_out}/cv-$k/train/pattern-$i_motif/train.raw\
+        --out3 {elem_out}/cv-$k/train/pattern-$i_motif/train.interim\
+        2>> {elem_out}/cv-$k/train/pattern-$i_motif/log
+RNAelem scan\
+        --fastq {elem_out}/cv-$k/test/positive.fq\
+        --motif-model {elem_out}/cv-$k/train/pattern-$i_motif/train.model\
+        --thread {thread}\
+        --out1 {elem_out}/cv-$k/test/pattern-$i_motif/positive.raw\
+        2>> {elem_out}/cv-$k/test/pattern-$i_motif/log
+RNAelem scan\
+        --fastq {elem_out}/cv-$k/test/negative.fq\
+        --motif-model {elem_out}/cv-$k/train/pattern-$i_motif/train.model\
+        --thread {thread}\
+        --out1 {elem_out}/cv-$k/test/pattern-$i_motif/negative.raw\
+        2>> {elem_out}/cv-$k/test/pattern-$i_motif/log""")
     else:
-        _run(" ".join([ge["cmd"],
+        if pattern_index is None:
+            indices=range(1,1+nlines(pattern_list))
+        else:
+            indices=[pattern_index]
+        for pattern_index in indices:
+            for k in range(kfold_cv):
+                cry("k_fold:",k)
+                cry("pattern:",pattern_index)
+                _run(f"""
+motif=`sed "{pattern_index} q;d" '{elem_out}/pattern_list'`
+mkdir -p {elem_out}/cv-{k}/train/pattern-{pattern_index}
+mkdir -p {elem_out}/cv-{k}/test/pattern-{pattern_index}
+RNAelem --fastq {elem_out}/cv-{k}/train/train.fq\
+        --max-span {max_span}\
+        --motif-pattern $motif\
+        --thread {thread}\
+        --max-iter {max_iter}\
+        --batch-size {batch_size}\
+        {no_shuffle}\
+        --out1 {elem_out}/cv-{k}/train/pattern-{pattern_index}/train.model\
+        --out2 {elem_out}/cv-{k}/train/pattern-{pattern_index}/train.raw\
+        --out3 {elem_out}/cv-{k}/train/pattern-{pattern_index}/train.interim\
+        2>> {elem_out}/cv-{k}/train/pattern-{pattern_index}/log
+RNAelem scan\
+        --fastq {elem_out}/cv-{k}/test/positive.fq\
+        --motif-model {elem_out}/cv-{k}/train/pattern-{pattern_index}/train.model\
+        --thread {thread}\
+        --out1 {elem_out}/cv-{k}/test/pattern-{pattern_index}/positive.raw\
+        2>> {elem_out}/cv-{k}/test/pattern-{pattern_index}/log
+RNAelem scan\
+        --fastq {elem_out}/cv-{k}/test/negative.fq\
+        --motif-model {elem_out}/cv-{k}/train/pattern-{pattern_index}/train.model\
+        --thread {thread}\
+        --out1 {elem_out}/cv-{k}/test/pattern-{pattern_index}/negative.raw\
+        2>> {elem_out}/cv-{k}/test/pattern-{pattern_index}/log""")
+def run_rnaelem_select(elem_out, num_motifs, **_):
+    run(f"mkdir -p {elem_out}/summary")
+    fname=elem_out+"/pattern_list"
+    patterns=["#margin to make 1-origin"]+[p.strip() for p in open(fname)]
+    gen_cv_summary(elem_out)
+    o,_=_run(" ".join(["awk '$3<0&&\"nan\"!=$3'",elem_out+"/cv"]))
+    d_orig=[l.strip().split('\t') for l in o.strip().split('\n')]
+    #columns of d_orig: (0)CV ID / (1)pattern id / (2)log likelihood / (3)AUC
+    d_aggr=aggregate(transpose(d_orig),fns=["comma","sum","mean"],key=1,val=[0,2,3])
+    print(d_aggr)
+    #columns of d_aggr: (0)pattern id / (1)CV IDs / (2)log likelihood / (3)AUC
+    p_prim=[d for d in transpose(d_aggr) if "_" in patterns[int(d[0])]]
+    if 0<len(p_prim):
+        p0=sorted(p_prim,key=lambda x:float(x[3]),reverse=True)[0]
+        cv_best=sorted([d for d in d_orig if d[1]==p0[0]],key=lambda x:float(x[3]))[-1][0]
+        run(f"""
+cp\
+        {elem_out}/cv-{cv_best}/train/pattern-{p0[0]}/train.model\
+        {elem_out}/summary/model-prim.txt""")
+    p_scnd=[d for d in transpose(d_aggr) if not "_" in patterns[int(d[0])]]
+    p_rank=sorted(p_scnd,key=lambda x:float(x[3]),reverse=True)[:num_motifs]
+    for i,p in enumerate(p_rank):
+        cv_best=sorted([d for d in d_orig if d[1]==p[0]],key=lambda x:float(x[3]))[-1][0]
+        run(f"""
+cp\
+        {elem_out}/cv-{cv_best}/train/pattern-{p[0]}/train.model\
+        {elem_out}/summary/model-{i+1}.txt""")
+def run_rnaelem_refine(elem_out, max_iter, batch_size, plot_base_threshold, array, thread, pattern_index, no_shuffle, **_):
+    no_shuffle = "--no-shuffle" if no_shuffle else ""
+    models=[str(p) for p in Path(f"{elem_out}/summary").glob("model-*.txt")]
+    if array:
+        _run(' '.join([ge["cmd"],
             ge["cwd"],ge["envvar"],ge["shell"],ge["sync"],ge["other"],
-            ge["array"].replace(":N:",str(len(models))),
-            ge["stdout"].replace(":file:",outdir+"/grid.stdout"),
-            ge["stderr"].replace(":file:",outdir+"/grid.stderr"),
+            ge["array"].replace(":N:",str(nlines(elem_out+"/pattern_list"))),
+            ge["stdout"].replace(":file:",elem_out+"/grid.stdout"),
+            ge["stderr"].replace(":file:",elem_out+"/grid.stderr"),
             ge["memory"].replace(":mem:",str(4)),
             ge["cpu"].replace(":cpu:",str(thread)),
             ]),
@@ -323,392 +442,130 @@ models=({" ".join(["padding"] + models)})
 model=${{models[tid]}}
 tmp=$(basename -- "$model")
 model_base="${{tmp%.*}}"
-mkdir -p {outdir}/${{model_base}}
-RNAelem --fastq {outdir}/train.fq\
+mkdir -p {elem_out}/${{model_base}}
+RNAelem --fastq {elem_out}/train.fq\
         --motif-model ${{model}}\
         --max-iter {max_iter}\
         --batch-size {batch_size}\
         --thread {thread}\
         {no_shuffle}\
-        --out1 {outdir}/${{model_base}}/train.model\
-        --out2 {outdir}/${{model_base}}/train.raw\
-        --out3 {outdir}/${{model_base}}/train.interim\
-        2>> {outdir}/${{model_base}}/log
+        --out1 {elem_out}/${{model_base}}/train.model\
+        --out2 {elem_out}/${{model_base}}/train.raw\
+        --out3 {elem_out}/${{model_base}}/train.interim\
+        2>> {elem_out}/${{model_base}}/log
 draw_motif.py\
-        {outdir}/${{model_base}}\
-        {outdir}/${{model_base}}/rss.eps\
-        {outdir}/${{model_base}}/prf.svg\
+        {elem_out}/${{model_base}}\
+        {elem_out}/${{model_base}}/rss.eps\
+        {elem_out}/${{model_base}}/prf.svg\
         {plot_base_threshold}
 rsvg-convert\
         -f png --background-color=white\
-        -o {outdir}/${{model_base}}/prf.png\
-        {outdir}/${{model_base}}/prf.svg
+        -o {elem_out}/${{model_base}}/prf.png\
+        {elem_out}/${{model_base}}/prf.svg
 convert\
         -density 320\
-        {outdir}/${{model_base}}/rss.eps\
-        {outdir}/${{model_base}}/rss.png
-            """)
-def run_rnaelem_train_cv(pattern_list,positive,negative,max_span,
-        thread,max_iter,outdir,kfold_cv,batch_size,no_shuffle,**_):
-    run("mkdir -p {outdir}".format(**locals()))
-    if None==negative:
-        cry("info: generate negative sequence by 2mer shuffling")
-        run("dishuffle.py {positive} >{outdir}/negative.fa".format(**locals()))
-        negative="{outdir}/negative.fa".format(**locals())
-    cross_divide_inputs(positive,negative,kfold_cv,outdir)
-    run("cp {pattern_list} {outdir}/pattern_list".format(**locals()))
-    for k in range(kfold_cv):
-        run("mkdir -p {outdir}/cv-{k}/train {outdir}/cv-{k}/test".format(**locals()))
-        run(' '.join(["kmer-psp.py","{outdir}/cv-{k}/train.positive.fa".format(outdir=outdir,k=k),
-            "" if None==negative else "{outdir}/cv-{k}/train.negative.fa".format(outdir=outdir,k=k),
-            ">","{outdir}/cv-{k}/train/train.fq".format(outdir=outdir,k=k),"2>>",outdir+"/log",
-            ]))
-        run(' '.join(["kmer-psp.py","{outdir}/cv-{k}/test.positive.fa".format(outdir=outdir,k=k),
-            ">","{outdir}/cv-{k}/test/positive.fq".format(outdir=outdir,k=k),"2>>",outdir+"/log",
-            ]))
-        run(' '.join(["kmer-psp.py","{outdir}/cv-{k}/test.negative.fa".format(outdir=outdir,k=k),
-            ">","{outdir}/cv-{k}/test/negative.fq".format(outdir=outdir,k=k),"2>>",outdir+"/log",
-            ]))
-    no_shuffle = "--no-shuffle" if no_shuffle else ""
-    if not options["array"]:
-        for k in range(kfold_cv):
-            cry("k_fold:",k)
-            for i_motif in range(1,1+nlines(pattern_list)):
-                cry("pattern:",i_motif)
-                _run("""
-motif=`sed "{i_motif} q;d" '{outdir}/pattern_list'`
-mkdir -p {outdir}/cv-{k}/train/pattern-{i_motif}
-mkdir -p {outdir}/cv-{k}/test/pattern-{i_motif}
-RNAelem --fastq {outdir}/cv-{k}/train/train.fq\
-        --max-span {max_span}\
-        --motif-pattern $motif\
-        --thread {thread}\
-        --max-iter {max_iter}\
-        --batch-size {batch_size}\
-        {no_shuffle}\
-        --out1 {outdir}/cv-{k}/train/pattern-{i_motif}/train.model\
-        --out2 {outdir}/cv-{k}/train/pattern-{i_motif}/train.raw\
-        --out3 {outdir}/cv-{k}/train/pattern-{i_motif}/train.interim\
-        2>> {outdir}/cv-{k}/train/pattern-{i_motif}/log
-RNAelem scan\
-        --fastq {outdir}/cv-{k}/test/positive.fq\
-        --motif-model {outdir}/cv-{k}/train/pattern-{i_motif}/train.model\
-        --thread {thread}\
-        --out1 {outdir}/cv-{k}/test/pattern-{i_motif}/positive.raw\
-        2>> {outdir}/cv-{k}/test/pattern-{i_motif}/log
-RNAelem scan\
-        --fastq {outdir}/cv-{k}/test/negative.fq\
-        --motif-model {outdir}/cv-{k}/train/pattern-{i_motif}/train.model\
-        --thread {thread}\
-        --out1 {outdir}/cv-{k}/test/pattern-{i_motif}/negative.raw\
-        2>> {outdir}/cv-{k}/test/pattern-{i_motif}/log
-            """.format(**locals()))
+        {elem_out}/${{model_base}}/rss.eps\
+        {elem_out}/${{model_base}}/rss.png""")
     else:
-        _run(' '.join([ge["cmd"],
-            ge["cwd"],ge["envvar"],ge["shell"],ge["sync"],ge["other"],
-            ge["array"].replace(":N:",str(nlines(outdir+"/pattern_list")*options["kfold_cv"])),
-            ge["stdout"].replace(":file:",outdir+"/grid.stdout"),
-            ge["stderr"].replace(":file:",outdir+"/grid.stderr"),
-            ge["memory"].replace(":mem:",str(4)),
-            ge["cpu"].replace(":cpu:",str(thread)),
-            ]),
-            stdin="""
-tid=${task_id}
-i_motif=`expr '(' $tid '-' 1 ')' '/' {kfold_cv} '+' 1`
-k=`expr '(' $tid - 1 ')' % {kfold_cv}`
-motif=`sed "$i_motif q;d" '{outdir}/pattern_list'`
-mkdir -p {outdir}/cv-$k/train/pattern-$i_motif
-mkdir -p {outdir}/cv-$k/test/pattern-$i_motif
-RNAelem --fastq {outdir}/cv-$k/train/train.fq\
-        --max-span {max_span}\
-        --motif-pattern $motif\
-        --thread {thread}\
-        --max-iter {max_iter}\
-        --batch-size {batch_size}\
-        {no_shuffle}\
-        --out1 {outdir}/cv-$k/train/pattern-$i_motif/train.model\
-        --out2 {outdir}/cv-$k/train/pattern-$i_motif/train.raw\
-        --out3 {outdir}/cv-$k/train/pattern-$i_motif/train.interim\
-        2>> {outdir}/cv-$k/train/pattern-$i_motif/log
-RNAelem scan\
-        --fastq {outdir}/cv-$k/test/positive.fq\
-        --motif-model {outdir}/cv-$k/train/pattern-$i_motif/train.model\
-        --thread {thread}\
-        --out1 {outdir}/cv-$k/test/pattern-$i_motif/positive.raw\
-        2>> {outdir}/cv-$k/test/pattern-$i_motif/log
-RNAelem scan\
-        --fastq {outdir}/cv-$k/test/negative.fq\
-        --motif-model {outdir}/cv-$k/train/pattern-$i_motif/train.model\
-        --thread {thread}\
-        --out1 {outdir}/cv-$k/test/pattern-$i_motif/negative.raw\
-        2>> {outdir}/cv-$k/test/pattern-$i_motif/log
-                """.format(task_id=ge["task_id"],**locals()))
-    gen_cv_summary(outdir)
-def run_rnaelem_refine_cv(elem_out,outdir,thread,batch_size,max_iter,no_shuffle,**_):
-    run("cp {elem_out}/pattern_list {outdir}/pattern_list".format(**locals()))
-    run("mkdir -p {outdir}".format(**locals()))
-    folds,patterns=get_folds_patterns(elem_out)
-    cry(folds,patterns)
-    no_shuffle = "--no-shuffle" if no_shuffle else ""
-    if not options["array"]:
-        for k in folds:
-            cry("k_fold:",k)
-            for i_motif in patterns:
-                cry("pattern:",i_motif)
-                _run("""
-motif=`sed "{i_motif} q;d" '{outdir}/pattern_list'`
-mkdir -p {outdir}/cv-{k}/train/pattern-{i_motif}
-mkdir -p {outdir}/cv-{k}/test/pattern-{i_motif}
-cp {elem_out}/cv-$k/train/*.fq {outdir}/cv-$k/train
-cp {elem_out}/cv-$k/test/*.fq {outdir}/cv-$k/test
-RNAelem --fastq {outdir}/cv-{k}/train/train.fq\
-        --motif-model {elem_out}/cv-$k/train/pattern-$i_motif/train.model\
+        if pattern_index is not None:
+            models=[models[pattern_index-1]]
+        for model in models:
+            model_stem=Path(model).stem
+            _run(f"""
+mkdir -p {elem_out}/{model_stem}
+RNAelem --fastq {elem_out}/train.fq\
+        --motif-model {model}\
         --max-iter {max_iter}\
         --batch-size {batch_size}\
         --thread {thread}\
         {no_shuffle}\
-        --out1 {outdir}/cv-{k}/train/pattern-{i_motif}/train.model\
-        --out2 {outdir}/cv-{k}/train/pattern-{i_motif}/train.raw\
-        --out3 {outdir}/cv-{k}/train/pattern-{i_motif}/train.interim\
-        2>> {outdir}/cv-{k}/train/pattern-{i_motif}/log
-RNAelem scan\
-        --fastq {outdir}/cv-{k}/test/positive.fq\
-        --motif-model {outdir}/cv-{k}/train/pattern-{i_motif}/train.model\
-        --thread {thread}\
-        --out1 {outdir}/cv-{k}/test/pattern-{i_motif}/positive.raw\
-        2>> {outdir}/cv-{k}/test/pattern-{i_motif}/log
-RNAelem scan\
-        --fastq {outdir}/cv-{k}/test/negative.fq\
-        --motif-model {outdir}/cv-{k}/train/pattern-{i_motif}/train.model\
-        --thread {thread}\
-        --out1 {outdir}/cv-{k}/test/pattern-{i_motif}/negative.raw\
-        2>> {outdir}/cv-{k}/test/pattern-{i_motif}/log
-            """.format(**locals()))
-    else:
-        join_patterns=' '.join(patterns)
-        join_folds=' '.join(folds)
-        nfolds=len(folds)
-        npatterns=len(patterns)
-        _run(' '.join([ge["cmd"],
-            ge["cwd"],ge["envvar"],ge["shell"],ge["sync"],ge["other"],
-            ge["array"].replace(":N:",str(nfolds*npatterns)),
-            ge["stdout"].replace(":file:",outdir+"/grid.stdout"),
-            ge["stderr"].replace(":file:",outdir+"/grid.stderr"),
-            ge["memory"].replace(":mem:",str(4)),
-            ge["cpu"].replace(":cpu:",str(thread)),
-            ]),
-            stdin="""
-tid=${task_id}
-i_motifs=(0 {join_patterns})
-ks=({join_folds})
-i_motif=`expr '(' $tid '-' 1 ')' '/' {nfolds} '+' 1`
-k=`expr '(' $tid - 1 ')' % {nfolds}`
-i_motif=${{i_motifs[i_motif]]}}
-k=${{ks[k]}}
-mkdir -p {outdir}/cv-$k/train/pattern-$i_motif
-mkdir -p {outdir}/cv-$k/test/pattern-$i_motif
-cp {elem_out}/cv-$k/train/*.fq {outdir}/cv-$k/train
-cp {elem_out}/cv-$k/test/*.fq {outdir}/cv-$k/test
-RNAelem --fastq {outdir}/cv-$k/train/train.fq\
-        --motif-model {elem_out}/cv-$k/train/pattern-$i_motif/train.model\
-        --max-iter {max_iter}\
-        --batch-size {batch_size}\
-        --thread {thread}\
-        {no_shuffle}\
-        --out1 {outdir}/cv-$k/train/pattern-$i_motif/train.model\
-        --out2 {outdir}/cv-$k/train/pattern-$i_motif/train.raw\
-        --out3 {outdir}/cv-$k/train/pattern-$i_motif/train.raw\
-        2>>{outdir}/cv-$k/train/pattern-$i_motif/log
-RNAelem scan\
-        --fastq {outdir}/cv-$k/test/positive.fq\
-        --motif-model {outdir}/cv-$k/train/pattern-$i_motif/train.model\
-        --thread {thread}\
-        --out1 {outdir}/cv-$k/test/pattern-$i_motif/positive.raw\
-        2>> {outdir}/cv-$k/test/pattern-$i_motif/log
-RNAelem scan\
-        --fastq {outdir}/cv-$k/test/negative.fq\
-        --motif-model {outdir}/cv-$k/train/pattern-$i_motif/train.model\
-        --thread {thread}\
-        --out1 {outdir}/cv-$k/test/pattern-$i_motif/negative.raw\
-        2>> {outdir}/cv-$k/test/pattern-$i_motif/log
-            """.format(task_id=ge["task_id"],**locals()))
-    gen_cv_summary(outdir)
-
-def run_rnaelem_scan(model,elem_out,sequence,outdir,thread,**_):
-    run("mkdir -p {outdir}".format(**locals()))
+        --out1 {elem_out}/{model_stem}/train.model\
+        --out2 {elem_out}/{model_stem}/train.raw\
+        --out3 {elem_out}/{model_stem}/train.interim\
+        2>> {elem_out}/{model_stem}/log
+draw_motif.py\
+        {elem_out}/{model_stem}\
+        {elem_out}/{model_stem}/rss.eps\
+        {elem_out}/{model_stem}/prf.svg\
+        {plot_base_threshold}
+rsvg-convert\
+        -f png --background-color=white\
+        -o {elem_out}/{model_stem}/prf.png\
+        {elem_out}/{model_stem}/prf.svg
+convert\
+        -density 320\
+        {elem_out}/{model_stem}/rss.eps\
+        {elem_out}/{model_stem}/rss.png""")
+def run_rnaelem_scan(model,elem_out,sequence,outdir,array,thread,**_):
+    run(f"mkdir -p {outdir}")
     run(" ".join(["kmer-psp.py",sequence,
         ">",outdir+"/scan.fq","2>>",outdir+"/log"]))
-    if None==model:#directory was given
-        folds,patterns=get_folds_patterns(elem_out)
-        d=_run(" ".join([
+    if model is None:#directory was given
+        _,patterns=get_folds_patterns(elem_out)
+        _run(" ".join([
             "find",elem_out+"/pattern-*",
             "-name","train.model"]))[0].strip().split('\n')
         tids=" ".join(patterns)
-        if not options["array"]:
-            _run("""
+        if array:
+            _run(" ".join([ge["cmd"],
+                ge["array"].replace(":N:",patterns),
+                ge["cwd"],ge["envvar"],ge["shell"],ge["sync"],ge["other"],
+                ge["stdout"].replace(":file:",outdir+"/grid.stdout"),
+                ge["stderr"].replace(":file:",outdir+"/grid.stderr"),
+                ge["memory"].replace(":mem:",str(4)),
+                ge["cpu"].replace(":cpu:",str(thread)),
+                ]),
+                stdin=f"""
+tids=(0 {tids}) #0 is to make a margin
+tid=${{tids[{ge["task_id"]}]}}
+mkdir -p {outdir}/pattern-$tid
+RNAelem scan\
+    --fastq {outdir}/scan.fq\
+    --motif-model {elem_out}/pattern-$tid/train.model\
+    --thread {thread}\
+    --out1 {outdir}/pattern-$tid/scan.raw\
+    2> {outdir}/pattern-$tid/log""")
+        else:
+            _run(f"""
 for tid in {tids}
 do
     mkdir -p {outdir}/pattern-$tid
     RNAelem scan\
-            --fastq {outdir}/scan.fq\
-            --motif-model {elem_out}/pattern-$tid/train.model\
-            --thread {thread}\
-            --out1 {outdir}/pattern-$tid/scan.raw\
-            2> {outdir}/pattern-$tid/log
-done
-            """.format(**locals()))
-            return
-        _run(" ".join([ge["cmd"],
-            ge["array"].replace(":N:",patterns),
-            ge["cwd"],ge["envvar"],ge["shell"],ge["sync"],ge["other"],
-            ge["stdout"].replace(":file:",outdir+"/grid.stdout"),
-            ge["stderr"].replace(":file:",outdir+"/grid.stderr"),
-            ge["memory"].replace(":mem:",str(4)),
-            ge["cpu"].replace(":cpu:",str(thread)),
-            ]),
-            stdin="""
-tids=(0 {tids}) #0 is to make a margin
-tid=${{tids[{task_id}]}}
-mkdir -p {outdir}/pattern-$tid
-RNAelem scan\
         --fastq {outdir}/scan.fq\
         --motif-model {elem_out}/pattern-$tid/train.model\
         --thread {thread}\
         --out1 {outdir}/pattern-$tid/scan.raw\
         2> {outdir}/pattern-$tid/log
-                """.format(task_id=ge["task_id"],**locals()))
-    elif None==elem_out:#file was given
-        _run("""
+done""")
+    elif elem_out is None:#file was given
+        _run(f"""
 RNAelem scan\
-        --fastq {outdir}/scan.fq\
-        --motif-model {model}\
-        --thread {thread}\
-        --out1 {outdir}/scan.raw\
-        2>> {outdir}/log
-            """.format(**locals()))
-        pass
+    --fastq {outdir}/scan.fq\
+    --motif-model {model}\
+    --thread {thread}\
+    --out1 {outdir}/scan.raw\
+    2>> {outdir}/log""")
     else:raise RuntimeError("unknown model format")
-def calc_AUC_raw(positive,negative):
-    ox,score=zip(*[[1,float(r["exist prob"])] for r in parse_raw(positive)]
-            +[[0,float(r["exist prob"])] for r in parse_raw(negative)])
-    return calc_AUC(ox,score)
-
-### Post-processes
-def calc_model_features(model):
-    flds=dict(map(lambda x:x.strip(),l.split(':',1)) for l in open(model))
-    return flds["pattern"]
-def calc_log_features(log):
-    n,f,gr,n=0,0,0,0
-    p=compile("iter: (.+) , y: (.+) , \|gr\|: (.+) , p\|x\|: (.+), n: (.+)")
-    try:l=[l for l in open(log) if l.startswith("iter:")][-10:]
-    except FileNotFoundError as e:
-        cry(e)
-        return nan,nan
-    ll=[p.match(li).groups() for li in l]
-    cnt=int(ll[-1][0])
-    y=mean([float(lli[1])/lli[4] for lli in ll])
-    return cnt,y
-def summary_results(elem_out,num_motifs,plot_base_threshold,no_motif_draw=False):
-    run("mkdir -p {elem_out}/summary".format(**locals()))
-    fname=elem_out+"/pattern_list"
-    patterns=["#margin to make 1-origin"]+[p.strip() for p in open(fname)]
-    if not exists(elem_out+"/cv"):
-        try:gen_cv_summary(elem_out)
-        except Exception as e:
-            die("cannot find nor generate:",elem_out+"/cv")
-            cry("error:",e)
-    o,_=_run(' '.join(["awk '$3<0&&\"nan\"!=$3'",elem_out+"/cv"]))
-    d_orig=[l.strip().split('\t') for l in o.strip().split('\n')]
-    #columns of d_orig: (0)CV ID / (1)pattern id / (2)log likelihood / (3)AUC
-    d_aggr=aggregate(transpose(d_orig),fns=["comma","sum","mean"],key=1,val=[0,2,3])
-    #columns of d_aggr: (0)pattern id / (1)CV IDs / (2)log likelihood / (3)AUC
-    p_prim=[d for d in transpose(d_aggr) if '_' in patterns[int(d[0])]]
-    if 0<len(p_prim):
-        p0=sorted(p_prim,key=lambda x:float(x[3]),reverse=True)[0]
-        cv_best=sorted([d for d in d_orig if d[1]==p0[0]],key=lambda x:float(x[3]))[-1][0]
-        run("""
-cp\
-        {elem_out}/cv-{cv_best}/train/pattern-{p0[0]}/train.model\
-        {elem_out}/summary/model-prim.txt
-cp\
-        {elem_out}/cv-{cv_best}/train/pattern-{p0[0]}/log\
-        {elem_out}/summary/log-prim.txt
-cp\
-        {elem_out}/cv-{cv_best}/train/pattern-{p0[0]}/train.raw\
-        {elem_out}/summary/raw-prim.txt
-cp\
-        {elem_out}/cv-{cv_best}/train/pattern-{p0[0]}/log\
-        {elem_out}/summary/log-prim.txt
-        """.format(**locals()))
-        if not no_motif_draw:
-            run("""
-draw_motif.py\
-        {elem_out}/cv-{cv_best}/train/pattern-{p0[0]}\
-        {elem_out}/summary/rss-prim.eps\
-        {elem_out}/summary/prf-prim.svg\
-        {plot_base_threshold}
-rsvg-convert\
-        -f png --background-color=white\
-        -o {elem_out}/summary/prf-prim.png\
-        {elem_out}/summary/prf-prim.svg
-convert\
-        -density 320\
-        {elem_out}/summary/rss-prim.eps\
-        {elem_out}/summary/rss-prim.png
-            """.format(**locals()))
-    p_scnd=[d for d in transpose(d_aggr) if not '_' in patterns[int(d[0])]]
-    p_rank=sorted(p_scnd,key=lambda x:float(x[3]),reverse=True)[:num_motifs]
-    for i,p in enumerate(p_rank):
-        cv_best=sorted([d for d in d_orig if d[1]==p[0]],key=lambda x:float(x[3]))[-1][0]
-        run("""
-cp\
-        {elem_out}/cv-{cv_best}/train/pattern-{p[0]}/train.model\
-        {elem_out}/summary/model-{i}.txt
-cp\
-        {elem_out}/cv-{cv_best}/train/pattern-{p[0]}/train.interim\
-        {elem_out}/summary/model-{i}-interim.txt
-cp\
-        {elem_out}/cv-{cv_best}/train/pattern-{p[0]}/train.raw\
-        {elem_out}/summary/raw-{i}.txt
-cp\
-        {elem_out}/cv-{cv_best}/train/pattern-{p[0]}/log\
-        {elem_out}/summary/log-{i}.txt
-        """.format(**locals()))
-        if not no_motif_draw:
-            run("""
-draw_motif.py\
-        {elem_out}/cv-{cv_best}/train/pattern-{p[0]}\
-        {elem_out}/summary/rss-{i}.eps\
-        {elem_out}/summary/prf-{i}.svg\
-        {plot_base_threshold}
-rsvg-convert\
-        -f png --background-color=white\
-        -o {elem_out}/summary/prf-{i}.png\
-        {elem_out}/summary/prf-{i}.svg
-convert\
-        -density 320\
-        {elem_out}/summary/rss-{i}.eps\
-        {elem_out}/summary/rss-{i}.png
-            """.format(**locals()))
 
 ### Main
 if version_info[0]<3:
     die("must be using Python 3")
-if "train"==options["subcommand"]:
-    run_rnaelem_train_cv(**options)
-    summary_results(options["outdir"],options["num_motifs"],options["plot_base_threshold"])
-    if not options["no_merge"]:
-        models=[str(p) for p in Path(options["outdir"]+"/summary").glob("model-*.txt") if not str(p).endswith("-interim.txt")]
-        outdir=options["outdir"]
-        run_rnaelem_refine_nocv(models, options["positive"],
-                options["negative"], options["thread"], options["max_iter"],
-                outdir,options["batch_size"], options["no_shuffle"],
-                options["array"], options["plot_base_threshold"])
+if options["subcommand"] is None:
+    run_rnaelem_init(**options)
+    options["elem_out"]=options["outdir"]
+    options["pattern_index"]=None
+    run_rnaelem_train(**options)
+    run_rnaelem_select(**options)
+    run_rnaelem_refine(**options)
+elif "init"==options["subcommand"]:
+    run_rnaelem_init(**options)
+elif "train"==options["subcommand"]:
+    run_rnaelem_train(**options)
+elif "select"==options["subcommand"]:
+    run_rnaelem_select(**options)
+elif "refine"==options["subcommand"]:
+    run_rnaelem_refine(**options)
 elif "scan"==options["subcommand"]:
     run_rnaelem_scan(**options)
-elif "summary"==options["subcommand"]:
-    summary_results(options["elem_out"],options["num_motifs"],options["plot_base_threshold"],options["no_motif_draw"])
-elif "refine"==options["subcommand"]:
-    run_rnaelem_refine_cv(**options)
-    summary_results(options["outdir"],options["num_motifs"],options["plot_base_threshold"])
-else:die("unknown subcommand:",options["subcommand"])
+else:
+    die("unknown subcommand:",options["subcommand"])
