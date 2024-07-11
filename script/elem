@@ -114,34 +114,35 @@ parser_train=sub_parser.add_parser("train",help="train the motif model by datase
 parser_select=sub_parser.add_parser("select",help="select the best pattern")
 parser_refine=sub_parser.add_parser("refine",help="train the motif model for more data and iterations")
 parser_scan=sub_parser.add_parser("scan",help="scan the motif model over dataset")
+parser_pipeline=sub_parser.add_parser("pipeline",help="run pipeline using grid engine")
 ### pipeline
-parser.add_argument("-p","--positive",metavar="FASTA",default=None,
-        help="positive sequence set",required=True)
-parser.add_argument("-n","--negative",metavar="FASTA",default=None,
+parser_pipeline.add_argument("-p","--positive",metavar="FASTA",default=None,
+        help="positive sequence set", required=True)
+parser_pipeline.add_argument("-n","--negative",metavar="FASTA",default=None,
         help="negative sequence set")
-parser.add_argument("-m","--pattern-list",metavar="FILE",default=None,
-        help="pattern list to search; one per line",required=True)
-parser.add_argument("-o","--outdir",metavar="DIR",default="elem_out",
+parser_pipeline.add_argument("-m","--pattern-list",metavar="FILE",default=None,
+        help="pattern list to search; one per line", required=True)
+parser_pipeline.add_argument("-o","--outdir",metavar="DIR",default="elem_out",
         help="directory name to save outputs to")
-parser.add_argument("-F","--force-overwrite",action="store_true",
+parser_pipeline.add_argument("-F","--force-overwrite",action="store_true",
         help="force overwrite if outdir already exists")
-parser.add_argument("-k","--kfold-cv",metavar="INT",default=2,type=int,
+parser_pipeline.add_argument("-k","--kfold-cv",metavar="INT",default=2,type=int,
         help="k of k-fold cross validation")
-parser.add_argument("-w","--max-span",metavar="INT",default=50,
+parser_pipeline.add_argument("-w","--max-span",metavar="INT",default=50,
         help="max distance for bases to make a pair")
-parser.add_argument("-i","--max-iter",metavar="INT",default=300,
+parser_pipeline.add_argument("-i","--max-iter",metavar="INT",default=300,
         help="max iteration count")
-parser.add_argument("-t","--thread",metavar="INT",default=1,
+parser_pipeline.add_argument("-t","--thread",metavar="INT",default=1,
         help="number of threads")
-parser.add_argument("-a","--array",action="store_true",
+parser_pipeline.add_argument("-a","--array",action="store_true",
         help="enable array job")
-parser.add_argument("-b","--batch-size",metavar="INT",default=64,type=int,
+parser_pipeline.add_argument("-b","--batch-size",metavar="INT",default=64,type=int,
         help="size of mini-batch")
-parser.add_argument("--no-shuffle",action="store_true",
+parser_pipeline.add_argument("--no-shuffle",action="store_true",
         help="Train without generating shuffled negative sequences.")
-parser.add_argument("-N","--num-motifs",metavar="INT",default=3,type=int,
+parser_pipeline.add_argument("-N","--num-motifs",metavar="INT",default=3,type=int,
         help="number of motif candidates")
-parser.add_argument("-P","--plot-base-threshold",metavar="FLOAT",default=1.5,type=float,
+parser_pipeline.add_argument("-P","--plot-base-threshold",metavar="FLOAT",default=1.5,type=float,
         help="When plotting 2D diagram of a motif, bases are specified for the loci with less sequential entropy with this threshold")
 ### options for init
 parser_init.add_argument("-p","--positive",metavar="FASTA",default=None,
@@ -433,7 +434,7 @@ def run_rnaelem_refine(elem_out, max_iter, batch_size, plot_base_threshold, arra
             ge["array"].replace(":N:",str(nlines(elem_out+"/pattern_list"))),
             ge["stdout"].replace(":file:",elem_out+"/grid.stdout"),
             ge["stderr"].replace(":file:",elem_out+"/grid.stderr"),
-            ge["memory"].replace(":mem:",str(4)),
+            ge["memory"].replace(":mem:",str(8)),
             ge["cpu"].replace(":cpu:",str(thread)),
             ]),
             stdin=f"""
@@ -512,7 +513,7 @@ def run_rnaelem_scan(model,elem_out,sequence,outdir,array,thread,**_):
                 ge["cwd"],ge["envvar"],ge["shell"],ge["sync"],ge["other"],
                 ge["stdout"].replace(":file:",outdir+"/grid.stdout"),
                 ge["stderr"].replace(":file:",outdir+"/grid.stderr"),
-                ge["memory"].replace(":mem:",str(4)),
+                ge["memory"].replace(":mem:",str(8)),
                 ge["cpu"].replace(":cpu:",str(thread)),
                 ]),
                 stdin=f"""
@@ -550,7 +551,7 @@ RNAelem scan\
 ### Main
 if version_info[0]<3:
     die("must be using Python 3")
-if options["subcommand"] is None:
+if "pipeline"==options["subcommand"]:
     run_rnaelem_init(**options)
     options["elem_out"]=options["outdir"]
     options["pattern_index"]=None
