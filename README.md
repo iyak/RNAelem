@@ -1,107 +1,117 @@
-![RNAelem logo for Github](https://github.com/iyak/RNAelem/blob/master/material/github_logo.png)
+RNAelem is a tool for learning sequence-structure motifs from a set of RNA sequences.
 
-RNAelem is a tool for learning secondary structural motifs from a set of RNA sequences.
-A secondary structure motif is a pair of local secondary structures and partial sequences that are conserved in RNA sequences.
-Rfold model [1] assesses the fee energy stability of local secondary structures, and Profile CFG evaluates the conservation of partial sequences.
-The motifs are extracted and reported in the sequence logo and graph diagram.
+# Installation
 
-## Installation
-
-```bash
-$ git clone htpps://github.com/iyak/RNAelem.git
-$ cd RNAelem
-$ ./waf configure --prefix=$HOME/local # for example
-$ ./waf build test
-$ ./waf install
+```sh
+git clone https://github.com/iyak/RNAelem.git
+cd RNAelem
+./waf configure --prefix=$HOME/local
+./waf build test
+./waf install
 ```
-RNAelem is written using Python3 and C++ 14.
-Python library `numpy` is used.
+RNAelem is developed using Python3 and C++14, utilizing the `numpy` and `scipy` Python libraries. `waf` is a Python-based framework for configuring, compiling, and installing applications.
 
-## Toy example
+# Toy Example
 
-First, you need to organize the input data.
-The following files are required for learning.
+First, organize the input data, which includes:
 
-- fasta file that contains positive set
-- List of search patterns
+- A fasta file containing the positive sequence set
+- A list of search patterns
 
-A list of search patterns is candidates for local secondary structures of the motif.
-It is written in the following manner:
-```
-pattern 1
-pattern 2
-...
-```
-Search pattern is in dot bracket notation of the secondary structure, added by `*` which indicates any structure.
-For example, search pattern `((.*.))` represents a local secondary structure consisting of an arbitrary structure which is sandwiched between a stem of length 2 or greater and an opening loop of length 1 or greater.
-Specifically, internal loop and hairpin loop are applicable.
+Search patterns are candidates for local secondary structures of motifs, expressed in dot-bracket notation with `*` indicating insertion region. For example, the search pattern `((.*.))` denotes a local secondary structure with an arbitrary internal structure flanked by a stem of at least two bases and an opening loop.
 
-You can optionally pass negative set sequences in fasta format.
-
-##
-Let's find a motif from 76 seed sequences in the Rfam's tRNA family (RF00005) that have 'CAU' as their anticodon.
-These sequences contain the tRNA clover structure.
-Specify a single hairpin loop as the search pattern.
-```bash
-$ cat pattern
+To demonstrate, consider finding a motif from 76 seed sequences in Rfam's tRNA family (RF00005) with 'CAU' as their anticodon. These sequences exhibit the tRNA clover structure. Specify a single hairpin loop as the search pattern:
+```sh
+cat pattern
 (.....)
 ```
-Run RNAelem to train a motif.
-```bash
-$ elem -p positive.fa -m pattern
+Execute RNAelem to train a motif:
+```sh
+elem pipeline -p positive.fa -m pattern
 ```
-As a result, you will obtain the following motifs.
 
 |sequence logo|graph diagram|
-----|---- 
+----|----
 |![tRNA profile](https://github.com/iyak/RNAelem/blob/master/material/prf-0.png)|![tRNA secondary structure](https://github.com/iyak/RNAelem/blob/master/material/rss-0.png)|
 
-The sequence logo shows both the conserved sequential profile and the stable local secondary structure at the same time.
-In addition to the normal base composition, the base pair composition is also displayed.
-For base pairs, the same compositions are displayed, and the partner's column is grayed-out.
-The y axis indicates the information in bit, which ranges from 0 to 2 for base composition, and 0 to log 6 for base pair.
-The column index shows the base pairs and the average number of repeats for each secondary structural context.
-Interpreting the results based on the above, the anticodon arm has been extracted that contains an anticodon 'CAU' and the conserved 'U' and 'A' on both sides.
+The results include sequence logos and graph diagrams displaying conserved sequential profiles and stable local secondary structures simultaneously. The sequence logo indicates base and base pair compositions, with the y-axis measuring information in bits. The trained results default to a directory named `elem_out/model-*` in the current working directory:
 
-The trained results are stored in a folder named `elem_out/summary` by default in the current working directory.
+```sh
+train.model   # contains model parameters
+prf.[png/svg] # sequence logo
+rss.[png/eps] # graph diagram
+train.raw     # final alignment of the model to input data
+train.interim # interim parameters
+log           # log file
+```
+
+To align the best-trained model to new data:
 ```bash
-$ ls elem_out/summary
-model-*.txt           # contains model parameters
-prf-*.[png/svg]       # sequencial logo
-rss-*.[png/eps]       # graph diagram
-raw-*.txt             # final alignment of the model to input data
-model-*-interim.txt   # interim parameters
-log-*.txt             # log file
+elem scan -s sequences.fa -m elem_out/model-1/train.model
 ```
-`*` is replaced by a number between 0 and 2 by default, and a lower number corresponds to a search pattern with a higher fitness.
-
-You can also align the trained model to the new data.
-For example, if you want to align the best model to a sequence set `sequences.fa`, the following command will do that:
-```bash
-$ elem scan -s sequences.fa -m elem_out/summary/model-0.txt
+The alignment results are stored in `scan_out/scan.raw` and include detailed probabilistic and structural alignments:
 ```
-
-The aligned results are stored in `scan_out/scan.raw` by default in the current working directory.
-This file is a sequence of the following blocks:
-```
-id: @1                                 # sequence id
-start: [-38.5222,-20.6088, ...         # log probability that motif starts at the position
-end: [-inf,-inf,-inf,-inf, ...         # log probability that motif ends at the position
-inner: [-38.5222,-20.6088, ...         # log probability that the position is inside motif 
-psihat: [0,0,0,1,...                   # viterbi alignment of Profile CFG
-motif region: 11 - 22                  # estimation of motif region
-exist prob: 0.699748                   # probability that motif exists in the sequence
-seq: AUAAUAUUUAGGUGCAACUCCUAAAUCCGCUA  # sequence
-rss: OOOOOLLLLLLLHHHHHHHRRRRRRROOOOOO  # viterbi alignment of secondary structure
-mot:           ((.......))             # viterbi alignment of motif
+id: @1                                # sequence id
+start: [-38.5222,-20.6088, ...        # log probability that motif starts at the position
+end: [-inf,-inf,-inf,-inf, ...        # log probability that motif ends at the position
+inner: [-38.5222,-20.6088, ...        # log probability that the position is inside motif
+psihat: [0,0,0,1,...                  # viterbi alignment of Profile CFG
+motif region: 11 - 22                 # estimation of motif region
+exist prob: 0.699748                  # probability that motif exists in the sequence
+seq: AUAAUAUUUAGGUGCAACUCCUAAAUCCGCUA # sequence
+rss: OOOOOLLLLLLLHHHHHHHRRRRRRROOOOOO # viterbi alignment of secondary structure
+mot:           ((.......))            # viterbi alignment of motif
 ```
 
-## Settings for grid engine
+# Usage
 
-In order to fully operate RNAelem and explore de novo motifs, parallelization is basically required in the cluster machine.
-How you submit a job for a cluster machine depends on your environment.
-You must configure it by directly modifying the `elem`, the executable file, so that you can submit jobs from RNAelem.
-Line 16 of elem is as follows:
+To conduct de-novo motif discovery using RNAelem, multi-node parallelization on a cluster machine is required. This section describes the procedure for motif discovery on a single dataset, such as eCLIP data for an RBP. The training for each search pattern is distributed across nodes.
+
+## Manual Parallelization
+
+This section explains how to perform manual parallel computing without using Grid Engine. Start by preparing a FASTA file containing the positive sequence set and a text file with the search patterns. On the master node, initialize the training with the following command:
+
+```sh
+elem init --positive a.fa --pattern-list p.txt
+```
+
+Here, `a.fa` represents the positive sequence set, and `p.txt` contains the search patterns. By default, a directory named `elem_out` is created to store the training results. Subsequently, conduct the training for each search pattern on parallel nodes:
+
+```sh
+elem train --elem-out elem_out --pattern-index 1 # 1...N
+```
+
+Here, `N` is the total number of search patterns in the list. Each node trains using a specific index from `1` to `N`, and the outcomes are saved in `elem_out`. If using a distributed filesystem, consolidate the `elem_out` contents at a single location to proceed with model selection:
+
+```sh
+elem select --elem-out elem_out --num-motifs 3
+```
+
+An enrichment score is calculated for each motif. These scores are compared, and the motifs with the highest scores are selected. Further refine the chosen model using all the training data. If multiple motifs are selected, distribute their training across the nodes:
+
+```sh
+elem refine --elem-out elem_out --pattern-index 1 # 1...M
+```
+
+Here, `M` is the number of motifs previously selected. Each node conducts parallel training using an index from `1` to `M`. Consolidate the training outputs in `elem_out` if the filesystem is distributed. The optimal motif is stored under `elem_out/model-1`, and the suboptimal motifs as `elem_out/model-{2,...,M}`.
+
+## Parallelization using Grid Engine
+
+If the cluster machine supports job scheduling via Grid Engine, the `train` and `refine` steps can be replaced with the following commands:
+
+```sh
+elem train --elem-out elem_out --array
+elem refine --elem-out elem_out --array
+```
+
+Alternatively, replace the entire procedure from `init` to `refine` with the following single command:
+
+```sh
+elem pipeline --positive a.fa --pattern-list p.txt --array
+```
+
+It is essential to configure the job execution commands based on the variant and version of the Grid Engine. At the beginning of `script/elem`, edit a Python dictionary to set these configurations:
+
 ```python
 ge={
     "cmd":"qsub",                               # command to submit a job
@@ -118,9 +128,3 @@ ge={
     "other":"",                                 # any other options you want to specify
     }
 ```
-As you can see, the python dictionary is used to manage the configuration.
-For options that require arguments, use variables such as `:N:` to specify the location of the arguments.
-Set them and start the tool with `-a` option to make sure the job is appropriately queued.
-
-## Reference
-1. Kiryu, H., Kin, T., & Asai, K. (2007). Rfold: an exact algorithm for computing local base pairing probabilities. Bioinformatics, 24(3), 367-373.
