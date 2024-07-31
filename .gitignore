@@ -6,7 +6,6 @@ bench*
 **.DS_store
 .gitconfig
 .Rproj.user
-script/*
 !script/gen_preset.py
 !script/elem
 !script/dishuffle.py
