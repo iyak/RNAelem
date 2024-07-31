@@ -495,7 +495,7 @@ def run_rnaelem_scan(model,elem_out,sequence,outdir,array,thread,**_):
         if array:
             models=" ".join(models)
             _run(" ".join([ge["cmd"],
-                ge["array"].replace(":N:",len(models)),
+                ge["array"].replace(":N:",str(len(models))),
                 ge["cwd"],ge["envvar"],ge["shell"],ge["sync"],ge["other"],
                 ge["stdout"].replace(":file:",outdir+"/grid.stdout"),
                 ge["stderr"].replace(":file:",outdir+"/grid.stderr"),
