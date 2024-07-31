@@ -184,7 +184,7 @@ parser_select.add_argument("-N","--num-motifs",metavar="INT",default=3,type=int,
 ### option for refine
 parser_refine.add_argument("-M","--elem-out",metavar="DIR",default=None,
         help="elem output dir",required=True)
-parser_refine.add_argument("--pattern-index",metavar="INT",default=None,
+parser_refine.add_argument("--pattern-index",metavar="INT",default=None,type=int,
         help="index of motif model to be refined")
 parser_refine.add_argument("-i","--max-iter",metavar="INT",default=300,
         help="max iteration count")
@@ -399,7 +399,6 @@ RNAelem scan\
         --out1 {elem_out}/cv-{k}/test/pattern-{pattern_index}/negative.raw\
         2>> {elem_out}/cv-{k}/test/pattern-{pattern_index}/log""")
 def run_rnaelem_select(elem_out, num_motifs, **_):
-    run(f"mkdir -p {elem_out}/summary")
     fname=elem_out+"/pattern_list"
     patterns=["#margin to make 1-origin"]+[p.strip() for p in open(fname)]
     gen_cv_summary(elem_out)
@@ -407,27 +406,17 @@ def run_rnaelem_select(elem_out, num_motifs, **_):
     d_orig=[l.strip().split('\t') for l in o.strip().split('\n')]
     #columns of d_orig: (0)CV ID / (1)pattern id / (2)log likelihood / (3)AUC
     d_aggr=aggregate(transpose(d_orig),fns=["comma","sum","mean"],key=1,val=[0,2,3])
-    print(d_aggr)
     #columns of d_aggr: (0)pattern id / (1)CV IDs / (2)log likelihood / (3)AUC
-    p_prim=[d for d in transpose(d_aggr) if "_" in patterns[int(d[0])]]
-    if 0<len(p_prim):
-        p0=sorted(p_prim,key=lambda x:float(x[3]),reverse=True)[0]
-        cv_best=sorted([d for d in d_orig if d[1]==p0[0]],key=lambda x:float(x[3]))[-1][0]
-        run(f"""
-cp\
-        {elem_out}/cv-{cv_best}/train/pattern-{p0[0]}/train.model\
-        {elem_out}/summary/model-prim.txt""")
-    p_scnd=[d for d in transpose(d_aggr) if not "_" in patterns[int(d[0])]]
+    p_scnd=transpose(d_aggr)
     p_rank=sorted(p_scnd,key=lambda x:float(x[3]),reverse=True)[:num_motifs]
+    run(f"rm {elem_out}/select.txt")
     for i,p in enumerate(p_rank):
         cv_best=sorted([d for d in d_orig if d[1]==p[0]],key=lambda x:float(x[3]))[-1][0]
-        run(f"""
-cp\
-        {elem_out}/cv-{cv_best}/train/pattern-{p[0]}/train.model\
-        {elem_out}/summary/model-{i+1}.txt""")
+        run(f"echo {elem_out}/cv-{cv_best}/train/pattern-{p[0]}/train.model >> {elem_out}/select.txt")
 def run_rnaelem_refine(elem_out, max_iter, batch_size, plot_base_threshold, array, thread, pattern_index, no_shuffle, **_):
     no_shuffle = "--no-shuffle" if no_shuffle else ""
-    models=[str(p) for p in Path(f"{elem_out}/summary").glob("model-*.txt")]
+    with open(f"{elem_out}/select.txt") as fi:
+        models = [model.strip() for model in fi.readlines()]
     if array:
         _run(' '.join([ge["cmd"],
             ge["cwd"],ge["envvar"],ge["shell"],ge["sync"],ge["other"],
@@ -441,75 +430,72 @@ def run_rnaelem_refine(elem_out, max_iter, batch_size, plot_base_threshold, arra
 tid=${ge["task_id"]}
 models=({" ".join(["padding"] + models)})
 model=${{models[tid]}}
-tmp=$(basename -- "$model")
-model_base="${{tmp%.*}}"
-mkdir -p {elem_out}/${{model_base}}
+mkdir -p {elem_out}/model-${{tid}}
 RNAelem --fastq {elem_out}/train.fq\
         --motif-model ${{model}}\
         --max-iter {max_iter}\
         --batch-size {batch_size}\
         --thread {thread}\
         {no_shuffle}\
-        --out1 {elem_out}/${{model_base}}/train.model\
-        --out2 {elem_out}/${{model_base}}/train.raw\
-        --out3 {elem_out}/${{model_base}}/train.interim\
-        2>> {elem_out}/${{model_base}}/log
+        --out1 {elem_out}/model-${{tid}}/train.model\
+        --out2 {elem_out}/model-${{tid}}/train.raw\
+        --out3 {elem_out}/model-${{tid}}/train.interim\
+        2>> {elem_out}/model-${{tid}}/log
 draw_motif.py\
-        {elem_out}/${{model_base}}\
-        {elem_out}/${{model_base}}/rss.eps\
-        {elem_out}/${{model_base}}/prf.svg\
+        {elem_out}/model-${{tid}}\
+        {elem_out}/model-${{tid}}/rss.eps\
+        {elem_out}/model-${{tid}}/prf.svg\
         {plot_base_threshold}
 rsvg-convert\
         -f png --background-color=white\
-        -o {elem_out}/${{model_base}}/prf.png\
-        {elem_out}/${{model_base}}/prf.svg
+        -o {elem_out}/model-${{tid}}/prf.png\
+        {elem_out}/model-${{tid}}/prf.svg
 convert\
         -density 320\
-        {elem_out}/${{model_base}}/rss.eps\
-        {elem_out}/${{model_base}}/rss.png""")
+        {elem_out}/model-${{tid}}/rss.eps\
+        {elem_out}/model-${{tid}}/rss.png""")
     else:
         if pattern_index is not None:
             models=[models[pattern_index-1]]
-        for model in models:
-            model_stem=Path(model).stem
+        for i, model in enumerate(models):
+            tid = i + 1
             _run(f"""
-mkdir -p {elem_out}/{model_stem}
+mkdir -p {elem_out}/model-{tid}
 RNAelem --fastq {elem_out}/train.fq\
         --motif-model {model}\
         --max-iter {max_iter}\
         --batch-size {batch_size}\
         --thread {thread}\
         {no_shuffle}\
-        --out1 {elem_out}/{model_stem}/train.model\
-        --out2 {elem_out}/{model_stem}/train.raw\
-        --out3 {elem_out}/{model_stem}/train.interim\
-        2>> {elem_out}/{model_stem}/log
+        --out1 {elem_out}/model-{tid}/train.model\
+        --out2 {elem_out}/model-{tid}/train.raw\
+        --out3 {elem_out}/model-{tid}/train.interim\
+        2>> {elem_out}/model-{tid}/log
 draw_motif.py\
-        {elem_out}/{model_stem}\
-        {elem_out}/{model_stem}/rss.eps\
-        {elem_out}/{model_stem}/prf.svg\
+        {elem_out}/model-{tid}\
+        {elem_out}/model-{tid}/rss.eps\
+        {elem_out}/model-{tid}/prf.svg\
         {plot_base_threshold}
 rsvg-convert\
         -f png --background-color=white\
-        -o {elem_out}/{model_stem}/prf.png\
-        {elem_out}/{model_stem}/prf.svg
+        -o {elem_out}/model-{tid}/prf.png\
+        {elem_out}/model-{tid}/prf.svg
 convert\
         -density 320\
-        {elem_out}/{model_stem}/rss.eps\
-        {elem_out}/{model_stem}/rss.png""")
+        {elem_out}/model-{tid}/rss.eps\
+        {elem_out}/model-{tid}/rss.png""")
 def run_rnaelem_scan(model,elem_out,sequence,outdir,array,thread,**_):
     run(f"mkdir -p {outdir}")
     run(" ".join(["kmer-psp.py",sequence,
         ">",outdir+"/scan.fq","2>>",outdir+"/log"]))
     if model is None:#directory was given
-        _,patterns=get_folds_patterns(elem_out)
-        _run(" ".join([
-            "find",elem_out+"/pattern-*",
+        models=_run(" ".join([
+            "find",elem_out+"/model-*",
             "-name","train.model"]))[0].strip().split('\n')
-        tids=" ".join(patterns)
         if array:
+            models=" ".join(models)
             _run(" ".join([ge["cmd"],
-                ge["array"].replace(":N:",patterns),
+                ge["array"].replace(":N:",len(models)),
                 ge["cwd"],ge["envvar"],ge["shell"],ge["sync"],ge["other"],
                 ge["stdout"].replace(":file:",outdir+"/grid.stdout"),
                 ge["stderr"].replace(":file:",outdir+"/grid.stderr"),
@@ -517,27 +503,26 @@ def run_rnaelem_scan(model,elem_out,sequence,outdir,array,thread,**_):
                 ge["cpu"].replace(":cpu:",str(thread)),
                 ]),
                 stdin=f"""
-tids=(0 {tids}) #0 is to make a margin
-tid=${{tids[{ge["task_id"]}]}}
-mkdir -p {outdir}/pattern-$tid
+tid=${ge["task_id"]}
+models=({" ".join(["padding"] + models)})
+model=${{models[tid]}}
+mkdir -p {outdir}/model-$tid
 RNAelem scan\
     --fastq {outdir}/scan.fq\
-    --motif-model {elem_out}/pattern-$tid/train.model\
+    --motif-model {model}\
     --thread {thread}\
-    --out1 {outdir}/pattern-$tid/scan.raw\
-    2> {outdir}/pattern-$tid/log""")
+    --out1 {outdir}/model-$tid/scan.raw\
+    2> {outdir}/model-$tid/log""")
         else:
-            _run(f"""
-for tid in {tids}
-do
-    mkdir -p {outdir}/pattern-$tid
-    RNAelem scan\
-        --fastq {outdir}/scan.fq\
-        --motif-model {elem_out}/pattern-$tid/train.model\
-        --thread {thread}\
-        --out1 {outdir}/pattern-$tid/scan.raw\
-        2> {outdir}/pattern-$tid/log
-done""")
+            for i, model in enumerate(models, 1):
+                _run(f"""
+mkdir -p {outdir}/model-{i}
+RNAelem scan\
+    --fastq {outdir}/scan.fq\
+    --motif-model {model}\
+    --thread {thread}\
+    --out1 {outdir}/model-{i}/scan.raw\
+    2> {outdir}/model-{i}/log""")
     elif elem_out is None:#file was given
         _run(f"""
 RNAelem scan\
